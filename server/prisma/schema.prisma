@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Pengaturan Utama Bot & Kredensial (Single-row config)
+model AppConfig {
+  id               Int      @id @default(1)
+  
+  // Kredensial & Lisensi
+  clientToken      String?  // Token langganan dari Server Utama CryptoSpike
+  binanceApiKey    String?  // API Key Binance
+  binanceApiSecret String?  // API Secret Binance
+  environment      String   @default("TESTNET") // TESTNET atau MAINNET
+
+  // Manajemen Risiko Bot Lokal
+  autoExecute      Boolean  @default(false)
+  leverage         Int      @default(10)
+  riskPerTradePct  Float    @default(2.0)
+  maxOpenPositions Int      @default(3)
+
+  updatedAt        DateTime @updatedAt
+}
+
+// Akun Pengguna / Admin Aplikasi Lokal
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("Admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+

@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production builds
+dist/
+build/
+*/dist/
+*/build/
+
+# Local SQLite Database & Storage
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+server/data/
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+*.env
+*.jwt_secret
+*.secret
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Vite & cache
+.vite/
+*/node_modules/.vite/
+
+# Documentation & Internal Notes
+docs/
+

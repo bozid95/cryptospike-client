@@ -1,0 +1,117 @@
+.active-position-card {
+  background: var(--card-bg, #1a1a1a);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  color: #fff;
+}
+
+.active-position-card .card-header h2 {
+  margin: 0 0 5px 0;
+  font-size: 1.2rem;
+}
+
+.active-position-card .card-header p {
+  margin: 0 0 15px 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.position-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.position-table th,
+.position-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+.position-table th {
+  background: #252525;
+  font-weight: 600;
+  color: #bbb;
+}
+
+.empty-state {
+  text-align: center !important;
+  color: #888;
+  padding: 40px !important;
+}
+
+.symbol-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.symbol-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  width: fit-content;
+}
+
+.badge-long {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.badge-short {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.sub-text {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.text-warning {
+  color: #f59e0b;
+}
+
+.text-success {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.text-danger {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.btn-close-pos {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #3f3f46;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.85rem;
+}
+
+.btn-close-pos:hover {
+  background: #ef4444;
+}

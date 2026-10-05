@@ -1,0 +1,499 @@
+import { useState, useEffect } from "react";
+import {
+  KeyIcon,
+  FlaskConicalIcon,
+  GlobeIcon,
+  CheckIcon,
+  Loader2,
+  ActivityIcon,
+  ShieldAlert,
+  ShieldCheck,
+  SaveIcon,
+} from "lucide-react";
+import { toast } from "sonner";
+import { authFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+
+export default function CredentialConfig() {
+  const [token, setToken] = useState("");
+  const [environment, setEnvironment] = useState<"TESTNET" | "LIVE">("TESTNET");
+
+  // Testnet Credentials
+  const [testnetApiKey, setTestnetApiKey] = useState("");
+  const [testnetApiSecret, setTestnetApiSecret] = useState("");
+  const [showTestnetSecret, setShowTestnetSecret] = useState(false);
+
+  // Live Credentials
+  const [liveApiKey, setLiveApiKey] = useState("");
+  const [liveApiSecret, setLiveApiSecret] = useState("");
+  const [showLiveSecret, setShowLiveSecret] = useState(false);
+
+  // Risk Management
+  const [autoExecute, setAutoExecute] = useState(false);
+  const [leverage, setLeverage] = useState(10);
+  const [riskPerTradePct, setRiskPerTradePct] = useState(2.0);
+  const [maxOpenPositions, setMaxOpenPositions] = useState(3);
+
+  // Status State
+  const [isSaving, setIsSaving] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    balance?: number;
+  } | null>(null);
+
+  // 1. Muat konfigurasi dari database lokal SQLite
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await authFetch("/api/config");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const d = json.data;
+            setToken(d.clientToken || "");
+            const env = d.environment === "LIVE" ? "LIVE" : "TESTNET";
+            setEnvironment(env);
+            if (env === "TESTNET") {
+              setTestnetApiKey(d.binanceApiKey || "");
+              setTestnetApiSecret(d.binanceApiSecret || "");
+            } else {
+              setLiveApiKey(d.binanceApiKey || "");
+              setLiveApiSecret(d.binanceApiSecret || "");
+            }
+            setAutoExecute(d.autoExecute || false);
+            setLeverage(d.leverage || 10);
+            setRiskPerTradePct(d.riskPerTradePct || 2.0);
+            setMaxOpenPositions(d.maxOpenPositions || 3);
+          }
+        }
+      } catch (err: any) {
+        console.error("Gagal memuat konfigurasi dari backend:", err);
+      }
+    };
+
+    fetchConfig();
+  }, []);
+
+  // 2. Fungsi Tes Koneksi API Binance
+  const handleTestConnection = async () => {
+    const isTestnet = environment === "TESTNET";
+    const currentKey = isTestnet ? testnetApiKey : liveApiKey;
+    const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
+
+    if (!currentKey.trim() || !currentSecret.trim()) {
+      toast.error("Validasi Gagal", {
+        description: `Harap masukkan API Key dan Secret Binance (${isTestnet ? "Testnet" : "Live"}) terlebih dahulu.`,
+      });
+      return;
+    }
+
+    try {
+      setTestingConnection(true);
+      setTestResult(null);
+
+      const res = await authFetch("/api/config/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: currentKey.trim(),
+          apiSecret: currentSecret.trim(),
+          environment,
+        }),
+      });
+
+      const data = await res.json();
+      setTestResult(data);
+
+      if (data.success) {
+        toast.success("Koneksi Berhasil!", {
+          description: data.message,
+        });
+      } else {
+        toast.error("Koneksi Binance Gagal", {
+          description: data.message,
+        });
+      }
+    } catch (err: any) {
+      toast.error("Gagal Menguji Koneksi", {
+        description:
+          err.message || "Pastikan backend lokal berjalan di port 3030.",
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  // 3. Simpan Konfigurasi ke Database Lokal
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const isTestnet = environment === "TESTNET";
+      const currentKey = isTestnet ? testnetApiKey : liveApiKey;
+      const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
+
+      const payload = {
+        clientToken: token.trim(),
+        binanceApiKey: currentKey.trim(),
+        binanceApiSecret: currentSecret.trim(),
+        environment,
+        autoExecute,
+        leverage: Number(leverage),
+        riskPerTradePct: Number(riskPerTradePct),
+        maxOpenPositions: Number(maxOpenPositions),
+      };
+
+      const res = await authFetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Tersimpan!", {
+          description:
+            "Kredensial dan pengaturan bot berhasil disimpan ke SQLite lokal.",
+        });
+      } else {
+        toast.error("Gagal Menyimpan", { description: data.message });
+      }
+    } catch (err: any) {
+      toast.error("Kesalahan Jaringan", { description: err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">
+          Pengaturan & Kredensial Bot
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Konfigurasi lisensi bot, kunci API Binance Futures, dan manajemen
+          risiko eksekusi lokal.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Kolom Kiri / Utama: Kredensial Binance & Token */}
+        <div className="md:col-span-2 space-y-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <KeyIcon className="size-5 text-primary" />
+                Kredensial Binance Futures
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Kunci API disimpan dan dienkripsi secara lokal di database
+                SQLite.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Client Token */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="client-token"
+                    className="text-xs font-semibold"
+                  >
+                    Client Token (Lisensi CryptoSpike)
+                  </Label>
+                  {token && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] text-emerald-600 border-emerald-500/30"
+                    >
+                      Token Terpasang
+                    </Badge>
+                  )}
+                </div>
+                <Input
+                  id="client-token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div className="border-t pt-4" />
+
+              {/* Environment Tabs */}
+              <Tabs
+                value={environment.toLowerCase()}
+                onValueChange={(val) =>
+                  setEnvironment(val.toUpperCase() as "TESTNET" | "LIVE")
+                }
+                className="w-full"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Label className="text-xs font-semibold text-muted-foreground">
+                    Pilih Lingkungan API
+                  </Label>
+                  <TabsList className="grid w-[220px] grid-cols-2">
+                    <TabsTrigger value="testnet" className="text-xs gap-1.5">
+                      <FlaskConicalIcon className="size-3.5 text-amber-500" />
+                      Testnet
+                    </TabsTrigger>
+                    <TabsTrigger value="live" className="text-xs gap-1.5">
+                      <GlobeIcon className="size-3.5 text-emerald-500" />
+                      Live
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Tab Testnet */}
+                <TabsContent value="testnet" className="space-y-4 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                      Binance Testnet API Key
+                    </Label>
+                    <Input
+                      value={testnetApiKey}
+                      onChange={(e) => setTestnetApiKey(e.target.value)}
+                      placeholder="Masukkan Binance Testnet API Key..."
+                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                        Binance Testnet API Secret
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                        onClick={() => setShowTestnetSecret(!showTestnetSecret)}
+                      >
+                        {showTestnetSecret ? "Sembunyikan" : "Tampilkan"}
+                      </Button>
+                    </div>
+                    <Input
+                      type={showTestnetSecret ? "text" : "password"}
+                      value={testnetApiSecret}
+                      onChange={(e) => setTestnetApiSecret(e.target.value)}
+                      placeholder="Masukkan Binance Testnet API Secret..."
+                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* Tab Live */}
+                <TabsContent value="live" className="space-y-4 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                      Binance Live API Key
+                    </Label>
+                    <Input
+                      value={liveApiKey}
+                      onChange={(e) => setLiveApiKey(e.target.value)}
+                      placeholder="Masukkan Binance Live API Key..."
+                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                        Binance Live API Secret
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
+                        onClick={() => setShowLiveSecret(!showLiveSecret)}
+                      >
+                        {showLiveSecret ? "Sembunyikan" : "Tampilkan"}
+                      </Button>
+                    </div>
+                    <Input
+                      type={showLiveSecret ? "text" : "password"}
+                      value={liveApiSecret}
+                      onChange={(e) => setLiveApiSecret(e.target.value)}
+                      placeholder="Masukkan Binance Live API Secret..."
+                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Feedback Hasil Test Connection */}
+              {testResult && (
+                <div
+                  className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                    testResult.success
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                      : "border-destructive/30 bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {testResult.success ? (
+                    <ShieldCheck className="size-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <ShieldAlert className="size-4 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <p className="font-semibold">
+                      {testResult.success
+                        ? "Status Terverifikasi"
+                        : "Verifikasi Gagal"}
+                    </p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {testResult.message}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+
+            <CardFooter className="bg-muted/20 border-t pt-4 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestConnection}
+                disabled={testingConnection}
+                className="gap-2 text-xs border-border cursor-pointer hover:border-emerald-500/50"
+              >
+                {testingConnection ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Menguji Koneksi...
+                  </>
+                ) : (
+                  <>
+                    <ActivityIcon className="size-3.5 text-primary" />
+                    Test Connection
+                  </>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="gap-2 text-xs cursor-pointer"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <SaveIcon className="size-3.5" />
+                    Simpan Konfigurasi
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* Kolom Kanan: Pengaturan Risiko & Eksekusi Bot */}
+        <div className="md:col-span-1 space-y-6">
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CheckIcon className="size-4 text-primary" />
+                Manajemen Risiko
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Parameter eksekusi ketika sinyal diterima.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-xs">
+              {/* Auto Execute Switch */}
+              <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+                <div className="space-y-0.5">
+                  <Label
+                    htmlFor="auto-exec"
+                    className="text-xs font-semibold cursor-pointer"
+                  >
+                    Auto-Trade
+                  </Label>
+                  <p className="text-[10px] text-muted-foreground">
+                    Eksekusi otomatis
+                  </p>
+                </div>
+                <Switch
+                  id="auto-exec"
+                  checked={autoExecute}
+                  onCheckedChange={setAutoExecute}
+                />
+              </div>
+
+              {/* Leverage */}
+              <div className="space-y-1.5">
+                <Label htmlFor="leverage" className="text-xs font-medium">
+                  Default Leverage (x)
+                </Label>
+                <Input
+                  id="leverage"
+                  type="number"
+                  min={1}
+                  max={125}
+                  value={leverage}
+                  onChange={(e) => setLeverage(Number(e.target.value))}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              {/* Risk Per Trade % */}
+              <div className="space-y-1.5">
+                <Label htmlFor="risk-pct" className="text-xs font-medium">
+                  Risk Per Trade (% Wallet)
+                </Label>
+                <Input
+                  id="risk-pct"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="100"
+                  value={riskPerTradePct}
+                  onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              {/* Max Open Positions */}
+              <div className="space-y-1.5">
+                <Label htmlFor="max-pos" className="text-xs font-medium">
+                  Maksimal Posisi Terbuka
+                </Label>
+                <Input
+                  id="max-pos"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={maxOpenPositions}
+                  onChange={(e) => setMaxOpenPositions(Number(e.target.value))}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
