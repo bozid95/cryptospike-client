@@ -16,10 +16,16 @@ RUN npm run build
 FROM node:20-slim AS backend-builder
 WORKDIR /app/server
 
+# Install compiler tools untuk kompilasi native C++ addon better-sqlite3 via node-gyp
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY server/package*.json ./
 COPY server/prisma ./prisma/
 COPY server/prisma.config.ts ./
-# Menggunakan prebuilt glibc binary tanpa node-gyp compilation
 RUN npm install
 
 COPY server/ ./
@@ -31,10 +37,11 @@ RUN npx prisma generate
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# Install Nginx dan curl di Debian slim
+# Install Nginx, curl, dan openssl di Debian slim (Prisma runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     curl \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Salin backend & dependencies (berisi binary precompiled native linux)
