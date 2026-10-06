@@ -294,7 +294,7 @@ export default function ActivePosition({
                   Entry & Mark
                 </TableHead>
                 <TableHead className="w-[130px] px-4 py-3 font-semibold text-xs">
-                  Liq. Price & Dist.
+                  Liq. Price
                 </TableHead>
                 <TableHead className="w-[140px] px-4 py-3 font-semibold text-xs">
                   Unrealized PnL (ROI)
@@ -382,11 +382,6 @@ export default function ActivePosition({
                               ? pos.liquidationPrice.toLocaleString()
                               : "Safe (Cross)"}
                           </span>
-                          {pos.distanceToLiqPct > 0 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {pos.distanceToLiqPct.toFixed(1)}% away
-                            </span>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3">
