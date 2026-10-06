@@ -368,49 +368,6 @@ export default function CredentialConfig() {
                 </div>
               )}
             </CardContent>
-
-            <CardFooter className="bg-muted/20 border-t pt-4 flex items-center justify-between gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleTestConnection}
-                disabled={testingConnection}
-                className="gap-2 text-xs border-border cursor-pointer hover:border-emerald-500/50"
-              >
-                {testingConnection ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Menguji Koneksi...
-                  </>
-                ) : (
-                  <>
-                    <ActivityIcon className="size-3.5 text-primary" />
-                    Test Connection
-                  </>
-                )}
-              </Button>
-
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="gap-2 text-xs cursor-pointer"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Menyimpan...
-                  </>
-                ) : (
-                  <>
-                    <SaveIcon className="size-3.5" />
-                    Simpan Konfigurasi
-                  </>
-                )}
-              </Button>
-            </CardFooter>
           </Card>
         </div>
 
@@ -520,6 +477,50 @@ export default function CredentialConfig() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 mt-6 border-t border-border/50">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleTestConnection}
+          disabled={testingConnection}
+          className="w-full sm:w-auto gap-2 text-xs border-border cursor-pointer hover:border-emerald-500/50"
+        >
+          {testingConnection ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              Menguji Koneksi...
+            </>
+          ) : (
+            <>
+              <ActivityIcon className="size-3.5 text-primary" />
+              Test Connection
+            </>
+          )}
+        </Button>
+
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="w-full sm:w-auto gap-2 text-xs cursor-pointer"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              Menyimpan...
+            </>
+          ) : (
+            <>
+              <SaveIcon className="size-3.5" />
+              Simpan Konfigurasi
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
