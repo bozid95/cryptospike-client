@@ -5,8 +5,6 @@ services:
     build: .
     container_name: cryptospike-client
     restart: unless-stopped
-    ports:
-      - "80:80"
     volumes:
       - cryptospike_data:/app/server/data
 
