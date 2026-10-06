@@ -209,6 +209,7 @@ export interface PositionRiskItem {
   notionalValue: number;
   roiPct: number;
   distanceToLiqPct: number;
+  marginType: "ISOLATED" | "CROSSED";
 }
 
 /**
@@ -282,6 +283,14 @@ export async function getAccountAndPositions(
           : ((liquidationPrice - markPrice) / markPrice) * 100;
       }
 
+      const isIsolated =
+        (p.marginType || "").toLowerCase() === "isolated" ||
+        p.isolated === true ||
+        p.isolated === "true";
+      const marginType: "ISOLATED" | "CROSSED" = isIsolated
+        ? "ISOLATED"
+        : "CROSSED";
+
       return {
         symbol: p.symbol,
         side: isLong ? "LONG" : "SHORT",
@@ -295,6 +304,7 @@ export async function getAccountAndPositions(
         notionalValue: notional,
         roiPct,
         distanceToLiqPct,
+        marginType,
       };
     });
 

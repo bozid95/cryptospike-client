@@ -39,6 +39,7 @@ export type PositionItem = {
   notionalValue: number;
   roiPct: number;
   distanceToLiqPct: number;
+  marginType?: "ISOLATED" | "CROSSED" | string;
 };
 
 export type AccountOverview = {
@@ -308,25 +309,35 @@ export default function ActivePosition({
                     className="p-3.5 rounded-lg border bg-muted/20 space-y-3"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
                         <span className="font-bold text-sm tracking-tight">
                           {pos.symbol}
                         </span>
-                        <Badge
-                          variant={isLong ? "default" : "destructive"}
-                          className={`text-[10px] px-1.5 py-0 h-4 font-semibold ${
-                            isLong
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
-                              : "bg-red-500/10 text-red-500 border-red-500/30"
-                          }`}
-                        >
-                          {isLong ? (
-                            <TrendingUpIcon className="mr-1 h-3 w-3" />
-                          ) : (
-                            <TrendingDownIcon className="mr-1 h-3 w-3" />
-                          )}
-                          {pos.side} {pos.leverage}x
-                        </Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge
+                            variant={isLong ? "default" : "destructive"}
+                            className={`text-[10px] px-1.5 py-0 h-4 font-semibold ${
+                              isLong
+                                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                                : "bg-red-500/10 text-red-500 border-red-500/30"
+                            }`}
+                          >
+                            {isLong ? (
+                              <TrendingUpIcon className="mr-1 h-3 w-3" />
+                            ) : (
+                              <TrendingDownIcon className="mr-1 h-3 w-3" />
+                            )}
+                            {pos.side} {pos.leverage}x
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
+                          >
+                            {pos.marginType === "CROSSED"
+                              ? "CROSS"
+                              : "ISOLATED"}
+                          </Badge>
+                        </div>
                       </div>
 
                       <div className="text-right font-mono">
@@ -449,21 +460,31 @@ export default function ActivePosition({
                             <span className="font-bold text-sm tracking-tight">
                               {pos.symbol}
                             </span>
-                            <Badge
-                              variant={isLong ? "default" : "destructive"}
-                              className={`w-fit text-[10px] px-1.5 py-0 h-4 font-semibold ${
-                                isLong
-                                  ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/30"
-                                  : "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/30"
-                              }`}
-                            >
-                              {isLong ? (
-                                <TrendingUpIcon className="mr-1 h-3 w-3" />
-                              ) : (
-                                <TrendingDownIcon className="mr-1 h-3 w-3" />
-                              )}
-                              {pos.side} {pos.leverage}x
-                            </Badge>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge
+                                variant={isLong ? "default" : "destructive"}
+                                className={`w-fit text-[10px] px-1.5 py-0 h-4 font-semibold ${
+                                  isLong
+                                    ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/30"
+                                    : "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/30"
+                                }`}
+                              >
+                                {isLong ? (
+                                  <TrendingUpIcon className="mr-1 h-3 w-3" />
+                                ) : (
+                                  <TrendingDownIcon className="mr-1 h-3 w-3" />
+                                )}
+                                {pos.side} {pos.leverage}x
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
+                              >
+                                {pos.marginType === "CROSSED"
+                                  ? "CROSS"
+                                  : "ISOLATED"}
+                              </Badge>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3">
