@@ -61,13 +61,13 @@ export function AppLogsView() {
   }, [isAutoRefresh]);
 
   const handleClearLogs = async () => {
-    if (!confirm("Bersihkan semua riwayat log aktivitas aplikasi?")) return;
+    if (!confirm("Clear all application activity logs?")) return;
     try {
       await authFetch("/api/logs", { method: "DELETE" });
       setLogs([]);
-      toast.success("Log aplikasi telah dibersihkan.");
+      toast.success("Application logs have been cleared.");
     } catch {
-      toast.error("Gagal membersihkan log.");
+      toast.error("Failed to clear logs.");
     }
   };
 
@@ -146,10 +146,10 @@ export function AppLogsView() {
 
       {/* 2. Terminal Log Container */}
       <Card className="border-border shadow-sm">
-        <CardHeader className="pb-3 border-b border-border/60">
+        <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border/60">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <Terminal className="size-4" />
               </div>
               <div>
@@ -157,18 +157,18 @@ export function AppLogsView() {
                   Bot Application Logs
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Aliran event realtime sinyal masuk, eksekusi order Binance,
-                  TP/SL, dan sistem
+                  Real-time event stream for incoming signals, order executions,
+                  and system events.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-                className={`h-8 text-xs cursor-pointer ${
+                className={`h-8 text-xs cursor-pointer flex-1 sm:flex-none ${
                   isAutoRefresh
                     ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10"
                     : "text-muted-foreground"
@@ -192,7 +192,7 @@ export function AppLogsView() {
                 size="sm"
                 onClick={fetchLogs}
                 disabled={isLoading}
-                className="h-8 text-xs cursor-pointer"
+                className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
               >
                 <RefreshCw
                   className={`size-3.5 mr-1 ${isLoading ? "animate-spin" : ""}`}
@@ -204,7 +204,7 @@ export function AppLogsView() {
                 variant="destructive"
                 size="sm"
                 onClick={handleClearLogs}
-                className="h-8 text-xs cursor-pointer"
+                className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
               >
                 <Trash2 className="size-3.5 mr-1" />
                 Clear
@@ -217,7 +217,7 @@ export function AppLogsView() {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
               <Input
-                placeholder="Cari pesan log atau modul (mis: SignalEngine, Executor, KOMA)..."
+                placeholder="Search log messages or modules (e.g. SignalEngine, Binance)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 text-xs pl-8"
@@ -247,14 +247,14 @@ export function AppLogsView() {
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="bg-zinc-950 p-4 font-mono text-xs text-zinc-300 min-h-[460px] max-h-[620px] overflow-y-auto space-y-1 rounded-b-xl border-t border-zinc-900 select-text">
+          <div className="bg-zinc-950 p-3 sm:p-4 font-mono text-xs text-zinc-300 min-h-[420px] max-h-[620px] overflow-y-auto space-y-1 rounded-b-xl border-t border-zinc-900 select-text">
             {filteredLogs.length === 0 ? (
-              <div className="text-zinc-500 text-center py-24 flex flex-col items-center gap-2">
+              <div className="text-zinc-500 text-center py-20 flex flex-col items-center gap-2">
                 <Info className="size-6 text-zinc-600" />
                 <span>
                   {logs.length === 0
-                    ? "Belum ada log aktivitas bot yang tercatat."
-                    : "Tidak ada event log yang sesuai dengan filter pencarian."}
+                    ? "No bot activity logs recorded yet."
+                    : "No log events match the search filter."}
                 </span>
               </div>
             ) : (
@@ -274,10 +274,11 @@ export function AppLogsView() {
                 return (
                   <div
                     key={log.id}
-                    className="flex items-start gap-2.5 py-1 px-2 rounded border border-transparent hover:border-zinc-800 hover:bg-zinc-900/50 transition-colors"
+                    className="flex items-start gap-2 py-1 px-1.5 sm:px-2 rounded border border-transparent hover:border-zinc-800 hover:bg-zinc-900/50 transition-colors"
                   >
-                    <span className="text-zinc-500 text-[11px] shrink-0 pt-0.5 select-none">
-                      {date} {time}
+                    <span className="text-zinc-500 text-[11px] shrink-0 pt-0.5 select-none font-mono">
+                      <span className="hidden sm:inline">{date} </span>
+                      {time}
                     </span>
                     <Badge
                       variant="outline"

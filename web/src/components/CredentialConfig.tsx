@@ -99,8 +99,8 @@ export default function CredentialConfig() {
     const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
 
     if (!currentKey.trim() || !currentSecret.trim()) {
-      toast.error("Validasi Gagal", {
-        description: `Harap masukkan API Key dan Secret Binance (${isTestnet ? "Testnet" : "Live"}) terlebih dahulu.`,
+      toast.error("Validation Failed", {
+        description: `Please enter Binance (${isTestnet ? "Testnet" : "Live"}) API Key and Secret first.`,
       });
       return;
     }
@@ -123,18 +123,18 @@ export default function CredentialConfig() {
       setTestResult(data);
 
       if (data.success) {
-        toast.success("Koneksi Berhasil!", {
+        toast.success("Connection Successful!", {
           description: data.message,
         });
       } else {
-        toast.error("Koneksi Binance Gagal", {
+        toast.error("Binance Connection Failed", {
           description: data.message,
         });
       }
     } catch (err: any) {
-      toast.error("Gagal Menguji Koneksi", {
+      toast.error("Failed to Test Connection", {
         description:
-          err.message || "Pastikan backend lokal berjalan di port 3030.",
+          err.message || "Make sure local backend is running on port 3030.",
       });
     } finally {
       setTestingConnection(false);
@@ -169,15 +169,15 @@ export default function CredentialConfig() {
 
       const data = await res.json();
       if (data.success) {
-        toast.success("Tersimpan!", {
+        toast.success("Saved!", {
           description:
-            "Kredensial dan pengaturan bot berhasil disimpan ke SQLite lokal.",
+            "Bot credentials and configuration successfully saved to local SQLite.",
         });
       } else {
-        toast.error("Gagal Menyimpan", { description: data.message });
+        toast.error("Failed to Save", { description: data.message });
       }
     } catch (err: any) {
-      toast.error("Kesalahan Jaringan", { description: err.message });
+      toast.error("Network Error", { description: err.message });
     } finally {
       setIsSaving(false);
     }
@@ -246,11 +246,11 @@ export default function CredentialConfig() {
                 }
                 className="w-full"
               >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                   <Label className="text-xs font-semibold text-muted-foreground">
                     Select API Environment
                   </Label>
-                  <TabsList className="grid w-[220px] grid-cols-2">
+                  <TabsList className="grid w-full sm:w-[220px] grid-cols-2">
                     <TabsTrigger value="testnet" className="text-xs gap-1.5">
                       <FlaskConicalIcon className="size-3.5 text-amber-500" />
                       Testnet
@@ -271,7 +271,7 @@ export default function CredentialConfig() {
                     <Input
                       value={testnetApiKey}
                       onChange={(e) => setTestnetApiKey(e.target.value)}
-                      placeholder="Masukkan Binance Testnet API Key..."
+                      placeholder="Enter Binance Testnet API Key..."
                       className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
                     />
                   </div>
@@ -294,7 +294,7 @@ export default function CredentialConfig() {
                       type={showTestnetSecret ? "text" : "password"}
                       value={testnetApiSecret}
                       onChange={(e) => setTestnetApiSecret(e.target.value)}
-                      placeholder="Masukkan Binance Testnet API Secret..."
+                      placeholder="Enter Binance Testnet API Secret..."
                       className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
                     />
                   </div>
@@ -309,7 +309,7 @@ export default function CredentialConfig() {
                     <Input
                       value={liveApiKey}
                       onChange={(e) => setLiveApiKey(e.target.value)}
-                      placeholder="Masukkan Binance Live API Key..."
+                      placeholder="Enter Binance Live API Key..."
                       className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
                     />
                   </div>
@@ -332,7 +332,7 @@ export default function CredentialConfig() {
                       type={showLiveSecret ? "text" : "password"}
                       value={liveApiSecret}
                       onChange={(e) => setLiveApiSecret(e.target.value)}
-                      placeholder="Masukkan Binance Live API Secret..."
+                      placeholder="Enter Binance Live API Secret..."
                       className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
                     />
                   </div>

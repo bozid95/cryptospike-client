@@ -96,7 +96,7 @@ export default function ActivePosition({
   }, []);
 
   const handleClosePosition = async (symbol: string) => {
-    if (!confirm(`Tutup posisi ${symbol} di Binance Futures sekarang?`)) {
+    if (!confirm(`Close ${symbol} position on Binance Futures now?`)) {
       return;
     }
 
@@ -110,10 +110,10 @@ export default function ActivePosition({
       const data = await res.json();
 
       if (data.success) {
-        toast.success(`Posisi ${symbol} Berhasil Ditutup!`);
+        toast.success(`Position ${symbol} successfully closed!`);
         fetchPositions();
       } else {
-        toast.error(`Gagal Menutup Posisi ${symbol}`, {
+        toast.error(`Failed to close position ${symbol}`, {
           description: data.message,
         });
       }
@@ -129,7 +129,7 @@ export default function ActivePosition({
   return (
     <div className="space-y-6">
       {/* 1. KARTU ANALITIK & METRIK BINANCE FUTURES */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Saldo Dompet */}
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -247,9 +247,9 @@ export default function ActivePosition({
         </Card>
       </div>
 
-      {/* 2. TABEL POSISI AKTIF LENGKAP */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
+      {/* 2. TABEL / KARTU POSISI AKTIF */}
+      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex flex-col space-y-1">
             <div className="flex items-center gap-2">
               <Coins className="size-4 text-primary" />
@@ -261,8 +261,8 @@ export default function ActivePosition({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Daftar posisi trading terbuka Binance Futures beserta detail
-              harga, likuidasi, dan PnL riil
+              List of open Binance Futures positions with real-time entry,
+              liquidation, and PnL.
             </p>
           </div>
 
@@ -271,7 +271,7 @@ export default function ActivePosition({
             size="sm"
             onClick={fetchPositions}
             disabled={isLoadingPositions}
-            className="h-8 text-xs cursor-pointer"
+            className="h-8 text-xs cursor-pointer w-full sm:w-auto"
           >
             <RefreshCw
               className={`mr-1.5 size-3.5 ${isLoadingPositions ? "animate-spin" : ""}`}
@@ -280,155 +280,267 @@ export default function ActivePosition({
           </Button>
         </div>
 
-        <div className="rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-[170px] px-4 py-3 font-semibold text-xs">
-                  Pair / Direction
-                </TableHead>
-                <TableHead className="w-[130px] px-4 py-3 font-semibold text-xs">
-                  Size & Notional
-                </TableHead>
-                <TableHead className="w-[140px] px-4 py-3 font-semibold text-xs">
-                  Entry & Mark
-                </TableHead>
-                <TableHead className="w-[130px] px-4 py-3 font-semibold text-xs">
-                  Liq. Price
-                </TableHead>
-                <TableHead className="w-[140px] px-4 py-3 font-semibold text-xs">
-                  Unrealized PnL (ROI)
-                </TableHead>
-                <TableHead className="w-[100px] px-4 py-3 text-right font-semibold text-xs">
-                  Action
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoadingPositions && positions.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="h-28 text-center text-muted-foreground text-sm"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                      <span>Memuat data posisi dari Binance Futures...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : positions.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="h-28 text-center text-muted-foreground text-sm"
-                  >
-                    Tidak ada posisi aktif yang sedang terbuka di Binance
-                    Futures.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                positions.map((pos) => {
-                  const isLong = pos.side === "LONG";
-                  const isProfit = pos.unRealizedProfit >= 0;
-                  const isClosing = isClosingSymbol === pos.symbol;
+        {/* Loading state */}
+        {isLoadingPositions && positions.length === 0 ? (
+          <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm">
+            <Loader2 className="size-5 animate-spin text-primary" />
+            <span>Loading position data from Binance Futures...</span>
+          </div>
+        ) : positions.length === 0 ? (
+          <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center gap-1 text-muted-foreground text-sm p-4 text-center">
+            <p className="font-medium text-foreground">No Active Positions</p>
+            <p className="text-xs">
+              There are currently no open positions on Binance Futures.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile Cards View (< sm) */}
+            <div className="sm:hidden space-y-3">
+              {positions.map((pos) => {
+                const isLong = pos.side === "LONG";
+                const isProfit = pos.unRealizedProfit >= 0;
+                const isClosing = isClosingSymbol === pos.symbol;
 
-                  return (
-                    <TableRow key={pos.symbol} className="hover:bg-muted/30">
-                      <TableCell className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-bold text-sm tracking-tight">
-                            {pos.symbol}
-                          </span>
-                          <Badge
-                            variant={isLong ? "default" : "destructive"}
-                            className={`w-fit text-[10px] px-1.5 py-0 h-4 font-semibold ${
-                              isLong
-                                ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/30"
-                                : "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/30"
-                            }`}
-                          >
-                            {isLong ? (
-                              <TrendingUpIcon className="mr-1 h-3 w-3" />
-                            ) : (
-                              <TrendingDownIcon className="mr-1 h-3 w-3" />
-                            )}
-                            {pos.side} {pos.leverage}x
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="flex flex-col font-mono text-xs">
-                          <span className="font-semibold text-foreground">
-                            {pos.positionAmt.toLocaleString()}
-                          </span>
-                          <span className="text-muted-foreground text-[11px]">
-                            ~${pos.notionalValue.toFixed(2)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="flex flex-col font-mono text-xs">
-                          <span>Entry: {pos.entryPrice.toLocaleString()}</span>
-                          <span className="text-muted-foreground">
-                            Mark: {pos.markPrice.toLocaleString()}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="flex flex-col font-mono text-xs">
-                          <span className="text-amber-500 font-medium">
-                            {pos.liquidationPrice > 0
-                              ? pos.liquidationPrice.toLocaleString()
-                              : "Safe (Cross)"}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="flex flex-col font-mono">
-                          <span
-                            className={`text-sm font-bold ${
-                              isProfit ? "text-emerald-500" : "text-red-500"
-                            }`}
-                          >
-                            {isProfit ? "+" : ""}
-                            {pos.unRealizedProfit.toFixed(2)} USDT
-                          </span>
-                          <span
-                            className={`text-[11px] font-semibold ${
-                              isProfit ? "text-emerald-600" : "text-red-500"
-                            }`}
-                          >
-                            ({pos.roiPct >= 0 ? "+" : ""}
-                            {pos.roiPct.toFixed(2)}%)
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-right">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={isClosing}
-                          className="h-7 text-xs px-2.5 cursor-pointer"
-                          onClick={() => handleClosePosition(pos.symbol)}
+                return (
+                  <div
+                    key={pos.symbol}
+                    className="p-3.5 rounded-lg border bg-muted/20 space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm tracking-tight">
+                          {pos.symbol}
+                        </span>
+                        <Badge
+                          variant={isLong ? "default" : "destructive"}
+                          className={`text-[10px] px-1.5 py-0 h-4 font-semibold ${
+                            isLong
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                              : "bg-red-500/10 text-red-500 border-red-500/30"
+                          }`}
                         >
-                          {isClosing ? (
-                            <Loader2 className="size-3.5 animate-spin" />
+                          {isLong ? (
+                            <TrendingUpIcon className="mr-1 h-3 w-3" />
                           ) : (
-                            <>
-                              <Trash2Icon className="h-3.5 w-3.5 mr-1" />
-                              Close
-                            </>
+                            <TrendingDownIcon className="mr-1 h-3 w-3" />
                           )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                          {pos.side} {pos.leverage}x
+                        </Badge>
+                      </div>
+
+                      <div className="text-right font-mono">
+                        <div
+                          className={`text-sm font-bold leading-tight ${
+                            isProfit ? "text-emerald-500" : "text-red-500"
+                          }`}
+                        >
+                          {isProfit ? "+" : ""}
+                          {pos.unRealizedProfit.toFixed(2)} USDT
+                        </div>
+                        <div
+                          className={`text-[11px] font-semibold ${
+                            isProfit ? "text-emerald-600" : "text-red-500"
+                          }`}
+                        >
+                          ({pos.roiPct >= 0 ? "+" : ""}
+                          {pos.roiPct.toFixed(2)}%)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-background/50 p-2.5 rounded border border-border/50">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">
+                          Size (Notional)
+                        </span>
+                        <span className="font-semibold">
+                          {pos.positionAmt.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground ml-1">
+                          (~${pos.notionalValue.toFixed(2)})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">
+                          Liq. Price
+                        </span>
+                        <span className="text-amber-500 font-medium">
+                          {pos.liquidationPrice > 0
+                            ? pos.liquidationPrice.toLocaleString()
+                            : "Safe (Cross)"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">
+                          Entry Price
+                        </span>
+                        <span>{pos.entryPrice.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">
+                          Mark Price
+                        </span>
+                        <span className="text-muted-foreground">
+                          {pos.markPrice.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={isClosing}
+                      className="w-full h-8 text-xs cursor-pointer"
+                      onClick={() => handleClosePosition(pos.symbol)}
+                    >
+                      {isClosing ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                          Closing Position...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2Icon className="h-3.5 w-3.5 mr-1.5" />
+                          Close Position
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View (>= sm) */}
+            <div className="hidden sm:block rounded-lg border overflow-x-auto">
+              <Table className="min-w-[650px]">
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="w-[170px] px-4 py-3 font-semibold text-xs">
+                      Pair / Direction
+                    </TableHead>
+                    <TableHead className="w-[130px] px-4 py-3 font-semibold text-xs">
+                      Size & Notional
+                    </TableHead>
+                    <TableHead className="w-[140px] px-4 py-3 font-semibold text-xs">
+                      Entry & Mark
+                    </TableHead>
+                    <TableHead className="w-[130px] px-4 py-3 font-semibold text-xs">
+                      Liq. Price
+                    </TableHead>
+                    <TableHead className="w-[140px] px-4 py-3 font-semibold text-xs">
+                      Unrealized PnL (ROI)
+                    </TableHead>
+                    <TableHead className="w-[100px] px-4 py-3 text-right font-semibold text-xs">
+                      Action
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {positions.map((pos) => {
+                    const isLong = pos.side === "LONG";
+                    const isProfit = pos.unRealizedProfit >= 0;
+                    const isClosing = isClosingSymbol === pos.symbol;
+
+                    return (
+                      <TableRow key={pos.symbol} className="hover:bg-muted/30">
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-sm tracking-tight">
+                              {pos.symbol}
+                            </span>
+                            <Badge
+                              variant={isLong ? "default" : "destructive"}
+                              className={`w-fit text-[10px] px-1.5 py-0 h-4 font-semibold ${
+                                isLong
+                                  ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/30"
+                                  : "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/30"
+                              }`}
+                            >
+                              {isLong ? (
+                                <TrendingUpIcon className="mr-1 h-3 w-3" />
+                              ) : (
+                                <TrendingDownIcon className="mr-1 h-3 w-3" />
+                              )}
+                              {pos.side} {pos.leverage}x
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-col font-mono text-xs">
+                            <span className="font-semibold text-foreground">
+                              {pos.positionAmt.toLocaleString()}
+                            </span>
+                            <span className="text-muted-foreground text-[11px]">
+                              ~${pos.notionalValue.toFixed(2)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-col font-mono text-xs">
+                            <span>
+                              Entry: {pos.entryPrice.toLocaleString()}
+                            </span>
+                            <span className="text-muted-foreground">
+                              Mark: {pos.markPrice.toLocaleString()}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-col font-mono text-xs">
+                            <span className="text-amber-500 font-medium">
+                              {pos.liquidationPrice > 0
+                                ? pos.liquidationPrice.toLocaleString()
+                                : "Safe (Cross)"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-col font-mono">
+                            <span
+                              className={`text-sm font-bold ${
+                                isProfit ? "text-emerald-500" : "text-red-500"
+                              }`}
+                            >
+                              {isProfit ? "+" : ""}
+                              {pos.unRealizedProfit.toFixed(2)} USDT
+                            </span>
+                            <span
+                              className={`text-[11px] font-semibold ${
+                                isProfit ? "text-emerald-600" : "text-red-500"
+                              }`}
+                            >
+                              ({pos.roiPct >= 0 ? "+" : ""}
+                              {pos.roiPct.toFixed(2)}%)
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-right">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={isClosing}
+                            className="h-7 text-xs px-2.5 cursor-pointer"
+                            onClick={() => handleClosePosition(pos.symbol)}
+                          >
+                            {isClosing ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <>
+                                <Trash2Icon className="h-3.5 w-3.5 mr-1" />
+                                Close
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -51,17 +51,17 @@ export function ProfileView({
     setSuccessMessage(null);
 
     if (!currentPassword.trim() || !newPassword.trim()) {
-      setErrorMessage("Harap masukkan password saat ini dan password baru.");
+      setErrorMessage("Please enter both current and new password.");
       return;
     }
 
     if (newPassword.length < 6) {
-      setErrorMessage("Password baru minimal 6 karakter.");
+      setErrorMessage("New password must be at least 6 characters.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage("Konfirmasi password baru tidak cocok.");
+      setErrorMessage("New passwords do not match.");
       return;
     }
 
@@ -78,19 +78,19 @@ export function ProfileView({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Gagal mengubah kata sandi.");
+        throw new Error(data.message || "Failed to change password.");
       }
 
       setSuccessMessage(data.message);
-      toast.success("Password Berhasil Diperbarui!");
+      toast.success("Password successfully updated!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
       setErrorMessage(
-        err.message || "Terjadi kesalahan saat menghubungi server.",
+        err.message || "An error occurred while contacting the server.",
       );
-      toast.error("Gagal Memperbarui Password", {
+      toast.error("Failed to Update Password", {
         description: err.message,
       });
     } finally {
@@ -102,11 +102,11 @@ export function ProfileView({
     <div className="space-y-6 max-w-4xl">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">
-          Profil & Informasi Sistem
+          Profile & System Info
         </h2>
         <p className="text-sm text-muted-foreground">
-          Kelola sesi login operator lokal dan pantau status koneksi Client App
-          Anda.
+          Manage local operator login session and monitor your Client App
+          connection status.
         </p>
       </div>
 
@@ -136,17 +136,17 @@ export function ProfileView({
           </CardHeader>
           <CardContent className="space-y-3 pt-2 text-xs border-t">
             <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Tipe Lisensi:</span>
+              <span className="text-muted-foreground">License Type:</span>
               <span className="font-semibold text-emerald-600">
                 Self-Hosted Client
               </span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Penyimpanan:</span>
-              <span className="font-semibold">SQLite Lokal</span>
+              <span className="text-muted-foreground">Storage:</span>
+              <span className="font-semibold">Local SQLite</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Enkripsi API:</span>
+              <span className="text-muted-foreground">API Encryption:</span>
               <span className="font-semibold text-emerald-600">
                 AES-256 Enabled
               </span>
@@ -159,7 +159,7 @@ export function ProfileView({
               onClick={onLogout}
             >
               <LogOutIcon className="size-4" />
-              Keluar dari Sesi
+              Sign Out
             </Button>
           </CardFooter>
         </Card>
@@ -168,17 +168,17 @@ export function ProfileView({
         <div className="md:col-span-2 space-y-6">
           {/* Status Server & Database */}
           <Card className="shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <ServerIcon className="size-4 text-primary" />
-                Informasi Runtime Bot
+                Bot Runtime Info
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-3 text-sm">
               <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30">
                 <div className="flex items-center gap-2">
                   <DatabaseIcon className="size-4 text-muted-foreground" />
-                  <span className="text-xs font-medium">Database SQLite</span>
+                  <span className="text-xs font-medium">SQLite Database</span>
                 </div>
                 <Badge variant="secondary" className="font-mono text-[10px]">
                   ./data/cryptospike_local.db
@@ -189,10 +189,10 @@ export function ProfileView({
                 <div className="flex items-center gap-2">
                   <ServerIcon className="size-4 text-muted-foreground" />
                   <span className="text-xs font-medium">
-                    Host Sinyal Terhubung
+                    Connected Signal Host
                   </span>
                 </div>
-                <span className="text-xs font-mono font-medium">
+                <span className="text-xs font-mono font-medium truncate max-w-[150px] sm:max-w-none">
                   {serverUrl || "localhost:3030"}
                 </span>
               </div>
@@ -201,18 +201,18 @@ export function ProfileView({
 
           {/* Form Ganti Password Operator */}
           <Card className="shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <KeyIcon className="size-4 text-primary" />
-                Ubah Password Akses Dashboard
+                Change Dashboard Password
               </CardTitle>
               <CardDescription className="text-xs">
-                Perbarui kata sandi untuk melindungi dashboard web Anda dari
-                akses pihak ketiga.
+                Update your credentials to secure your web dashboard against
+                unauthorized access.
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleUpdatePassword}>
-              <CardContent className="space-y-4 pt-1">
+              <CardContent className="p-4 sm:p-6 pt-1 space-y-4">
                 {errorMessage && (
                   <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
                     <ShieldAlertIcon className="size-4 shrink-0" />
@@ -227,8 +227,7 @@ export function ProfileView({
                 )}
                 <div className="space-y-1.5">
                   <Label htmlFor="curr-pass" className="text-xs font-medium">
-                    Password Saat Ini{" "}
-                    <span className="text-destructive">*</span>
+                    Current Password <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="curr-pass"
@@ -243,12 +242,12 @@ export function ProfileView({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="new-pass" className="text-xs font-medium">
-                    Password Baru <span className="text-destructive">*</span>
+                    New Password <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="new-pass"
                     type="password"
-                    placeholder="Minimal 6 karakter"
+                    placeholder="Minimum 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={isLoading}
@@ -258,7 +257,7 @@ export function ProfileView({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="confirm-pass" className="text-xs font-medium">
-                    Konfirmasi Password Baru{" "}
+                    Confirm New Password{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -273,22 +272,22 @@ export function ProfileView({
                   />
                 </div>
               </CardContent>
-              <CardFooter className="pt-2 flex justify-end">
+              <CardFooter className="p-4 sm:p-6 pt-2 flex justify-end">
                 <Button
                   type="submit"
                   size="sm"
                   disabled={isLoading}
-                  className="gap-2 cursor-pointer"
+                  className="w-full sm:w-auto gap-2 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
-                      Menyimpan...
+                      Saving...
                     </>
                   ) : (
                     <>
                       <SaveIcon className="size-3.5" />
-                      Perbarui Password
+                      Update Password
                     </>
                   )}
                 </Button>

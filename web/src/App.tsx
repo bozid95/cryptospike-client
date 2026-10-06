@@ -132,7 +132,7 @@ export default function App() {
                 activeTabTitle={getTabTitle()}
               />
 
-              <main className="flex-1 p-4 md:p-6 pb-24 sm:pb-8 w-full max-w-7xl mx-auto space-y-6">
+              <main className="flex-1 p-3 sm:p-4 md:p-6 pb-28 sm:pb-8 w-full max-w-7xl mx-auto space-y-6">
                 {activeTab === "positions" && (
                   <ActivePosition
                     onPositionsCountChange={setActivePositionsCount}

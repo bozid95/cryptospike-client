@@ -65,22 +65,22 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
     setErrorMessage(null);
 
     if (!username.trim() || !password.trim()) {
-      setErrorMessage("Username dan password tidak boleh kosong.");
+      setErrorMessage("Username and password are required.");
       return;
     }
 
     if (!isInitialized) {
       // Validasi mode inisialisasi
       if (username.trim().length < 3) {
-        setErrorMessage("Username minimal 3 karakter.");
+        setErrorMessage("Username must be at least 3 characters.");
         return;
       }
       if (password.length < 6) {
-        setErrorMessage("Password minimal 6 karakter.");
+        setErrorMessage("Password must be at least 6 characters.");
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMessage("Konfirmasi password tidak cocok.");
+        setErrorMessage("Passwords do not match.");
         return;
       }
     }
@@ -103,7 +103,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Gagal melakukan autentikasi.");
+        throw new Error(data.message || "Authentication failed.");
       }
 
       onLoginSuccess(
@@ -114,7 +114,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
         data.token || "",
       );
     } catch (err: any) {
-      setErrorMessage(err.message || "Terjadi kesalahan koneksi ke server.");
+      setErrorMessage(err.message || "Failed to connect to server.");
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +125,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
         <div className="flex flex-col items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="size-6 animate-spin text-primary" />
-          <span>Memeriksa status aplikasi...</span>
+          <span>Checking application status...</span>
         </div>
       </div>
     );
@@ -156,13 +156,13 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                   : "border-emerald-500/40 text-emerald-600 bg-emerald-500/5"
               }`}
             >
-              {isSetupMode ? "SETUP PERTAMA" : "CLIENT"}
+              {isSetupMode ? "INITIAL SETUP" : "CLIENT"}
             </Badge>
           </div>
           <CardDescription className="text-xs text-muted-foreground">
             {isSetupMode
-              ? "Buat akun Admin utama untuk mengelola bot Anda"
-              : "Masuk ke Panel Kontrol Bot Anda"}
+              ? "Create primary Admin account to manage your bot"
+              : "Sign in to your Bot Control Panel"}
           </CardDescription>
         </CardHeader>
 
@@ -172,9 +172,8 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
               <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-600 dark:text-amber-400">
                 <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
                 <span>
-                  Sistem baru saja dideploy. Akun ini akan menjadi satu-satunya
-                  akun Admin. Registrasi akan ditutup secara permanen setelah
-                  ini.
+                  System freshly deployed. This account will be the sole Admin.
+                  Registration will be permanently disabled afterwards.
                 </span>
               </div>
             )}
@@ -194,7 +193,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
               <Input
                 id="username"
                 type="text"
-                placeholder={isSetupMode ? "admin" : "Masukkan username"}
+                placeholder={isSetupMode ? "admin" : "Enter username"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={isLoading}
@@ -221,7 +220,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
               />
               {isSetupMode && (
                 <p className="text-[10px] text-muted-foreground">
-                  Minimal 6 karakter.
+                  Minimum 6 characters.
                 </p>
               )}
             </div>
@@ -232,8 +231,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                   htmlFor="confirmPassword"
                   className="text-xs font-medium"
                 >
-                  Konfirmasi Password{" "}
-                  <span className="text-destructive">*</span>
+                  Confirm Password <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="confirmPassword"
@@ -258,12 +256,12 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  {isSetupMode ? "Membuat Akun..." : "Memverifikasi..."}
+                  {isSetupMode ? "Creating Account..." : "Signing in..."}
                 </>
               ) : isSetupMode ? (
                 <>
                   <Lock className="mr-2 size-4" />
-                  Buat Akun & Masuk
+                  Create Account & Sign In
                 </>
               ) : (
                 <>
