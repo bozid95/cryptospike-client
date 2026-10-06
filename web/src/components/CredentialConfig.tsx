@@ -43,6 +43,9 @@ export default function CredentialConfig() {
 
   // Risk Management
   const [autoExecute, setAutoExecute] = useState(false);
+  const [marginType, setMarginType] = useState<"ISOLATED" | "CROSSED">(
+    "ISOLATED",
+  );
   const [leverage, setLeverage] = useState(10);
   const [riskPerTradePct, setRiskPerTradePct] = useState(2.0);
   const [maxOpenPositions, setMaxOpenPositions] = useState(3);
@@ -76,6 +79,7 @@ export default function CredentialConfig() {
               setLiveApiSecret(d.binanceApiSecret || "");
             }
             setAutoExecute(d.autoExecute || false);
+            setMarginType(d.marginType || "ISOLATED");
             setLeverage(d.leverage || 10);
             setRiskPerTradePct(d.riskPerTradePct || 2.0);
             setMaxOpenPositions(d.maxOpenPositions || 3);
@@ -152,6 +156,7 @@ export default function CredentialConfig() {
         binanceApiSecret: currentSecret.trim(),
         environment,
         autoExecute,
+        marginType,
         leverage: Number(leverage),
         riskPerTradePct: Number(riskPerTradePct),
         maxOpenPositions: Number(maxOpenPositions),
@@ -442,8 +447,30 @@ export default function CredentialConfig() {
                 />
               </div>
 
+              {/* Margin Type */}
+              <div className="space-y-1.5 mt-2">
+                <Label htmlFor="margin-type" className="text-xs font-medium">
+                  Tipe Margin
+                </Label>
+                <select
+                  id="margin-type"
+                  value={marginType}
+                  onChange={(e) =>
+                    setMarginType(e.target.value as "ISOLATED" | "CROSSED")
+                  }
+                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="ISOLATED" className="text-black">
+                    ISOLATED
+                  </option>
+                  <option value="CROSSED" className="text-black">
+                    CROSS
+                  </option>
+                </select>
+              </div>
+
               {/* Leverage */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 mt-2">
                 <Label htmlFor="leverage" className="text-xs font-medium">
                   Default Leverage (x)
                 </Label>

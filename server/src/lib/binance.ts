@@ -519,6 +519,7 @@ export async function executeSignalOrder(
     binanceApiKey: string | null;
     binanceApiSecret: string | null;
     environment: string;
+    marginType: string;
     leverage: number;
     riskPerTradePct: number;
     maxOpenPositions: number;
@@ -629,7 +630,13 @@ export async function executeSignalOrder(
     }
 
     // 6. Set Leverage & Margin Type
-    await setMarginType(apiKey, apiSecret, symbol, "ISOLATED", isTestnet);
+    await setMarginType(
+      apiKey,
+      apiSecret,
+      symbol,
+      (config.marginType as "ISOLATED" | "CROSSED") || "ISOLATED",
+      isTestnet,
+    );
     await setLeverage(apiKey, apiSecret, symbol, leverage, isTestnet);
 
     // 7. Eksekusi Market Entry Order

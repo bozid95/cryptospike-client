@@ -19,6 +19,7 @@ model AppConfig {
   // Manajemen Risiko Bot Lokal
   autoExecute      Boolean  @default(false)
   leverage         Int      @default(10)
+  marginType       String   @default("ISOLATED") // ISOLATED atau CROSSED
   riskPerTradePct  Float    @default(2.0)
   maxOpenPositions Int      @default(3)
 
