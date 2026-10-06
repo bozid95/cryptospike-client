@@ -1,19 +1,15 @@
+version: '3.8'
+
 services:
-  client:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  cryptospike-client:
+    build: .
     container_name: cryptospike-client
-    restart: always
+    restart: unless-stopped
     ports:
-      - "${PORT:-3080}:80"
-    environment:
-      - PORT=3030
-      - SERVER_URL=${SERVER_URL:-https://signal.forlearning.my.id}
-      - CLIENT_TOKEN=${CLIENT_TOKEN:-}
+      - "80:80"
     volumes:
-      - client_data:/app/server/data
+      - cryptospike_data:/app/server/data
 
 volumes:
-  client_data:
-    name: cryptospike_client_data
+  cryptospike_data:
+    name: cryptospike_data
