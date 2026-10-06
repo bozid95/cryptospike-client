@@ -25,6 +25,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export type PositionItem = {
   symbol: string;
@@ -64,6 +72,7 @@ export default function ActivePosition({
   const [account, setAccount] = useState<AccountOverview | null>(null);
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
+  const [symbolToClose, setSymbolToClose] = useState<string | null>(null);
 
   // Ambil data posisi & ringkasan akun live dari Binance
   const fetchPositions = async () => {
@@ -96,10 +105,9 @@ export default function ActivePosition({
     return () => clearInterval(interval);
   }, []);
 
-  const handleClosePosition = async (symbol: string) => {
-    if (!confirm(`Close ${symbol} position on Binance Futures now?`)) {
-      return;
-    }
+  const handleConfirmClose = async () => {
+    if (!symbolToClose) return;
+    const symbol = symbolToClose;
 
     try {
       setIsClosingSymbol(symbol);
@@ -113,6 +121,7 @@ export default function ActivePosition({
       if (data.success) {
         toast.success(`Position ${symbol} successfully closed!`);
         fetchPositions();
+        setSymbolToClose(null);
       } else {
         toast.error(`Failed to close position ${symbol}`, {
           description: data.message,
@@ -403,7 +412,7 @@ export default function ActivePosition({
                       size="sm"
                       disabled={isClosing}
                       className="w-full h-8 text-xs cursor-pointer"
-                      onClick={() => handleClosePosition(pos.symbol)}
+                      onClick={() => setSymbolToClose(pos.symbol)}
                     >
                       {isClosing ? (
                         <>
@@ -542,7 +551,7 @@ export default function ActivePosition({
                             size="sm"
                             disabled={isClosing}
                             className="h-7 text-xs px-2.5 cursor-pointer"
-                            onClick={() => handleClosePosition(pos.symbol)}
+                            onClick={() => setSymbolToClose(pos.symbol)}
                           >
                             {isClosing ? (
                               <Loader2 className="size-3.5 animate-spin" />
@@ -563,6 +572,61 @@ export default function ActivePosition({
           </>
         )}
       </div>
+
+      {/* Confirmation Popup Modal for Closing Position */}
+      <Dialog
+        open={Boolean(symbolToClose)}
+        onOpenChange={(open) => {
+          if (!open && !isClosingSymbol) setSymbolToClose(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              Close Position Confirmation
+            </DialogTitle>
+            <DialogDescription className="text-xs pt-1">
+              Are you sure you want to market close your open{" "}
+              <span className="font-mono font-bold text-foreground">
+                {symbolToClose}
+              </span>{" "}
+              position on Binance Futures? This action will execute immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={Boolean(isClosingSymbol)}
+              onClick={() => setSymbolToClose(null)}
+              className="text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={Boolean(isClosingSymbol)}
+              onClick={handleConfirmClose}
+              className="text-xs cursor-pointer gap-1.5"
+            >
+              {isClosingSymbol ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Closing Position...
+                </>
+              ) : (
+                <>
+                  <Trash2Icon className="size-3.5" />
+                  Confirm Close
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

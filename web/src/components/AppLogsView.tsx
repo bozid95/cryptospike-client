@@ -18,6 +18,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export type LogLevel = "INFO" | "SUCCESS" | "WARN" | "ERROR";
 
@@ -35,6 +43,8 @@ export function AppLogsView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isClearingLogs, setIsClearingLogs] = useState(false);
 
   const fetchLogs = async () => {
     try {
@@ -60,14 +70,17 @@ export function AppLogsView() {
     return () => clearInterval(interval);
   }, [isAutoRefresh]);
 
-  const handleClearLogs = async () => {
-    if (!confirm("Clear all application activity logs?")) return;
+  const handleConfirmClearLogs = async () => {
     try {
+      setIsClearingLogs(true);
       await authFetch("/api/logs", { method: "DELETE" });
       setLogs([]);
       toast.success("Application logs have been cleared.");
+      setIsClearDialogOpen(false);
     } catch {
       toast.error("Failed to clear logs.");
+    } finally {
+      setIsClearingLogs(false);
     }
   };
 
@@ -203,7 +216,7 @@ export function AppLogsView() {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={handleClearLogs}
+                onClick={() => setIsClearDialogOpen(true)}
                 className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
               >
                 <Trash2 className="size-3.5 mr-1" />
@@ -299,6 +312,53 @@ export function AppLogsView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation Popup Modal for Clearing Logs */}
+      <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              Clear Activity Logs
+            </DialogTitle>
+            <DialogDescription className="text-xs pt-1">
+              Are you sure you want to permanently clear all application
+              activity logs? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isClearingLogs}
+              onClick={() => setIsClearDialogOpen(false)}
+              className="text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={isClearingLogs}
+              onClick={handleConfirmClearLogs}
+              className="text-xs cursor-pointer gap-1.5"
+            >
+              {isClearingLogs ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin" />
+                  Clearing Logs...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-3.5" />
+                  Clear Logs
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
