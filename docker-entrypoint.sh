@@ -7,9 +7,9 @@ echo "=== Starting CryptoSpike Client ==="
 mkdir -p /app/server/data
 
 # 2. Inisialisasi / Sinkronisasi Database SQLite Lokal via Prisma
-echo "Syncing SQLite database schema..."
+echo "Syncing SQLite database schema with migrate deploy..."
 cd /app/server
-npx prisma db push --accept-data-loss --skip-generate || echo "WARNING: Prisma DB Push failed!"
+npx prisma migrate deploy
 
 # 3. Jalankan Express Backend di background
 echo "Starting Express Backend on port 3030..."
