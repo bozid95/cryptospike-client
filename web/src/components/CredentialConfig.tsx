@@ -17,7 +17,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -205,7 +204,8 @@ export default function CredentialConfig() {
                 Binance Futures Credentials
               </CardTitle>
               <CardDescription className="text-xs">
-                API keys are stored and encrypted locally in the SQLite database.
+                API keys are stored and encrypted locally in the SQLite
+                database.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
