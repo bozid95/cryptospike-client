@@ -142,7 +142,7 @@ export default function CredentialConfig() {
     }
   };
 
-  // 3. Simpan Konfigurasi ke Database Lokal
+  // 3. Save Configuration ke Database Lokal
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -188,11 +188,10 @@ export default function CredentialConfig() {
     <div className="space-y-6 max-w-4xl">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">
-          Pengaturan & Kredensial Bot
+          Bot Config & Credentials
         </h2>
         <p className="text-sm text-muted-foreground">
-          Konfigurasi lisensi bot, kunci API Binance Futures, dan manajemen
-          risiko eksekusi lokal.
+          Bot license, Binance API keys, and local execution risk management.
         </p>
       </div>
 
@@ -203,11 +202,10 @@ export default function CredentialConfig() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <KeyIcon className="size-5 text-primary" />
-                Kredensial Binance Futures
+                Binance Futures Credentials
               </CardTitle>
               <CardDescription className="text-xs">
-                Kunci API disimpan dan dienkripsi secara lokal di database
-                SQLite.
+                API keys are stored and encrypted locally in the SQLite database.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -218,14 +216,14 @@ export default function CredentialConfig() {
                     htmlFor="client-token"
                     className="text-xs font-semibold"
                   >
-                    Client Token (Lisensi CryptoSpike)
+                    Client Token (CryptoSpike License)
                   </Label>
                   {token && (
                     <Badge
                       variant="outline"
                       className="text-[10px] text-emerald-600 border-emerald-500/30"
                     >
-                      Token Terpasang
+                      Token Installed
                     </Badge>
                   )}
                 </div>
@@ -250,7 +248,7 @@ export default function CredentialConfig() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <Label className="text-xs font-semibold text-muted-foreground">
-                    Pilih Lingkungan API
+                    Select API Environment
                   </Label>
                   <TabsList className="grid w-[220px] grid-cols-2">
                     <TabsTrigger value="testnet" className="text-xs gap-1.5">
@@ -289,7 +287,7 @@ export default function CredentialConfig() {
                         className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
                         onClick={() => setShowTestnetSecret(!showTestnetSecret)}
                       >
-                        {showTestnetSecret ? "Sembunyikan" : "Tampilkan"}
+                        {showTestnetSecret ? "Hide" : "Show"}
                       </Button>
                     </div>
                     <Input
@@ -327,7 +325,7 @@ export default function CredentialConfig() {
                         className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
                         onClick={() => setShowLiveSecret(!showLiveSecret)}
                       >
-                        {showLiveSecret ? "Sembunyikan" : "Tampilkan"}
+                        {showLiveSecret ? "Hide" : "Show"}
                       </Button>
                     </div>
                     <Input
@@ -358,8 +356,8 @@ export default function CredentialConfig() {
                   <div className="space-y-0.5">
                     <p className="font-semibold">
                       {testResult.success
-                        ? "Status Terverifikasi"
-                        : "Verifikasi Gagal"}
+                        ? "Status Verified"
+                        : "Verification Failed"}
                     </p>
                     <p className="text-[11px] leading-relaxed opacity-90">
                       {testResult.message}
@@ -377,10 +375,10 @@ export default function CredentialConfig() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CheckIcon className="size-4 text-primary" />
-                Manajemen Risiko
+                Risk Management
               </CardTitle>
               <CardDescription className="text-xs">
-                Parameter eksekusi ketika sinyal diterima.
+                Execution parameters when a signal is received.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-xs">
@@ -394,7 +392,7 @@ export default function CredentialConfig() {
                     Auto-Trade
                   </Label>
                   <p className="text-[10px] text-muted-foreground">
-                    Eksekusi otomatis
+                    Automatic execution
                   </p>
                 </div>
                 <Switch
@@ -407,7 +405,7 @@ export default function CredentialConfig() {
               {/* Margin Type */}
               <div className="space-y-1.5 mt-2">
                 <Label htmlFor="margin-type" className="text-xs font-medium">
-                  Tipe Margin
+                  Margin Type
                 </Label>
                 <select
                   id="margin-type"
@@ -462,7 +460,7 @@ export default function CredentialConfig() {
               {/* Max Open Positions */}
               <div className="space-y-1.5">
                 <Label htmlFor="max-pos" className="text-xs font-medium">
-                  Maksimal Posisi Terbuka
+                  Max Open Positions
                 </Label>
                 <Input
                   id="max-pos"
@@ -492,7 +490,7 @@ export default function CredentialConfig() {
           {testingConnection ? (
             <>
               <Loader2 className="size-3.5 animate-spin" />
-              Menguji Koneksi...
+              Testing Connection...
             </>
           ) : (
             <>
@@ -512,12 +510,12 @@ export default function CredentialConfig() {
           {isSaving ? (
             <>
               <Loader2 className="size-3.5 animate-spin" />
-              Menyimpan...
+              Saving...
             </>
           ) : (
             <>
               <SaveIcon className="size-3.5" />
-              Simpan Konfigurasi
+              Save Configuration
             </>
           )}
         </Button>
