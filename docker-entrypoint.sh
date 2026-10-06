@@ -9,7 +9,7 @@ mkdir -p /app/server/data
 # 2. Inisialisasi / Sinkronisasi Database SQLite Lokal via Prisma
 echo "Syncing SQLite database schema..."
 cd /app/server
-npx prisma db push --skip-generate || true
+npx prisma db push --accept-data-loss --skip-generate || echo "WARNING: Prisma DB Push failed!"
 
 # 3. Jalankan Express Backend di background
 echo "Starting Express Backend on port 3030..."
