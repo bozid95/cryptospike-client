@@ -13,6 +13,11 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const formatPrice = (price: number) => {
+  if (!price) return "0";
+  return price.toLocaleString(undefined, { maximumFractionDigits: 8 });
+};
 import { authFetch } from "@/lib/api";
 import {
   Table,
@@ -428,7 +433,7 @@ export default function ActivePosition({
                         </span>
                         <span className="text-amber-500 font-medium">
                           {pos.liquidationPrice > 0
-                            ? pos.liquidationPrice.toLocaleString()
+                            ? formatPrice(pos.liquidationPrice)
                             : "Safe (Cross)"}
                         </span>
                       </div>
@@ -436,14 +441,14 @@ export default function ActivePosition({
                         <span className="text-[10px] text-muted-foreground block font-sans">
                           Entry Price
                         </span>
-                        <span>{pos.entryPrice.toLocaleString()}</span>
+                        <span>{formatPrice(pos.entryPrice)}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans">
                           Mark Price
                         </span>
                         <span className="text-muted-foreground">
-                          {pos.markPrice.toLocaleString()}
+                          {formatPrice(pos.markPrice)}
                         </span>
                       </div>
                     </div>
@@ -549,11 +554,9 @@ export default function ActivePosition({
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <div className="flex flex-col font-mono text-xs">
-                            <span>
-                              Entry: {pos.entryPrice.toLocaleString()}
-                            </span>
+                            <span>Entry: {formatPrice(pos.entryPrice)}</span>
                             <span className="text-muted-foreground">
-                              Mark: {pos.markPrice.toLocaleString()}
+                              Mark: {formatPrice(pos.markPrice)}
                             </span>
                           </div>
                         </TableCell>
@@ -561,7 +564,7 @@ export default function ActivePosition({
                           <div className="flex flex-col font-mono text-xs">
                             <span className="text-amber-500 font-medium">
                               {pos.liquidationPrice > 0
-                                ? pos.liquidationPrice.toLocaleString()
+                                ? formatPrice(pos.liquidationPrice)
                                 : "Safe (Cross)"}
                             </span>
                           </div>

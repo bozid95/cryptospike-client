@@ -77,7 +77,7 @@ export default function CredentialConfig() {
               setLiveApiKey(d.binanceApiKey || "");
               setLiveApiSecret(d.binanceApiSecret || "");
             }
-            setAutoExecute(d.autoExecute || false);
+            setAutoExecute(d.autoExecute === 1 || d.autoExecute === true);
             setMarginType(d.marginType || "ISOLATED");
             setLeverage(d.leverage || 10);
             setRiskPerTradePct(d.riskPerTradePct || 2.0);

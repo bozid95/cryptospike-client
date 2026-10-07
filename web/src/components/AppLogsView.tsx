@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Terminal,
   RefreshCw,
@@ -99,6 +99,15 @@ export function AppLogsView() {
       log.source.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const reversedLogs = [...filteredLogs].reverse();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [reversedLogs.length]);
 
   return (
     <div className="space-y-6">
@@ -260,8 +269,11 @@ export function AppLogsView() {
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="bg-zinc-950 p-3 sm:p-4 font-mono text-xs text-zinc-300 min-h-[420px] max-h-[620px] overflow-y-auto space-y-1 rounded-b-xl border-t border-zinc-900 select-text">
-            {filteredLogs.length === 0 ? (
+          <div
+            ref={scrollRef}
+            className="bg-zinc-950 p-3 sm:p-4 font-mono text-xs text-zinc-300 min-h-[420px] max-h-[620px] overflow-y-auto space-y-1 rounded-b-xl border-t border-zinc-900 select-text scroll-smooth"
+          >
+            {reversedLogs.length === 0 ? (
               <div className="text-zinc-500 text-center py-20 flex flex-col items-center gap-2">
                 <Info className="size-6 text-zinc-600" />
                 <span>
@@ -271,7 +283,7 @@ export function AppLogsView() {
                 </span>
               </div>
             ) : (
-              filteredLogs.map((log) => {
+              reversedLogs.map((log) => {
                 const time = new Date(log.timestamp).toLocaleTimeString();
                 const date = new Date(log.timestamp).toLocaleDateString();
 

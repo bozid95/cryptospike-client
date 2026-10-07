@@ -333,6 +333,13 @@ app.get("/api/config", requireAuth, async (req, res) => {
     const config = await prisma.appConfig.findUnique({
       where: { id: 1 },
     });
+
+    // Explicitly cast to boolean to fix SQLite 1/0 returning as numbers to frontend
+    if (config) {
+      config.autoExecute =
+        config.autoExecute === 1 || config.autoExecute === true;
+    }
+
     res.json({
       success: true,
       data: config || {
@@ -531,12 +538,10 @@ app.post("/api/positions/close-all", requireAuth, async (req, res) => {
     );
 
     if (positions.length === 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Tidak ada posisi aktif untuk ditutup.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Tidak ada posisi aktif untuk ditutup.",
+      });
     }
 
     addAppLog(
