@@ -118,11 +118,15 @@ export default function ActivePosition({
 
   // Live WebSocket untuk Mark Price All Symbols
   useEffect(() => {
-    if (!environment) return;
     // Menggunakan Live Websocket sesuai permintaan
     const wsUrl = "wss://fstream.binance.com/ws/!markPrice@arr@1s";
 
     const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log("🟢 Binance WebSocket Connected:", wsUrl);
+    };
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -141,8 +145,17 @@ export default function ActivePosition({
         // Abaikan error parse
       }
     };
+
+    ws.onerror = (error) => {
+      console.error("🔴 Binance WebSocket Error:", error);
+    };
+
+    ws.onclose = () => {
+      console.log("⚪ Binance WebSocket Disconnected");
+    };
+
     return () => ws.close();
-  }, [environment]);
+  }, []);
 
   const [isCloseAllModalOpen, setIsCloseAllModalOpen] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
