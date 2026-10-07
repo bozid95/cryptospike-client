@@ -105,6 +105,33 @@ export default function ActivePosition({
     return () => clearInterval(interval);
   }, []);
 
+  const [isCloseAllModalOpen, setIsCloseAllModalOpen] = useState(false);
+  const [isClosingAll, setIsClosingAll] = useState(false);
+
+  const handleCloseAll = async () => {
+    try {
+      setIsClosingAll(true);
+      const res = await authFetch("/api/positions/close-all", {
+        method: "POST",
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(data.message);
+        setIsCloseAllModalOpen(false);
+        fetchPositions();
+      } else {
+        toast.error("Failed to close all positions", {
+          description: data.message,
+        });
+      }
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setIsClosingAll(false);
+    }
+  };
+
   const handleConfirmClose = async () => {
     if (!symbolToClose) return;
     const symbol = symbolToClose;
@@ -276,18 +303,32 @@ export default function ActivePosition({
             </p>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchPositions}
-            disabled={isLoadingPositions}
-            className="h-8 text-xs cursor-pointer w-full sm:w-auto"
-          >
-            <RefreshCw
-              className={`mr-1.5 size-3.5 ${isLoadingPositions ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {positions.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setIsCloseAllModalOpen(true)}
+                disabled={isClosingAll}
+                className="h-8 text-xs cursor-pointer w-full sm:w-auto font-semibold"
+              >
+                <Trash2Icon className="mr-1.5 size-3.5" />
+                Close All
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchPositions}
+              disabled={isLoadingPositions}
+              className="h-8 text-xs cursor-pointer w-full sm:w-auto"
+            >
+              <RefreshCw
+                className={`mr-1.5 size-3.5 ${isLoadingPositions ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Loading state */}
@@ -621,6 +662,57 @@ export default function ActivePosition({
                 <>
                   <Trash2Icon className="size-3.5" />
                   Confirm Close
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Popup Modal for Closing ALL Positions */}
+      <Dialog
+        open={isCloseAllModalOpen}
+        onOpenChange={(open) => {
+          if (!open && !isClosingAll) setIsCloseAllModalOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-red-600 dark:text-red-500">
+              Close ALL Positions Confirmation
+            </DialogTitle>
+            <DialogDescription className="text-xs pt-1">
+              Are you sure you want to market close <strong>ALL {positions.length} open positions</strong> on Binance Futures? This action will execute immediately and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isClosingAll}
+              onClick={() => setIsCloseAllModalOpen(false)}
+              className="text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={isClosingAll}
+              onClick={handleCloseAll}
+              className="text-xs cursor-pointer gap-1.5"
+            >
+              {isClosingAll ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Closing All...
+                </>
+              ) : (
+                <>
+                  <Trash2Icon className="size-3.5" />
+                  Yes, Close All
                 </>
               )}
             </Button>

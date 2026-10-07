@@ -509,6 +509,52 @@ app.post("/api/positions/close", requireAuth, async (req, res) => {
   }
 });
 
+// 5b. Tutup Semua Posisi Terbuka (Close All) Secara Manual (Dilindungi JWT)
+app.post("/api/positions/close-all", requireAuth, async (req, res) => {
+  try {
+    const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
+    if (!config?.binanceApiKey || !config?.binanceApiSecret) {
+      return res.status(400).json({
+        success: false,
+        message: "API Key Binance belum dikonfigurasi.",
+      });
+    }
+
+    const isTestnet = config.environment === "TESTNET";
+    const apiKey = config.binanceApiKey.trim();
+    const apiSecret = config.binanceApiSecret.trim();
+
+    const { positions } = await getAccountAndPositions(apiKey, apiSecret, config.environment || "TESTNET");
+    
+    if (positions.length === 0) {
+      return res.status(400).json({ success: false, message: "Tidak ada posisi aktif untuk ditutup." });
+    }
+
+    addAppLog("INFO", "ManualAction", `Memulai proses penutupan SEMUA posisi (${positions.length} posisi)...`);
+    
+    const results = await Promise.allSettled(
+      positions.map((pos) => closePositionDirect(apiKey, apiSecret, pos.symbol, isTestnet))
+    );
+
+    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    const failCount = results.length - successCount;
+
+    addAppLog("SUCCESS", "ManualAction", `Close All Selesai. Sukses: ${successCount}, Gagal: ${failCount}`);
+    
+    res.json({
+      success: true,
+      message: `Berhasil menutup ${successCount} posisi. ${failCount > 0 ? `Gagal menutup ${failCount} posisi.` : ""}`,
+    });
+  } catch (err: any) {
+    addAppLog(
+      "ERROR",
+      "ManualAction",
+      `Gagal melakukan Close All: ${err.message}`
+    );
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // 6. Ambil Log Aktivitas Aplikasi (In-Memory Buffer) (Dilindungi JWT)
 app.get("/api/logs", requireAuth, (req, res) => {
   const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
