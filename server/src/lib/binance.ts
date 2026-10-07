@@ -537,10 +537,13 @@ export async function executeSignalOrder(
 ) {
   const { symbol, side, entryPrice, tp1, tp2, tp3, sl, strategy } = signal;
 
+  const tpStr = [tp1, tp2, tp3].filter(Boolean).join("/");
+  const slStr = sl ? sl.toString() : "None";
+
   addAppLog(
     "INFO",
     "SignalEngine",
-    `Menerima sinyal [${strategy || "AUTO"}] ${symbol} ${side} @ ${entryPrice}`,
+    `Menerima sinyal [${strategy || "AUTO"}] ${symbol} ${side} @ ${entryPrice} (TP: ${tpStr || "None"} | SL: ${slStr})`,
   );
 
   // 1. Cek autoExecute
