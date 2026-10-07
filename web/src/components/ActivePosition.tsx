@@ -78,7 +78,7 @@ export default function ActivePosition({
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
   const [symbolToClose, setSymbolToClose] = useState<string | null>(null);
-  
+
   const [environment, setEnvironment] = useState<string>("");
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
@@ -202,7 +202,6 @@ export default function ActivePosition({
     }
   };
 
-
   // Derivasi data live dari WebSocket vs Polling
   const livePositions = positions.map((pos) => {
     const isLong = pos.side === "LONG";
@@ -216,11 +215,15 @@ export default function ActivePosition({
       ? (currentMarkPrice - pos.entryPrice) * pos.positionAmt
       : (pos.entryPrice - currentMarkPrice) * pos.positionAmt;
 
-    const liveUnRealizedProfit = pos.unRealizedProfit + (currentPnlDiff - originalPnlDiff);
+    const liveUnRealizedProfit =
+      pos.unRealizedProfit + (currentPnlDiff - originalPnlDiff);
 
     // Kalkulasi ROI
     const initialMargin = (pos.entryPrice * pos.positionAmt) / pos.leverage;
-    const liveRoiPct = initialMargin > 0 ? (liveUnRealizedProfit / initialMargin) * 100 : pos.roiPct;
+    const liveRoiPct =
+      initialMargin > 0
+        ? (liveUnRealizedProfit / initialMargin) * 100
+        : pos.roiPct;
 
     return {
       ...pos,
@@ -231,11 +234,17 @@ export default function ActivePosition({
   });
 
   // Agregasi Live Metrics untuk Kartu Akun
-  const liveTotalUnrealizedProfit = livePositions.reduce((acc, pos) => acc + pos.liveUnRealizedProfit, 0);
-  const liveTotalMarginBalance = account ? account.totalWalletBalance + liveTotalUnrealizedProfit : 0;
-  const liveMarginRatioPct = liveTotalMarginBalance > 0 && account
-    ? (account.totalMaintMargin / liveTotalMarginBalance) * 100
-    : account?.marginRatioPct || 0;
+  const liveTotalUnrealizedProfit = livePositions.reduce(
+    (acc, pos) => acc + pos.liveUnRealizedProfit,
+    0,
+  );
+  const liveTotalMarginBalance = account
+    ? account.totalWalletBalance + liveTotalUnrealizedProfit
+    : 0;
+  const liveMarginRatioPct =
+    liveTotalMarginBalance > 0 && account
+      ? (account.totalMaintMargin / liveTotalMarginBalance) * 100
+      : account?.marginRatioPct || 0;
   const isLiveNetProfit = liveTotalUnrealizedProfit >= 0;
 
   return (
