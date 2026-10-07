@@ -458,7 +458,7 @@ app.get("/api/positions", requireAuth, async (req, res) => {
       config.environment || "TESTNET",
     );
 
-    res.json({ success: true, account, positions });
+    res.json({ success: true, account, positions, environment: config.environment || "TESTNET" });
   } catch (err: any) {
     res.status(500).json({
       success: false,

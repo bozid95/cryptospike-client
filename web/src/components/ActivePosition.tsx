@@ -78,6 +78,9 @@ export default function ActivePosition({
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
   const [symbolToClose, setSymbolToClose] = useState<string | null>(null);
+  
+  const [environment, setEnvironment] = useState<string>("");
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   // Ambil data posisi & ringkasan akun live dari Binance
   const fetchPositions = async () => {
@@ -92,6 +95,9 @@ export default function ActivePosition({
           }
           if (data.account) {
             setAccount(data.account);
+          }
+          if (data.environment) {
+            setEnvironment(data.environment);
           }
         }
       }
@@ -109,6 +115,36 @@ export default function ActivePosition({
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // Live WebSocket untuk Mark Price All Symbols
+  useEffect(() => {
+    if (!environment) return;
+    const wsUrl =
+      environment === "TESTNET"
+        ? "wss://stream.binancefuture.com/ws/!markPrice@arr@1s"
+        : "wss://fstream.binance.com/ws/!markPrice@arr@1s";
+
+    const ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (Array.isArray(data)) {
+          setLivePrices((prev) => {
+            const newPrices = { ...prev };
+            data.forEach((item) => {
+              if (item.s && item.p) {
+                newPrices[item.s] = parseFloat(item.p);
+              }
+            });
+            return newPrices;
+          });
+        }
+      } catch (e) {
+        // Abaikan error parse
+      }
+    };
+    return () => ws.close();
+  }, [environment]);
 
   const [isCloseAllModalOpen, setIsCloseAllModalOpen] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
@@ -166,7 +202,41 @@ export default function ActivePosition({
     }
   };
 
-  const isNetProfit = (account?.totalUnrealizedProfit ?? 0) >= 0;
+
+  // Derivasi data live dari WebSocket vs Polling
+  const livePositions = positions.map((pos) => {
+    const isLong = pos.side === "LONG";
+    const currentMarkPrice = livePrices[pos.symbol] || pos.markPrice;
+
+    // Kalkulasi perbedaan PnL berdasarkan pergerakan mark price sejak polling terakhir
+    const originalPnlDiff = isLong
+      ? (pos.markPrice - pos.entryPrice) * pos.positionAmt
+      : (pos.entryPrice - pos.markPrice) * pos.positionAmt;
+    const currentPnlDiff = isLong
+      ? (currentMarkPrice - pos.entryPrice) * pos.positionAmt
+      : (pos.entryPrice - currentMarkPrice) * pos.positionAmt;
+
+    const liveUnRealizedProfit = pos.unRealizedProfit + (currentPnlDiff - originalPnlDiff);
+
+    // Kalkulasi ROI
+    const initialMargin = (pos.entryPrice * pos.positionAmt) / pos.leverage;
+    const liveRoiPct = initialMargin > 0 ? (liveUnRealizedProfit / initialMargin) * 100 : pos.roiPct;
+
+    return {
+      ...pos,
+      liveMarkPrice: currentMarkPrice,
+      liveUnRealizedProfit,
+      liveRoiPct,
+    };
+  });
+
+  // Agregasi Live Metrics untuk Kartu Akun
+  const liveTotalUnrealizedProfit = livePositions.reduce((acc, pos) => acc + pos.liveUnRealizedProfit, 0);
+  const liveTotalMarginBalance = account ? account.totalWalletBalance + liveTotalUnrealizedProfit : 0;
+  const liveMarginRatioPct = liveTotalMarginBalance > 0 && account
+    ? (account.totalMaintMargin / liveTotalMarginBalance) * 100
+    : account?.marginRatioPct || 0;
+  const isLiveNetProfit = liveTotalUnrealizedProfit >= 0;
 
   return (
     <div className="space-y-6">
@@ -207,7 +277,7 @@ export default function ActivePosition({
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Total Unrealized PnL
             </CardTitle>
-            {isNetProfit ? (
+            {isLiveNetProfit ? (
               <ArrowUpRight className="size-4 text-emerald-500" />
             ) : (
               <ArrowDownRight className="size-4 text-red-500" />
@@ -216,17 +286,17 @@ export default function ActivePosition({
           <CardContent>
             <div
               className={`text-2xl font-bold font-mono tracking-tight ${
-                isNetProfit ? "text-emerald-500" : "text-red-500"
+                isLiveNetProfit ? "text-emerald-500" : "text-red-500"
               }`}
             >
               {account
-                ? `${account.totalUnrealizedProfit >= 0 ? "+" : ""}$${account.totalUnrealizedProfit.toFixed(2)}`
+                ? `${liveTotalUnrealizedProfit >= 0 ? "+" : ""}$${liveTotalUnrealizedProfit.toFixed(2)}`
                 : "$0.00"}
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
               <span>Margin Balance:</span>
               <span className="font-mono font-medium text-foreground">
-                ${account ? account.totalMarginBalance.toFixed(2) : "0.00"}
+                ${account ? liveTotalMarginBalance.toFixed(2) : "0.00"}
               </span>
             </div>
           </CardContent>
@@ -243,7 +313,7 @@ export default function ActivePosition({
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-                {account ? `${account.marginRatioPct.toFixed(2)}%` : "0.00%"}
+                {account ? `${liveMarginRatioPct.toFixed(2)}%` : "0.00%"}
               </span>
               <Badge
                 variant="outline"
@@ -353,9 +423,9 @@ export default function ActivePosition({
           <>
             {/* Mobile Cards View (< sm) */}
             <div className="sm:hidden space-y-3">
-              {positions.map((pos) => {
+              {livePositions.map((pos) => {
                 const isLong = pos.side === "LONG";
-                const isProfit = pos.unRealizedProfit >= 0;
+                const isProfit = pos.liveUnRealizedProfit >= 0;
                 const isClosing = isClosingSymbol === pos.symbol;
 
                 return (
@@ -402,15 +472,15 @@ export default function ActivePosition({
                           }`}
                         >
                           {isProfit ? "+" : ""}
-                          {pos.unRealizedProfit.toFixed(2)} USDT
+                          {pos.liveUnRealizedProfit.toFixed(2)} USDT
                         </div>
                         <div
                           className={`text-[11px] font-semibold ${
                             isProfit ? "text-emerald-600" : "text-red-500"
                           }`}
                         >
-                          ({pos.roiPct >= 0 ? "+" : ""}
-                          {pos.roiPct.toFixed(2)}%)
+                          ({pos.liveRoiPct >= 0 ? "+" : ""}
+                          {pos.liveRoiPct.toFixed(2)}%)
                         </div>
                       </div>
                     </div>
@@ -448,7 +518,7 @@ export default function ActivePosition({
                           Mark Price
                         </span>
                         <span className="text-muted-foreground">
-                          {formatPrice(pos.markPrice)}
+                          {formatPrice(pos.liveMarkPrice)}
                         </span>
                       </div>
                     </div>
@@ -503,9 +573,9 @@ export default function ActivePosition({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {positions.map((pos) => {
+                  {livePositions.map((pos) => {
                     const isLong = pos.side === "LONG";
-                    const isProfit = pos.unRealizedProfit >= 0;
+                    const isProfit = pos.liveUnRealizedProfit >= 0;
                     const isClosing = isClosingSymbol === pos.symbol;
 
                     return (
@@ -556,7 +626,7 @@ export default function ActivePosition({
                           <div className="flex flex-col font-mono text-xs">
                             <span>Entry: {formatPrice(pos.entryPrice)}</span>
                             <span className="text-muted-foreground">
-                              Mark: {formatPrice(pos.markPrice)}
+                              Mark: {formatPrice(pos.liveMarkPrice)}
                             </span>
                           </div>
                         </TableCell>
@@ -577,15 +647,15 @@ export default function ActivePosition({
                               }`}
                             >
                               {isProfit ? "+" : ""}
-                              {pos.unRealizedProfit.toFixed(2)} USDT
+                              {pos.liveUnRealizedProfit.toFixed(2)} USDT
                             </span>
                             <span
                               className={`text-[11px] font-semibold ${
                                 isProfit ? "text-emerald-600" : "text-red-500"
                               }`}
                             >
-                              ({pos.roiPct >= 0 ? "+" : ""}
-                              {pos.roiPct.toFixed(2)}%)
+                              ({pos.liveRoiPct >= 0 ? "+" : ""}
+                              {pos.liveRoiPct.toFixed(2)}%)
                             </span>
                           </div>
                         </TableCell>
