@@ -803,9 +803,14 @@ export async function executeSignalOrder(
       }
     }
 
-    // Pasang Hard Catastrophe Stop Loss (10% dari entry)
-    const catastropheDist = side === "LONG" ? 0.9 : 1.1;
-    const hardSL = roundTick(entryPrice * catastropheDist, filters.tickSize);
+    // Pasang Stop Loss (Berdasarkan Sinyal, atau Fallback 2% jika kosong)
+    const targetSlPrice = sl
+      ? roundTick(sl, filters.tickSize)
+      : roundTick(
+          entryPrice * (side === "LONG" ? 0.98 : 1.02),
+          filters.tickSize,
+        );
+
     try {
       await placeOrder(
         apiKey,
@@ -814,21 +819,23 @@ export async function executeSignalOrder(
           symbol,
           side: exitSide,
           type: "STOP_MARKET",
-          stopPrice: hardSL,
+          stopPrice: targetSlPrice,
           reduceOnly: true,
         },
         isTestnet,
       );
+
+      const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
       addAppLog(
         "INFO",
         "Executor",
-        `[HARD SL PLACED] ${symbol} Stop set di ${hardSL} (Proteksi Keamanan Crash)`,
+        `[${slType} PLACED] ${symbol} Stop Loss set di ${targetSlPrice}`,
       );
     } catch (err: any) {
       addAppLog(
         "WARN",
         "Executor",
-        `Gagal pasang Hard SL ${symbol}: ${err.message}`,
+        `Gagal pasang Stop Loss ${symbol}: ${err.message}`,
       );
     }
   } catch (err: any) {
