@@ -524,23 +524,42 @@ app.post("/api/positions/close-all", requireAuth, async (req, res) => {
     const apiKey = config.binanceApiKey.trim();
     const apiSecret = config.binanceApiSecret.trim();
 
-    const { positions } = await getAccountAndPositions(apiKey, apiSecret, config.environment || "TESTNET");
-    
+    const { positions } = await getAccountAndPositions(
+      apiKey,
+      apiSecret,
+      config.environment || "TESTNET",
+    );
+
     if (positions.length === 0) {
-      return res.status(400).json({ success: false, message: "Tidak ada posisi aktif untuk ditutup." });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Tidak ada posisi aktif untuk ditutup.",
+        });
     }
 
-    addAppLog("INFO", "ManualAction", `Memulai proses penutupan SEMUA posisi (${positions.length} posisi)...`);
-    
+    addAppLog(
+      "INFO",
+      "ManualAction",
+      `Memulai proses penutupan SEMUA posisi (${positions.length} posisi)...`,
+    );
+
     const results = await Promise.allSettled(
-      positions.map((pos) => closePositionDirect(apiKey, apiSecret, pos.symbol, isTestnet))
+      positions.map((pos) =>
+        closePositionDirect(apiKey, apiSecret, pos.symbol, isTestnet),
+      ),
     );
 
     const successCount = results.filter((r) => r.status === "fulfilled").length;
     const failCount = results.length - successCount;
 
-    addAppLog("SUCCESS", "ManualAction", `Close All Selesai. Sukses: ${successCount}, Gagal: ${failCount}`);
-    
+    addAppLog(
+      "SUCCESS",
+      "ManualAction",
+      `Close All Selesai. Sukses: ${successCount}, Gagal: ${failCount}`,
+    );
+
     res.json({
       success: true,
       message: `Berhasil menutup ${successCount} posisi. ${failCount > 0 ? `Gagal menutup ${failCount} posisi.` : ""}`,
@@ -549,7 +568,7 @@ app.post("/api/positions/close-all", requireAuth, async (req, res) => {
     addAppLog(
       "ERROR",
       "ManualAction",
-      `Gagal melakukan Close All: ${err.message}`
+      `Gagal melakukan Close All: ${err.message}`,
     );
     res.status(500).json({ success: false, message: err.message });
   }

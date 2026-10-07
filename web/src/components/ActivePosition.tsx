@@ -115,7 +115,7 @@ export default function ActivePosition({
         method: "POST",
       });
       const data = await res.json();
-      
+
       if (data.success) {
         toast.success(data.message);
         setIsCloseAllModalOpen(false);
@@ -682,7 +682,10 @@ export default function ActivePosition({
               Close ALL Positions Confirmation
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
-              Are you sure you want to market close <strong>ALL {positions.length} open positions</strong> on Binance Futures? This action will execute immediately and cannot be undone.
+              Are you sure you want to market close{" "}
+              <strong>ALL {positions.length} open positions</strong> on Binance
+              Futures? This action will execute immediately and cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
