@@ -119,10 +119,8 @@ export default function ActivePosition({
   // Live WebSocket untuk Mark Price All Symbols
   useEffect(() => {
     if (!environment) return;
-    const wsUrl =
-      environment === "TESTNET"
-        ? "wss://stream.binancefuture.com/ws/!markPrice@arr@1s"
-        : "wss://fstream.binance.com/ws/!markPrice@arr@1s";
+    // Menggunakan Live Websocket sesuai permintaan
+    const wsUrl = "wss://fstream.binance.com/ws/!markPrice@arr@1s";
 
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
