@@ -78,8 +78,6 @@ export default function ActivePosition({
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
   const [symbolToClose, setSymbolToClose] = useState<string | null>(null);
-
-  const [environment, setEnvironment] = useState<string>("");
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   // Ambil data posisi & ringkasan akun live dari Binance
@@ -95,9 +93,6 @@ export default function ActivePosition({
           }
           if (data.account) {
             setAccount(data.account);
-          }
-          if (data.environment) {
-            setEnvironment(data.environment);
           }
         }
       }
