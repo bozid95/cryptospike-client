@@ -455,6 +455,15 @@ export default function CredentialConfig() {
                   onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
                   className="h-8 text-xs"
                 />
+                {testResult?.balance ? (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-500 bg-amber-500/10 p-2 rounded border border-amber-500/20 leading-relaxed mt-2">
+                    <strong>Preview Resiko:</strong> Anda mengizinkan bot untuk menanggung resiko maksimal sebesar <strong>~${((testResult.balance * Number(riskPerTradePct)) / 100).toFixed(2)} USDT</strong> dari total saldo ${testResult.balance.toFixed(2)} Anda pada setiap eksekusi sinyal.
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground italic mt-1">
+                    * Lakukan 'Test Connection' terlebih dahulu untuk melihat estimasi nominal resiko (USD) per transaksi.
+                  </p>
+                )}
               </div>
 
               {/* Max Open Positions */}
