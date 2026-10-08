@@ -467,8 +467,8 @@ export default function CredentialConfig() {
                 />
                 {testResult?.balance ? (
                   <p className="text-[10px] text-amber-600 dark:text-amber-500 bg-amber-500/10 p-2 rounded border border-amber-500/20 leading-relaxed mt-2">
-                    <strong>Preview Resiko:</strong> Anda mengizinkan bot untuk
-                    menanggung resiko maksimal sebesar{" "}
+                    <strong>Risk Preview:</strong> You are authorizing the bot to
+                    risk a maximum of{" "}
                     <strong>
                       ~$
                       {(
@@ -477,13 +477,13 @@ export default function CredentialConfig() {
                       ).toFixed(2)}{" "}
                       USDT
                     </strong>{" "}
-                    dari total saldo ${testResult.balance.toFixed(2)} Anda pada
-                    setiap eksekusi sinyal.
+                    from your total balance of ${testResult.balance.toFixed(2)} on
+                    each signal execution.
                   </p>
                 ) : (
                   <p className="text-[10px] text-muted-foreground italic mt-1">
-                    * Lakukan 'Test Connection' terlebih dahulu untuk melihat
-                    estimasi nominal resiko (USD) per transaksi.
+                    * Please run 'Test Connection' first to see the estimated
+                    risk amount (USD) per trade.
                   </p>
                 )}
               </div>
@@ -546,11 +546,10 @@ export default function CredentialConfig() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
-              Konfirmasi Pengaturan Bot
+              Configuration Confirmation
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
-              Harap periksa kembali rangkuman konfigurasi Anda sebelum
-              menyimpan.
+              Please review your bot configuration summary before saving.
             </DialogDescription>
           </DialogHeader>
 
@@ -586,19 +585,20 @@ export default function CredentialConfig() {
               </div>
               {testResult?.balance ? (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 leading-relaxed">
-                  <strong>Peringatan Risiko:</strong> Dari total saldo sebesar{" "}
-                  <strong>${testResult.balance.toFixed(2)}</strong>, saldo yang
-                  berpotensi hilang (terkena Stop Loss) adalah sekitar{" "}
+                  <strong>Risk Warning:</strong> Out of your total balance of{" "}
+                  <strong>${testResult.balance.toFixed(2)}</strong>, the
+                  potential loss (if Stop Loss is hit) is approximately{" "}
                   <strong>
-                    ~${((testResult.balance * riskPerTradePct) / 100).toFixed(2)}{" "}
+                    ~$
+                    {((testResult.balance * riskPerTradePct) / 100).toFixed(2)}{" "}
                     USD
                   </strong>{" "}
-                  pada setiap 1x eksekusi sinyal.
+                  per signal execution.
                 </div>
               ) : (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
-                  * Lakukan 'Test Connection' terlebih dahulu untuk melihat
-                  estimasi nominal saldo (USD) yang akan direiskokan.
+                  * Please run 'Test Connection' first to see the estimated
+                  risk amount (USD).
                 </div>
               )}
             </div>
@@ -625,7 +625,7 @@ export default function CredentialConfig() {
               {isSaving ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Menyimpan...
+                  Saving...
                 </>
               ) : (
                 <>
