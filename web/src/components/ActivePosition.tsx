@@ -122,7 +122,7 @@ export default function ActivePosition({
     const wsUrl = "wss://fstream.binance.com/ws/!markPrice@arr@1s";
 
     const ws = new WebSocket(wsUrl);
-    
+
     ws.onopen = () => {
       console.log("🟢 Binance WebSocket Connected:", wsUrl);
     };

@@ -432,7 +432,8 @@ export async function placeOrder(
   if (params.closePosition) queryObj.closePosition = "true";
   if (params.timeInForce) queryObj.timeInForce = params.timeInForce;
 
-  const isAlgo = params.type === "STOP_MARKET" || params.type === "TAKE_PROFIT_MARKET";
+  const isAlgo =
+    params.type === "STOP_MARKET" || params.type === "TAKE_PROFIT_MARKET";
   if (isAlgo) {
     queryObj.algoType = "CONDITIONAL";
     if (queryObj.stopPrice) {
@@ -447,7 +448,7 @@ export async function placeOrder(
   const signature = createSignature(query, apiSecret);
 
   const endpoint = isAlgo ? "/fapi/v1/algoOrder" : "/fapi/v1/order";
-  
+
   const res = await fetch(
     `${baseUrl}${endpoint}?${query}&signature=${signature}`,
     {
