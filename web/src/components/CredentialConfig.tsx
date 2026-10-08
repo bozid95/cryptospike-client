@@ -193,6 +193,13 @@ export default function CredentialConfig() {
     }
   };
 
+  const getRiskLevel = (pct: number) => {
+    if (pct <= 2) return { label: "Low Risk (Safe)", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" };
+    if (pct <= 5) return { label: "Moderate Risk", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" };
+    return { label: "High Risk (Danger)", color: "text-destructive dark:text-red-400", bg: "bg-destructive/10", border: "border-destructive/20" };
+  };
+  const riskInfo = getRiskLevel(Number(riskPerTradePct));
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
@@ -466,9 +473,9 @@ export default function CredentialConfig() {
                   className="h-8 text-xs"
                 />
                 {testResult?.balance ? (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-500 bg-amber-500/10 p-2 rounded border border-amber-500/20 leading-relaxed mt-2">
-                    <strong>Risk Preview:</strong> You are authorizing the bot to
-                    risk a maximum of{" "}
+                  <p className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2 rounded border ${riskInfo.border} leading-relaxed mt-2`}>
+                    <strong>Risk Preview [{riskInfo.label}]:</strong> You are authorizing the bot
+                    to risk a maximum of{" "}
                     <strong>
                       ~$
                       {(
@@ -477,8 +484,8 @@ export default function CredentialConfig() {
                       ).toFixed(2)}{" "}
                       USDT
                     </strong>{" "}
-                    from your total balance of ${testResult.balance.toFixed(2)} on
-                    each signal execution.
+                    from your total balance of ${testResult.balance.toFixed(2)}{" "}
+                    on each signal execution.
                   </p>
                 ) : (
                   <p className="text-[10px] text-muted-foreground italic mt-1">
@@ -579,26 +586,28 @@ export default function CredentialConfig() {
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Risk Per Trade:</span>
-                <span className="font-bold text-amber-500">
+                <span className={`font-bold ${riskInfo.color}`}>
                   {riskPerTradePct}%
                 </span>
               </div>
               {testResult?.balance ? (
-                <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 leading-relaxed">
-                  <strong>Risk Warning:</strong> Out of your total balance of{" "}
+                <div className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed`}>
+                  <strong>Risk Warning [{riskInfo.label}]:</strong> Out of your total balance of{" "}
                   <strong>${testResult.balance.toFixed(2)}</strong>, the
                   potential loss (if Stop Loss is hit) is approximately{" "}
                   <strong>
                     ~$
-                    {((testResult.balance * riskPerTradePct) / 100).toFixed(2)}{" "}
+                    {((testResult.balance * riskPerTradePct) / 100).toFixed(
+                      2,
+                    )}{" "}
                     USD
                   </strong>{" "}
                   per signal execution.
                 </div>
               ) : (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
-                  * Please run 'Test Connection' first to see the estimated
-                  risk amount (USD).
+                  * Please run 'Test Connection' first to see the estimated risk
+                  amount (USD).
                 </div>
               )}
             </div>
