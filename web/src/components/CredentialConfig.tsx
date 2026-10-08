@@ -513,10 +513,13 @@ export default function CredentialConfig() {
                     <p className="opacity-90">
                       <strong>Worst-Case Scenario:</strong> If all{" "}
                       <strong>{maxOpenPositions}</strong> allowed positions hit
-                      Stop Loss simultaneously, your total potential loss is up to{" "}
+                      Stop Loss simultaneously, your total potential loss is up
+                      to{" "}
                       <strong>
                         ~$
-                        {((testResult.balance * totalRiskPct) / 100).toFixed(2)}{" "}
+                        {((testResult.balance * totalRiskPct) / 100).toFixed(
+                          2,
+                        )}{" "}
                         USD ({totalRiskPct}%)
                       </strong>{" "}
                       of your balance.
@@ -645,12 +648,13 @@ export default function CredentialConfig() {
                     .
                   </p>
                   <p className="opacity-90 border-t border-current/20 pt-1.5">
-                    <strong>Worst-Case Scenario:</strong> If{" "}
-                    {maxOpenPositions} positions hit Stop Loss simultaneously,
-                    you could lose up to{" "}
+                    <strong>Worst-Case Scenario:</strong> If {maxOpenPositions}{" "}
+                    positions hit Stop Loss simultaneously, you could lose up to{" "}
                     <strong>
                       ~$
-                      {((testResult.balance * totalRiskPct) / 100).toFixed(2)}{" "}
+                      {((testResult.balance * totalRiskPct) / 100).toFixed(
+                        2,
+                      )}{" "}
                       USD ({totalRiskPct}%)
                     </strong>
                     .
