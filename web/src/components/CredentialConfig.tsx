@@ -25,6 +25,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function CredentialConfig() {
   const [token, setToken] = useState("");
@@ -52,6 +60,7 @@ export default function CredentialConfig() {
   // Status State
   const [isSaving, setIsSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -173,6 +182,7 @@ export default function CredentialConfig() {
           description:
             "Bot credentials and configuration successfully saved to local SQLite.",
         });
+        setIsConfirmModalOpen(false);
       } else {
         toast.error("Failed to Save", { description: data.message });
       }
@@ -457,11 +467,23 @@ export default function CredentialConfig() {
                 />
                 {testResult?.balance ? (
                   <p className="text-[10px] text-amber-600 dark:text-amber-500 bg-amber-500/10 p-2 rounded border border-amber-500/20 leading-relaxed mt-2">
-                    <strong>Preview Resiko:</strong> Anda mengizinkan bot untuk menanggung resiko maksimal sebesar <strong>~${((testResult.balance * Number(riskPerTradePct)) / 100).toFixed(2)} USDT</strong> dari total saldo ${testResult.balance.toFixed(2)} Anda pada setiap eksekusi sinyal.
+                    <strong>Preview Resiko:</strong> Anda mengizinkan bot untuk
+                    menanggung resiko maksimal sebesar{" "}
+                    <strong>
+                      ~$
+                      {(
+                        (testResult.balance * Number(riskPerTradePct)) /
+                        100
+                      ).toFixed(2)}{" "}
+                      USDT
+                    </strong>{" "}
+                    dari total saldo ${testResult.balance.toFixed(2)} Anda pada
+                    setiap eksekusi sinyal.
                   </p>
                 ) : (
                   <p className="text-[10px] text-muted-foreground italic mt-1">
-                    * Lakukan 'Test Connection' terlebih dahulu untuk melihat estimasi nominal resiko (USD) per transaksi.
+                    * Lakukan 'Test Connection' terlebih dahulu untuk melihat
+                    estimasi nominal resiko (USD) per transaksi.
                   </p>
                 )}
               </div>
@@ -512,23 +534,90 @@ export default function CredentialConfig() {
         <Button
           type="button"
           size="sm"
-          onClick={handleSave}
-          disabled={isSaving}
+          onClick={() => setIsConfirmModalOpen(true)}
           className="w-full sm:w-auto gap-2 text-xs cursor-pointer"
         >
-          {isSaving ? (
-            <>
-              <Loader2 className="size-3.5 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <SaveIcon className="size-3.5" />
-              Save Configuration
-            </>
-          )}
+          <SaveIcon className="size-3.5" />
+          Save Configuration
         </Button>
       </div>
+
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              Konfirmasi Pengaturan Bot
+            </DialogTitle>
+            <DialogDescription className="text-xs pt-1">
+              Harap periksa kembali rangkuman konfigurasi Anda sebelum menyimpan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-sm">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Environment:</span>
+              <span className="font-semibold">{environment}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Auto-Trade:</span>
+              <span className={`font-semibold ${autoExecute ? "text-emerald-500" : "text-destructive"}`}>
+                {autoExecute ? "ON" : "OFF"}
+              </span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Leverage:</span>
+              <span className="font-semibold">{leverage}x ({marginType})</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Max Open Positions:</span>
+              <span className="font-semibold">{maxOpenPositions}</span>
+            </div>
+            <div className="flex flex-col border-b pb-2 gap-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Risk Per Trade:</span>
+                <span className="font-bold text-amber-500">{riskPerTradePct}%</span>
+              </div>
+              {testResult?.balance && (
+                <div className="text-xs text-right text-amber-600 dark:text-amber-500 italic">
+                  Estimasi Resiko: ~${((testResult.balance * riskPerTradePct) / 100).toFixed(2)} USD / Sinyal
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSaving}
+              onClick={() => setIsConfirmModalOpen(false)}
+              className="text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isSaving}
+              onClick={handleSave}
+              className="text-xs cursor-pointer gap-1.5"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <SaveIcon className="size-3.5" />
+                  Confirm & Save
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
