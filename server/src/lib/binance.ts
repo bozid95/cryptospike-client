@@ -409,6 +409,7 @@ export async function placeOrder(
     price?: number;
     stopPrice?: number;
     reduceOnly?: boolean;
+    closePosition?: boolean;
     timeInForce?: "GTC" | "IOC" | "FOK";
   },
   isTestnet: boolean,
@@ -428,15 +429,27 @@ export async function placeOrder(
   if (params.price !== undefined) queryObj.price = params.price;
   if (params.stopPrice !== undefined) queryObj.stopPrice = params.stopPrice;
   if (params.reduceOnly) queryObj.reduceOnly = "true";
+  if (params.closePosition) queryObj.closePosition = "true";
   if (params.timeInForce) queryObj.timeInForce = params.timeInForce;
+
+  const isAlgo = params.type === "STOP_MARKET" || params.type === "TAKE_PROFIT_MARKET";
+  if (isAlgo) {
+    queryObj.algoType = "CONDITIONAL";
+    if (queryObj.stopPrice) {
+      queryObj.triggerPrice = queryObj.stopPrice;
+      delete queryObj.stopPrice;
+    }
+  }
 
   const query = Object.entries(queryObj)
     .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
     .join("&");
   const signature = createSignature(query, apiSecret);
 
+  const endpoint = isAlgo ? "/fapi/v1/algoOrder" : "/fapi/v1/order";
+  
   const res = await fetch(
-    `${baseUrl}/fapi/v1/order?${query}&signature=${signature}`,
+    `${baseUrl}${endpoint}?${query}&signature=${signature}`,
     {
       method: "POST",
       headers: { "X-MBX-APIKEY": apiKey },
@@ -823,7 +836,7 @@ export async function executeSignalOrder(
           side: exitSide,
           type: "STOP_MARKET",
           stopPrice: targetSlPrice,
-          reduceOnly: true,
+          closePosition: true,
         },
         isTestnet,
       );
