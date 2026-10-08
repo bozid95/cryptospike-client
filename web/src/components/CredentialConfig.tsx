@@ -193,12 +193,33 @@ export default function CredentialConfig() {
     }
   };
 
-  const getRiskLevel = (pct: number) => {
-    if (pct <= 2) return { label: "Low Risk (Safe)", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" };
-    if (pct <= 5) return { label: "Moderate Risk", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" };
-    return { label: "High Risk (Danger)", color: "text-destructive dark:text-red-400", bg: "bg-destructive/10", border: "border-destructive/20" };
+  const getRiskLevel = (totalPct: number) => {
+    if (totalPct <= 5.0) {
+      return {
+        label: "Low Risk (Safe)",
+        color: "text-emerald-700 dark:text-emerald-400",
+        bg: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
+      };
+    }
+    if (totalPct <= 10.0) {
+      return {
+        label: "Moderate Risk",
+        color: "text-amber-700 dark:text-amber-400",
+        bg: "bg-amber-500/10",
+        border: "border-amber-500/20",
+      };
+    }
+    return {
+      label: "High Risk (Danger)",
+      color: "text-destructive dark:text-red-400",
+      bg: "bg-destructive/10",
+      border: "border-destructive/20",
+    };
   };
-  const riskInfo = getRiskLevel(Number(riskPerTradePct));
+
+  const totalRiskPct = Number(riskPerTradePct) * Number(maxOpenPositions);
+  const riskInfo = getRiskLevel(totalRiskPct);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -473,20 +494,34 @@ export default function CredentialConfig() {
                   className="h-8 text-xs"
                 />
                 {testResult?.balance ? (
-                  <p className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2 rounded border ${riskInfo.border} leading-relaxed mt-2`}>
-                    <strong>Risk Preview [{riskInfo.label}]:</strong> You are authorizing the bot
-                    to risk a maximum of{" "}
-                    <strong>
-                      ~$
-                      {(
-                        (testResult.balance * Number(riskPerTradePct)) /
-                        100
-                      ).toFixed(2)}{" "}
-                      USDT
-                    </strong>{" "}
-                    from your total balance of ${testResult.balance.toFixed(2)}{" "}
-                    on each signal execution.
-                  </p>
+                  <div
+                    className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} leading-relaxed mt-2 space-y-1.5`}
+                  >
+                    <p>
+                      <strong>Risk Preview [{riskInfo.label}]:</strong> You are
+                      authorizing the bot to risk a maximum of{" "}
+                      <strong>
+                        ~$
+                        {(
+                          (testResult.balance * Number(riskPerTradePct)) /
+                          100
+                        ).toFixed(2)}{" "}
+                        USD
+                      </strong>{" "}
+                      per single trade.
+                    </p>
+                    <p className="opacity-90">
+                      <strong>Worst-Case Scenario:</strong> If all{" "}
+                      <strong>{maxOpenPositions}</strong> allowed positions hit
+                      Stop Loss simultaneously, your total potential loss is up to{" "}
+                      <strong>
+                        ~$
+                        {((testResult.balance * totalRiskPct) / 100).toFixed(2)}{" "}
+                        USD ({totalRiskPct}%)
+                      </strong>{" "}
+                      of your balance.
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-[10px] text-muted-foreground italic mt-1">
                     * Please run 'Test Connection' first to see the estimated
@@ -585,24 +620,41 @@ export default function CredentialConfig() {
             </div>
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Risk Per Trade:</span>
-                <span className={`font-bold ${riskInfo.color}`}>
-                  {riskPerTradePct}%
+                <span className="text-muted-foreground">Total Max Risk:</span>
+                <span className={`font-bold ${riskInfo.color.split(" ")[0]}`}>
+                  {totalRiskPct}%
                 </span>
               </div>
               {testResult?.balance ? (
-                <div className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed`}>
-                  <strong>Risk Warning [{riskInfo.label}]:</strong> Out of your total balance of{" "}
-                  <strong>${testResult.balance.toFixed(2)}</strong>, the
-                  potential loss (if Stop Loss is hit) is approximately{" "}
-                  <strong>
-                    ~$
-                    {((testResult.balance * riskPerTradePct) / 100).toFixed(
-                      2,
-                    )}{" "}
-                    USD
-                  </strong>{" "}
-                  per signal execution.
+                <div
+                  className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed space-y-2`}
+                >
+                  <p>
+                    <strong>Risk Warning [{riskInfo.label}]:</strong> Out of
+                    your total balance of{" "}
+                    <strong>${testResult.balance.toFixed(2)}</strong>, the
+                    potential loss per trade is approximately{" "}
+                    <strong>
+                      ~$
+                      {(
+                        (testResult.balance * Number(riskPerTradePct)) /
+                        100
+                      ).toFixed(2)}{" "}
+                      USD
+                    </strong>
+                    .
+                  </p>
+                  <p className="opacity-90 border-t border-current/20 pt-1.5">
+                    <strong>Worst-Case Scenario:</strong> If{" "}
+                    {maxOpenPositions} positions hit Stop Loss simultaneously,
+                    you could lose up to{" "}
+                    <strong>
+                      ~$
+                      {((testResult.balance * totalRiskPct) / 100).toFixed(2)}{" "}
+                      USD ({totalRiskPct}%)
+                    </strong>
+                    .
+                  </p>
                 </div>
               ) : (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
