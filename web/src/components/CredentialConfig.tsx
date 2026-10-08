@@ -549,7 +549,8 @@ export default function CredentialConfig() {
               Konfirmasi Pengaturan Bot
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
-              Harap periksa kembali rangkuman konfigurasi Anda sebelum menyimpan.
+              Harap periksa kembali rangkuman konfigurasi Anda sebelum
+              menyimpan.
             </DialogDescription>
           </DialogHeader>
 
@@ -560,13 +561,17 @@ export default function CredentialConfig() {
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Auto-Trade:</span>
-              <span className={`font-semibold ${autoExecute ? "text-emerald-500" : "text-destructive"}`}>
+              <span
+                className={`font-semibold ${autoExecute ? "text-emerald-500" : "text-destructive"}`}
+              >
                 {autoExecute ? "ON" : "OFF"}
               </span>
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Leverage:</span>
-              <span className="font-semibold">{leverage}x ({marginType})</span>
+              <span className="font-semibold">
+                {leverage}x ({marginType})
+              </span>
             </div>
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Max Open Positions:</span>
@@ -575,11 +580,25 @@ export default function CredentialConfig() {
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Risk Per Trade:</span>
-                <span className="font-bold text-amber-500">{riskPerTradePct}%</span>
+                <span className="font-bold text-amber-500">
+                  {riskPerTradePct}%
+                </span>
               </div>
-              {testResult?.balance && (
-                <div className="text-xs text-right text-amber-600 dark:text-amber-500 italic">
-                  Estimasi Resiko: ~${((testResult.balance * riskPerTradePct) / 100).toFixed(2)} USD / Sinyal
+              {testResult?.balance ? (
+                <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 leading-relaxed">
+                  <strong>Peringatan Risiko:</strong> Dari total saldo sebesar{" "}
+                  <strong>${testResult.balance.toFixed(2)}</strong>, saldo yang
+                  berpotensi hilang (terkena Stop Loss) adalah sekitar{" "}
+                  <strong>
+                    ~${((testResult.balance * riskPerTradePct) / 100).toFixed(2)}{" "}
+                    USD
+                  </strong>{" "}
+                  pada setiap 1x eksekusi sinyal.
+                </div>
+              ) : (
+                <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
+                  * Lakukan 'Test Connection' terlebih dahulu untuk melihat
+                  estimasi nominal saldo (USD) yang akan direiskokan.
                 </div>
               )}
             </div>
