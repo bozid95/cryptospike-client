@@ -345,11 +345,7 @@ positionsRouter.post(
         message: `Successfully closed ${successCount} positions. ${failCount > 0 ? `Failed to close ${failCount} positions.` : ""}`,
       });
     } catch (err: any) {
-      addAppLog(
-        "ERROR",
-        "ManualAction",
-        `Failed to Close All: ${err.message}`,
-      );
+      addAppLog("ERROR", "ManualAction", `Failed to Close All: ${err.message}`);
       res.status(500).json({ success: false, message: err.message });
     }
   },

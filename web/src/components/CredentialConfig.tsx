@@ -1339,8 +1339,8 @@ export default function CredentialConfig({
                       <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
                         * Warning: Total allocation (
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
-                        {tokoTotalCapital.toLocaleString()}) exceeds current cash
-                        balance (
+                        {tokoTotalCapital.toLocaleString()}) exceeds current
+                        cash balance (
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {activeTestResult.balance.toLocaleString()}).
                       </p>
@@ -1420,7 +1420,8 @@ export default function CredentialConfig({
                     </div>
                     {binanceTotalRiskPct > 100 && (
                       <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
-                        * Warning: Total margin allocation ({binanceTotalRiskPct}
+                        * Warning: Total margin allocation (
+                        {binanceTotalRiskPct}
                         %) exceeds 100% of wallet balance. Reduce Risk per Trade
                         or Max Open Positions.
                       </p>
