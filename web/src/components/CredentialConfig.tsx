@@ -371,7 +371,7 @@ export default function CredentialConfig() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">
           Bot Config & Credentials
@@ -381,9 +381,9 @@ export default function CredentialConfig() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Kolom Kiri / Utama: Kredensial Binance & Token */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -557,7 +557,7 @@ export default function CredentialConfig() {
         </div>
 
         {/* Kolom Kanan: Pengaturan Risiko & Eksekusi Bot */}
-        <div className="md:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-6">
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">

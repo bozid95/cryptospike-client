@@ -13,6 +13,22 @@ import { ProfileView } from "./components/ProfileView";
 import { AppLogsView } from "./components/AppLogsView";
 import { authFetch } from "./lib/api";
 
+const VALID_TABS = ["positions", "logs", "config", "profile"];
+
+const getInitialTab = (): string => {
+  if (typeof window !== "undefined") {
+    const hash = window.location.hash.replace("#", "").toLowerCase();
+    if (VALID_TABS.includes(hash)) {
+      return hash;
+    }
+    const savedTab = localStorage.getItem("cryptospike_active_tab");
+    if (savedTab && VALID_TABS.includes(savedTab)) {
+      return savedTab;
+    }
+  }
+  return "positions";
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem("cryptospike_auth") === "true";
@@ -25,12 +41,32 @@ export default function App() {
       : { username: "admin", role: "Admin" };
   });
 
-  const [activeTab, setActiveTab] = useState<string>("positions");
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [activePositionsCount, setActivePositionsCount] = useState<number>(0);
   const [status, setStatus] = useState({
     bot_connected: false,
     server_url: "",
   });
+
+  // Simpan activeTab ke localStorage & sinkronkan ke URL hash
+  useEffect(() => {
+    localStorage.setItem("cryptospike_active_tab", activeTab);
+    if (window.location.hash.replace("#", "") !== activeTab) {
+      window.history.replaceState(null, "", `#${activeTab}`);
+    }
+  }, [activeTab]);
+
+  // Dukung tombol back / forward browser
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "").toLowerCase();
+      if (VALID_TABS.includes(hash) && hash !== activeTab) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchStatus = async () => {
