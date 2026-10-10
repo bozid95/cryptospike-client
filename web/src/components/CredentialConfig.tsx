@@ -37,6 +37,114 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const TOP_50_CMC: string[] = [
+  "BTCUSDT",
+  "ETHUSDT",
+  "SOLUSDT",
+  "BNBUSDT",
+  "XRPUSDT",
+  "DOGEUSDT",
+  "ADAUSDT",
+  "AVAXUSDT",
+  "LINKUSDT",
+  "SUIUSDT",
+  "SHIBUSDT",
+  "DOTUSDT",
+  "NEARUSDT",
+  "LTCUSDT",
+  "BCHUSDT",
+  "UNIUSDT",
+  "PEPEUSDT",
+  "APTUSDT",
+  "ICPUSDT",
+  "TRXUSDT",
+  "TAOUSDT",
+  "FETUSDT",
+  "RENDERUSDT",
+  "XLMUSDT",
+  "AAVEUSDT",
+  "ETCUSDT",
+  "POLUSDT",
+  "ARBUSDT",
+  "OPUSDT",
+  "ATOMUSDT",
+  "INJUSDT",
+  "SEIUSDT",
+  "FILUSDT",
+  "RUNEUSDT",
+  "TIAUSDT",
+  "HBARUSDT",
+  "IMXUSDT",
+  "WIFUSDT",
+  "BONKUSDT",
+  "GRTUSDT",
+  "STXUSDT",
+  "FLOKIUSDT",
+  "VETUSDT",
+  "MKRUSDT",
+  "ENAUSDT",
+  "JUPUSDT",
+  "ALGOUSDT",
+  "FTMUSDT",
+  "THETAUSDT",
+  "ONDOUSDT",
+];
+
+const TOP_100_CMC: string[] = Array.from(
+  new Set([
+    ...TOP_50_CMC,
+    "SANDUSDT",
+    "MANAUSDT",
+    "AXSUSDT",
+    "GALAUSDT",
+    "NEOUSDT",
+    "CRVUSDT",
+    "FLOWUSDT",
+    "DYDXUSDT",
+    "BEAMUSDT",
+    "PENDLEUSDT",
+    "KSMUSDT",
+    "CHZUSDT",
+    "ZECUSDT",
+    "1INCHUSDT",
+    "CFXUSDT",
+    "EGLDUSDT",
+    "EOSUSDT",
+    "IOTAUSDT",
+    "QNTUSDT",
+    "SNXUSDT",
+    "ROSEUSDT",
+    "MINAUSDT",
+    "CAKEUSDT",
+    "LDOUSDT",
+    "WLDUSDT",
+    "PYTHUSDT",
+    "STRKUSDT",
+    "BLURUSDT",
+    "ORDIUSDT",
+    "MEMEUSDT",
+    "ARKMUSDT",
+    "JTOUSDT",
+    "NOTUSDT",
+    "WUSDT",
+    "ZKUSDT",
+    "IOUSDT",
+    "ZROUSDT",
+    "POPCATUSDT",
+    "TURBOUSDT",
+    "BRETTUSDT",
+    "NEIROUSDT",
+    "AEROUSDT",
+    "KAVAUSDT",
+    "COMPUSDT",
+    "GMXUSDT",
+    "DYMUSDT",
+    "ALTUSDT",
+    "PORTALUSDT",
+    "PIXELUSDT",
+  ]),
+);
+
 export default function CredentialConfig() {
   const [token, setToken] = useState("");
   const [environment, setEnvironment] = useState<"TESTNET" | "LIVE">("TESTNET");
@@ -685,6 +793,24 @@ export default function CredentialConfig() {
                       }
                     >
                       Top L1
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                      onClick={() => handleSetPreset(TOP_50_CMC)}
+                    >
+                      Top 50 CMC
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
+                      onClick={() => handleSetPreset(TOP_100_CMC)}
+                    >
+                      Top 100 CMC
                     </Button>
                     <Button
                       type="button"
