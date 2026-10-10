@@ -5,10 +5,13 @@ import assert from "node:assert/strict";
 export function evaluateCoinFilter(
   symbol: string,
   filterMode: string = "ALL",
-  rawTargetCoins: string = ""
+  rawTargetCoins: string = "",
 ): { allowed: boolean; reason: string } {
   const mode = (filterMode || "ALL").toUpperCase();
-  const cleanSignal = symbol.trim().replace(/[\/\-_\s]/g, "").toUpperCase();
+  const cleanSignal = symbol
+    .trim()
+    .replace(/[\/\-_\s]/g, "")
+    .toUpperCase();
   const signalBase = cleanSignal.endsWith("USDT")
     ? cleanSignal.slice(0, -4)
     : cleanSignal;
@@ -22,16 +25,17 @@ export function evaluateCoinFilter(
 
   const coinList = rawTargetCoins
     .split(/[,;\s]+/)
-    .map((c) => c.trim().replace(/[\/\-_\s]/g, "").toUpperCase())
+    .map((c) =>
+      c
+        .trim()
+        .replace(/[\/\-_\s]/g, "")
+        .toUpperCase(),
+    )
     .filter(Boolean);
 
   const isMatch = coinList.some((target) => {
-    const targetBase = target.endsWith("USDT")
-      ? target.slice(0, -4)
-      : target;
-    const targetWithUsdt = target.endsWith("USDT")
-      ? target
-      : `${target}USDT`;
+    const targetBase = target.endsWith("USDT") ? target.slice(0, -4) : target;
+    const targetWithUsdt = target.endsWith("USDT") ? target : `${target}USDT`;
 
     return (
       cleanSignal === target ||
@@ -48,7 +52,10 @@ export function evaluateCoinFilter(
         reason: `Sinyal ${cleanSignal} dilewati karena tidak ada dalam Whitelist`,
       };
     }
-    return { allowed: true, reason: `Sinyal ${cleanSignal} diizinkan oleh Whitelist` };
+    return {
+      allowed: true,
+      reason: `Sinyal ${cleanSignal} diizinkan oleh Whitelist`,
+    };
   }
 
   if (mode === "BLACKLIST") {
@@ -58,7 +65,10 @@ export function evaluateCoinFilter(
         reason: `Sinyal ${cleanSignal} dilewati karena ada dalam Blacklist`,
       };
     }
-    return { allowed: true, reason: `Sinyal ${cleanSignal} tidak ada dalam Blacklist` };
+    return {
+      allowed: true,
+      reason: `Sinyal ${cleanSignal} tidak ada dalam Blacklist`,
+    };
   }
 
   return { allowed: true, reason: "Default fallback" };
@@ -76,26 +86,111 @@ export function normalizeSymbolInput(input: string): string {
 
 // Preset Top 50 & 100 CMC
 export const TOP_50_CMC: string[] = [
-  "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT",
-  "AVAXUSDT", "LINKUSDT", "SUIUSDT", "SHIBUSDT", "DOTUSDT", "NEARUSDT", "LTCUSDT",
-  "BCHUSDT", "UNIUSDT", "PEPEUSDT", "APTUSDT", "ICPUSDT", "TRXUSDT", "TAOUSDT",
-  "FETUSDT", "RENDERUSDT", "XLMUSDT", "AAVEUSDT", "ETCUSDT", "POLUSDT", "ARBUSDT",
-  "OPUSDT", "ATOMUSDT", "INJUSDT", "SEIUSDT", "FILUSDT", "RUNEUSDT", "TIAUSDT",
-  "HBARUSDT", "IMXUSDT", "WIFUSDT", "BONKUSDT", "GRTUSDT", "STXUSDT", "FLOKIUSDT",
-  "VETUSDT", "MKRUSDT", "ENAUSDT", "JUPUSDT", "ALGOUSDT", "FTMUSDT", "THETAUSDT", "ONDOUSDT",
+  "BTCUSDT",
+  "ETHUSDT",
+  "SOLUSDT",
+  "BNBUSDT",
+  "XRPUSDT",
+  "DOGEUSDT",
+  "ADAUSDT",
+  "AVAXUSDT",
+  "LINKUSDT",
+  "SUIUSDT",
+  "SHIBUSDT",
+  "DOTUSDT",
+  "NEARUSDT",
+  "LTCUSDT",
+  "BCHUSDT",
+  "UNIUSDT",
+  "PEPEUSDT",
+  "APTUSDT",
+  "ICPUSDT",
+  "TRXUSDT",
+  "TAOUSDT",
+  "FETUSDT",
+  "RENDERUSDT",
+  "XLMUSDT",
+  "AAVEUSDT",
+  "ETCUSDT",
+  "POLUSDT",
+  "ARBUSDT",
+  "OPUSDT",
+  "ATOMUSDT",
+  "INJUSDT",
+  "SEIUSDT",
+  "FILUSDT",
+  "RUNEUSDT",
+  "TIAUSDT",
+  "HBARUSDT",
+  "IMXUSDT",
+  "WIFUSDT",
+  "BONKUSDT",
+  "GRTUSDT",
+  "STXUSDT",
+  "FLOKIUSDT",
+  "VETUSDT",
+  "MKRUSDT",
+  "ENAUSDT",
+  "JUPUSDT",
+  "ALGOUSDT",
+  "FTMUSDT",
+  "THETAUSDT",
+  "ONDOUSDT",
 ];
 
 export const TOP_100_CMC: string[] = Array.from(
   new Set([
     ...TOP_50_CMC,
-    "SANDUSDT", "MANAUSDT", "AXSUSDT", "GALAUSDT", "NEOUSDT", "CRVUSDT", "FLOWUSDT",
-    "DYDXUSDT", "BEAMUSDT", "PENDLEUSDT", "KSMUSDT", "CHZUSDT", "ZECUSDT", "1INCHUSDT",
-    "CFXUSDT", "EGLDUSDT", "EOSUSDT", "IOTAUSDT", "QNTUSDT", "SNXUSDT", "ROSEUSDT",
-    "MINAUSDT", "CAKEUSDT", "LDOUSDT", "WLDUSDT", "PYTHUSDT", "STRKUSDT", "BLURUSDT",
-    "ORDIUSDT", "MEMEUSDT", "ARKMUSDT", "JTOUSDT", "NOTUSDT", "WUSDT", "ZKUSDT",
-    "IOUSDT", "ZROUSDT", "POPCATUSDT", "TURBOUSDT", "BRETTUSDT", "NEIROUSDT", "AEROUSDT",
-    "KAVAUSDT", "COMPUSDT", "GMXUSDT", "DYMUSDT", "ALTUSDT", "PORTALUSDT", "PIXELUSDT",
-  ])
+    "SANDUSDT",
+    "MANAUSDT",
+    "AXSUSDT",
+    "GALAUSDT",
+    "NEOUSDT",
+    "CRVUSDT",
+    "FLOWUSDT",
+    "DYDXUSDT",
+    "BEAMUSDT",
+    "PENDLEUSDT",
+    "KSMUSDT",
+    "CHZUSDT",
+    "ZECUSDT",
+    "1INCHUSDT",
+    "CFXUSDT",
+    "EGLDUSDT",
+    "EOSUSDT",
+    "IOTAUSDT",
+    "QNTUSDT",
+    "SNXUSDT",
+    "ROSEUSDT",
+    "MINAUSDT",
+    "CAKEUSDT",
+    "LDOUSDT",
+    "WLDUSDT",
+    "PYTHUSDT",
+    "STRKUSDT",
+    "BLURUSDT",
+    "ORDIUSDT",
+    "MEMEUSDT",
+    "ARKMUSDT",
+    "JTOUSDT",
+    "NOTUSDT",
+    "WUSDT",
+    "ZKUSDT",
+    "IOUSDT",
+    "ZROUSDT",
+    "POPCATUSDT",
+    "TURBOUSDT",
+    "BRETTUSDT",
+    "NEIROUSDT",
+    "AEROUSDT",
+    "KAVAUSDT",
+    "COMPUSDT",
+    "GMXUSDT",
+    "DYMUSDT",
+    "ALTUSDT",
+    "PORTALUSDT",
+    "PIXELUSDT",
+  ]),
 );
 
 describe("Coin Filter Feature Unit Tests", () => {
@@ -115,9 +210,18 @@ describe("Coin Filter Feature Unit Tests", () => {
     const whitelist = "BTCUSDT,ETHUSDT,ADAUSDT,SOLUSDT";
 
     it("harus mengizinkan koin yang ada dalam whitelist", () => {
-      assert.equal(evaluateCoinFilter("BTCUSDT", "WHITELIST", whitelist).allowed, true);
-      assert.equal(evaluateCoinFilter("ADAUSDT", "WHITELIST", whitelist).allowed, true);
-      assert.equal(evaluateCoinFilter("SOLUSDT", "WHITELIST", whitelist).allowed, true);
+      assert.equal(
+        evaluateCoinFilter("BTCUSDT", "WHITELIST", whitelist).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("ADAUSDT", "WHITELIST", whitelist).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("SOLUSDT", "WHITELIST", whitelist).allowed,
+        true,
+      );
     });
 
     it("harus memblokir/melewati koin yang TIDAK ada dalam whitelist", () => {
@@ -136,13 +240,25 @@ describe("Coin Filter Feature Unit Tests", () => {
 
     it("harus mendukung delimiter koma, spasi, atau titik koma", () => {
       const mixedDelimiter = "BTCUSDT; ETHUSDT  ADAUSDT,SOLUSDT";
-      assert.equal(evaluateCoinFilter("ADAUSDT", "WHITELIST", mixedDelimiter).allowed, true);
-      assert.equal(evaluateCoinFilter("ETHUSDT", "WHITELIST", mixedDelimiter).allowed, true);
-      assert.equal(evaluateCoinFilter("XRPUSDT", "WHITELIST", mixedDelimiter).allowed, false);
+      assert.equal(
+        evaluateCoinFilter("ADAUSDT", "WHITELIST", mixedDelimiter).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("ETHUSDT", "WHITELIST", mixedDelimiter).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("XRPUSDT", "WHITELIST", mixedDelimiter).allowed,
+        false,
+      );
     });
 
     it("harus memblokir semua koin jika whitelist kosong", () => {
-      assert.equal(evaluateCoinFilter("BTCUSDT", "WHITELIST", "").allowed, false);
+      assert.equal(
+        evaluateCoinFilter("BTCUSDT", "WHITELIST", "").allowed,
+        false,
+      );
     });
   });
 
@@ -156,9 +272,18 @@ describe("Coin Filter Feature Unit Tests", () => {
     });
 
     it("harus mengizinkan koin yang TIDAK ada dalam blacklist", () => {
-      assert.equal(evaluateCoinFilter("BTCUSDT", "BLACKLIST", blacklist).allowed, true);
-      assert.equal(evaluateCoinFilter("ETHUSDT", "BLACKLIST", blacklist).allowed, true);
-      assert.equal(evaluateCoinFilter("ADAUSDT", "BLACKLIST", blacklist).allowed, true);
+      assert.equal(
+        evaluateCoinFilter("BTCUSDT", "BLACKLIST", blacklist).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("ETHUSDT", "BLACKLIST", blacklist).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("ADAUSDT", "BLACKLIST", blacklist).allowed,
+        true,
+      );
     });
   });
 
@@ -189,7 +314,11 @@ describe("Coin Filter Feature Unit Tests", () => {
 
     it("tidak boleh ada simbol duplikat di Top 50", () => {
       const set = new Set(TOP_50_CMC);
-      assert.equal(set.size, TOP_50_CMC.length, "Top 50 tidak boleh memiliki duplikat");
+      assert.equal(
+        set.size,
+        TOP_50_CMC.length,
+        "Top 50 tidak boleh memiliki duplikat",
+      );
     });
 
     it("semua koin Top 100 harus berakhiran USDT", () => {
@@ -200,13 +329,20 @@ describe("Coin Filter Feature Unit Tests", () => {
 
     it("tidak boleh ada simbol duplikat di Top 100", () => {
       const set = new Set(TOP_100_CMC);
-      assert.equal(set.size, TOP_100_CMC.length, "Top 100 tidak boleh memiliki duplikat");
+      assert.equal(
+        set.size,
+        TOP_100_CMC.length,
+        "Top 100 tidak boleh memiliki duplikat",
+      );
     });
 
     it("Top 50 harus merupakan subset dari Top 100", () => {
       const top100Set = new Set(TOP_100_CMC);
       for (const coin of TOP_50_CMC) {
-        assert.ok(top100Set.has(coin), `Top 100 harus mencakup ${coin} dari Top 50`);
+        assert.ok(
+          top100Set.has(coin),
+          `Top 100 harus mencakup ${coin} dari Top 50`,
+        );
       }
     });
   });
@@ -243,5 +379,3 @@ describe("Coin Filter Feature Unit Tests", () => {
     });
   });
 });
-
-

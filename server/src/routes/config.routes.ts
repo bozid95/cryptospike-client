@@ -74,7 +74,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       updateData.riskPerTradePct = Number(riskPerTradePct);
     if (maxOpenPositions !== undefined)
       updateData.maxOpenPositions = Number(maxOpenPositions);
-    if (coinFilterMode !== undefined) updateData.coinFilterMode = coinFilterMode;
+    if (coinFilterMode !== undefined)
+      updateData.coinFilterMode = coinFilterMode;
     if (targetCoins !== undefined)
       updateData.targetCoins =
         typeof targetCoins === "string" ? targetCoins.trim() : "";
@@ -114,29 +115,33 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
 });
 
 // 3. Tes Koneksi Kredensial Binance
-configRouter.post("/test-connection", requireAuth, async (req: Request, res: Response) => {
-  try {
-    const { apiKey, apiSecret, environment } = req.body;
+configRouter.post(
+  "/test-connection",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const { apiKey, apiSecret, environment } = req.body;
 
-    if (!apiKey || !apiSecret) {
-      return res.status(400).json({
+      if (!apiKey || !apiSecret) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Binance API Key dan API Secret wajib diisi untuk menguji koneksi.",
+        });
+      }
+
+      const result = await testBinanceConnection(
+        apiKey.trim(),
+        apiSecret.trim(),
+        environment || "TESTNET",
+      );
+
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({
         success: false,
-        message:
-          "Binance API Key dan API Secret wajib diisi untuk menguji koneksi.",
+        message: err.message || "Gagal menguji koneksi.",
       });
     }
-
-    const result = await testBinanceConnection(
-      apiKey.trim(),
-      apiSecret.trim(),
-      environment || "TESTNET",
-    );
-
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: err.message || "Gagal menguji koneksi.",
-    });
-  }
-});
+  },
+);

@@ -583,7 +583,9 @@ export async function executeSignalOrder(
       signal?.data?.symbol ||
       symbol ||
       ""
-    ).toString().trim();
+    )
+      .toString()
+      .trim();
 
     const cleanSignal = rawSymbol.replace(/[\/\-_\s]/g, "").toUpperCase();
     const signalBase = cleanSignal.endsWith("USDT")
@@ -596,16 +598,17 @@ export async function executeSignalOrder(
     const rawTarget = config.targetCoins || "";
     const coinList = rawTarget
       .split(/[,;\s]+/)
-      .map((c) => c.trim().replace(/[\/\-_\s]/g, "").toUpperCase())
+      .map((c) =>
+        c
+          .trim()
+          .replace(/[\/\-_\s]/g, "")
+          .toUpperCase(),
+      )
       .filter(Boolean);
 
     const isMatch = coinList.some((target) => {
-      const targetBase = target.endsWith("USDT")
-        ? target.slice(0, -4)
-        : target;
-      const targetWithUsdt = target.endsWith("USDT")
-        ? target
-        : `${target}USDT`;
+      const targetBase = target.endsWith("USDT") ? target.slice(0, -4) : target;
+      const targetWithUsdt = target.endsWith("USDT") ? target : `${target}USDT`;
 
       return (
         cleanSignal === target ||
