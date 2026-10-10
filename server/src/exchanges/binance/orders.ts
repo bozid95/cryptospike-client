@@ -34,7 +34,7 @@ export async function setLeverage(
     addAppLog(
       "WARN",
       "Binance",
-      `Set leverage ${leverage}x untuk ${symbol} gagal: ${err.message}`,
+      `Failed to set leverage ${leverage}x for ${symbol}: ${err.message}`,
     );
   }
 }
@@ -164,7 +164,7 @@ export async function cancelAllOpenOrders(
     addAppLog(
       "WARN",
       "Binance",
-      `Cancel all orders ${symbol} gagal: ${err.message}`,
+      `Failed to cancel all orders for ${symbol}: ${err.message}`,
     );
   }
 }
@@ -221,7 +221,7 @@ export async function executeSignalOrder(
   addAppLog(
     "INFO",
     "SignalEngine",
-    `Menerima sinyal [${strategy || "AUTO"}] ${symbol} ${side} @ ${entryPrice} (TP: ${tpStr || "None"} | SL: ${slStr})`,
+    `Received signal [${strategy || "AUTO"}] ${symbol} ${side} @ ${entryPrice} (TP: ${tpStr || "None"} | SL: ${slStr})`,
   );
 
   // 1. Cek autoExecute
@@ -229,7 +229,7 @@ export async function executeSignalOrder(
     addAppLog(
       "WARN",
       "Executor",
-      `AutoExecute dinonaktifkan di konfigurasi. Sinyal ${symbol} dilewati.`,
+      `AutoExecute is disabled in configuration. Signal ${symbol} skipped.`,
     );
     return;
   }
@@ -262,7 +262,7 @@ export async function executeSignalOrder(
     addAppLog(
       "ERROR",
       "Executor",
-      `API Key / Secret Binance belum dikonfigurasi. Eksekusi ${symbol} dibatalkan.`,
+      `Binance API Key / Secret is not configured. Execution for ${symbol} aborted.`,
     );
     return;
   }
@@ -283,7 +283,7 @@ export async function executeSignalOrder(
       addAppLog(
         "WARN",
         "Executor",
-        `Batas maksimal posisi tercapai (${positions.length}/${config.maxOpenPositions}). Sinyal ${symbol} dilewati.`,
+        `Max open positions limit reached (${positions.length}/${config.maxOpenPositions}). Signal ${symbol} skipped.`,
       );
       return;
     }
@@ -293,7 +293,7 @@ export async function executeSignalOrder(
       addAppLog(
         "WARN",
         "Executor",
-        `Posisi untuk ${symbol} sudah berjalan di Binance (${existing.side} ${existing.positionAmt}). Eksekusi dilewati.`,
+        `Position for ${symbol} is already open on Binance (${existing.side} ${existing.positionAmt}). Execution skipped.`,
       );
       return;
     }
@@ -310,7 +310,7 @@ export async function executeSignalOrder(
       addAppLog(
         "WARN",
         "Executor",
-        `Saldo margin Binance kurang ($${walletBalance.toFixed(2)}). Minimal $10 diperlukan.`,
+        `Insufficient Binance margin balance ($${walletBalance.toFixed(2)}). Minimum $10 required.`,
       );
       return;
     }
@@ -326,7 +326,7 @@ export async function executeSignalOrder(
       addAppLog(
         "WARN",
         "Executor",
-        `Nilai notional ($${notionalValue.toFixed(2)}) di bawah batas minimum Binance ($${filters.minNotional}). Eksekusi ${symbol} dilewati.`,
+        `Notional value ($${notionalValue.toFixed(2)}) is below Binance minimum limit ($${filters.minNotional}). Execution for ${symbol} skipped.`,
       );
       return;
     }
@@ -338,7 +338,7 @@ export async function executeSignalOrder(
       addAppLog(
         "WARN",
         "Executor",
-        `Quantity 0 setelah pembulatan stepSize (${filters.stepSize}) untuk ${symbol}.`,
+        `Quantity rounded down to 0 with stepSize (${filters.stepSize}) for ${symbol}.`,
       );
       return;
     }
@@ -358,7 +358,7 @@ export async function executeSignalOrder(
     addAppLog(
       "INFO",
       "Executor",
-      `Membuka order MARKET ${orderSide} ${quantity} ${symbol} (Margin: ~$${marginToRisk.toFixed(2)}, Lev: ${leverage}x)...`,
+      `Submitting MARKET ${orderSide} order ${quantity} ${symbol} (Margin: ~$${marginToRisk.toFixed(2)}, Lev: ${leverage}x)...`,
     );
 
     const entryOrder = await placeOrder(
@@ -376,7 +376,7 @@ export async function executeSignalOrder(
     addAppLog(
       "SUCCESS",
       "Executor",
-      `Order Entry Berhasil! ID: ${entryOrder.orderId} | ${symbol} ${side} ${quantity}`,
+      `Entry Order Succeeded! ID: ${entryOrder.orderId} | ${symbol} ${side} ${quantity}`,
     );
 
     // 9. Pasang Take Profit Parsial (TP1: 50%, TP2: 30%, TP3: 20%) & Stop Loss
@@ -438,7 +438,7 @@ export async function executeSignalOrder(
         addAppLog(
           "WARN",
           "Executor",
-          `Gagal pasang TP1 ${symbol}: ${err.message}`,
+          `Failed to place TP1 for ${symbol}: ${err.message}`,
         );
       }
     }
@@ -470,7 +470,7 @@ export async function executeSignalOrder(
         addAppLog(
           "WARN",
           "Executor",
-          `Gagal pasang TP2 ${symbol}: ${err.message}`,
+          `Failed to place TP2 for ${symbol}: ${err.message}`,
         );
       }
     }
@@ -502,7 +502,7 @@ export async function executeSignalOrder(
         addAppLog(
           "WARN",
           "Executor",
-          `Gagal pasang TP3 ${symbol}: ${err.message}`,
+          `Failed to place TP3 for ${symbol}: ${err.message}`,
         );
       }
     }
@@ -533,20 +533,20 @@ export async function executeSignalOrder(
       addAppLog(
         "INFO",
         "Executor",
-        `[${slType} PLACED] ${symbol} Stop Loss set di ${targetSlPrice}`,
+        `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice}`,
       );
     } catch (err: any) {
       addAppLog(
         "WARN",
         "Executor",
-        `Gagal pasang Stop Loss ${symbol}: ${err.message}`,
+        `Failed to place Stop Loss for ${symbol}: ${err.message}`,
       );
     }
   } catch (err: any) {
     addAppLog(
       "ERROR",
       "Executor",
-      `Eksekusi sinyal ${symbol} gagal: ${err.message}`,
+      `Signal execution failed for ${symbol}: ${err.message}`,
       err,
     );
   }

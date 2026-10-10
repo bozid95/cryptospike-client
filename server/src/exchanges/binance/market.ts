@@ -70,7 +70,7 @@ export async function getSymbolFilters(
     addAppLog(
       "WARN",
       "Binance",
-      `Gagal membaca filters untuk ${symbol}: ${err.message}`,
+      `Failed to load filters for ${symbol}: ${err.message}`,
     );
     return {
       tickSize: 0.0001,

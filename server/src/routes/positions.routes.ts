@@ -191,14 +191,14 @@ positionsRouter.post(
       if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
         return res.status(400).json({
           success: false,
-          message: "API Key Binance belum dikonfigurasi.",
+          message: "Binance API Key is not configured.",
         });
       }
 
       addAppLog(
         "INFO",
         "ManualAction",
-        `Menutup posisi manual Binance untuk ${symbol}...`,
+        `Closing manual Binance position for ${symbol}...`,
       );
       const isTestnet = binanceConfig.environment === "TESTNET";
       const result = await closePositionDirect(
@@ -211,18 +211,18 @@ positionsRouter.post(
       addAppLog(
         "SUCCESS",
         "ManualAction",
-        `Posisi ${symbol} berhasil ditutup!`,
+        `Position ${symbol} closed successfully!`,
       );
       res.json({
         success: true,
-        message: `Posisi ${symbol} berhasil ditutup!`,
+        message: `Position ${symbol} closed successfully!`,
         result,
       });
     } catch (err: any) {
       addAppLog(
         "ERROR",
         "ManualAction",
-        `Gagal menutup posisi ${req.body.symbol}: ${err.message}`,
+        `Failed to close position ${req.body.symbol}: ${err.message}`,
       );
       res.status(500).json({ success: false, message: err.message });
     }
@@ -288,7 +288,7 @@ positionsRouter.post(
 
         return res.json({
           success: true,
-          message: `Berhasil menutup ${successCount} dari ${openTrades.length} posisi spot.`,
+          message: `Successfully closed ${successCount} of ${openTrades.length} spot positions.`,
         });
       }
 
@@ -296,7 +296,7 @@ positionsRouter.post(
       if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
         return res.status(400).json({
           success: false,
-          message: "API Key Binance belum dikonfigurasi.",
+          message: "Binance API Key is not configured.",
         });
       }
 
@@ -313,14 +313,14 @@ positionsRouter.post(
       if (positions.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "Tidak ada posisi aktif untuk ditutup.",
+          message: "No active positions to close.",
         });
       }
 
       addAppLog(
         "INFO",
         "ManualAction",
-        `Memulai proses penutupan SEMUA posisi (${positions.length} posisi)...`,
+        `Initiating Close All for ${positions.length} positions...`,
       );
 
       const results = await Promise.allSettled(
@@ -337,18 +337,18 @@ positionsRouter.post(
       addAppLog(
         "SUCCESS",
         "ManualAction",
-        `Close All Selesai. Sukses: ${successCount}, Gagal: ${failCount}`,
+        `Close All Completed. Success: ${successCount}, Failed: ${failCount}`,
       );
 
       res.json({
         success: true,
-        message: `Berhasil menutup ${successCount} posisi. ${failCount > 0 ? `Gagal menutup ${failCount} posisi.` : ""}`,
+        message: `Successfully closed ${successCount} positions. ${failCount > 0 ? `Failed to close ${failCount} positions.` : ""}`,
       });
     } catch (err: any) {
       addAppLog(
         "ERROR",
         "ManualAction",
-        `Gagal melakukan Close All: ${err.message}`,
+        `Failed to Close All: ${err.message}`,
       );
       res.status(500).json({ success: false, message: err.message });
     }

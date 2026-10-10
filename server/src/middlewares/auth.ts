@@ -16,7 +16,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
-      message: "Akses ditolak. Token autentikasi JWT tidak ditemukan.",
+      message: "Access denied. JWT authentication token not found.",
     });
   }
 
@@ -26,8 +26,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!decoded) {
     return res.status(401).json({
       success: false,
-      message:
-        "Sesi telah berakhir atau token tidak valid. Silakan login kembali.",
+      message: "Session expired or token is invalid. Please log in again.",
     });
   }
 

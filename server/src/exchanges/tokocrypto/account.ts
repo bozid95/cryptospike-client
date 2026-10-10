@@ -18,7 +18,7 @@ export async function getTokocryptoBalance(
   const cleanSecret = apiSecret.trim();
 
   if (!cleanKey || !cleanSecret) {
-    throw new Error("API Key dan API Secret Tokocrypto tidak boleh kosong.");
+    throw new Error("Tokocrypto API Key and API Secret cannot be empty.");
   }
 
   const serverTime = await getTokocryptoServerTime(baseUrl, customFetch);
@@ -46,7 +46,7 @@ export async function getTokocryptoBalance(
   const json = (await res.json()) as any;
   if (json.code !== undefined && json.code !== 0 && json.code !== 200) {
     throw new Error(
-      `Tokocrypto Error [${json.code}]: ${json.msg || "Gagal mengambil saldo"}`,
+      `Tokocrypto Error [${json.code}]: ${json.msg || "Failed to retrieve balance"}`,
     );
   }
 
@@ -96,7 +96,7 @@ export async function testTokocryptoConnection(
     if (!cleanKey || !cleanSecret) {
       return {
         success: false,
-        message: "API Key dan Secret Tokocrypto wajib diisi.",
+        message: "Tokocrypto API Key and Secret are required.",
       };
     }
 
@@ -111,14 +111,14 @@ export async function testTokocryptoConnection(
 
     return {
       success: true,
-      message: `Koneksi Tokocrypto berhasil! Saldo ${quoteAsset}: ${balance.free.toFixed(2)}`,
+      message: `Tokocrypto connection verified! Available ${quoteAsset}: ${balance.free.toFixed(2)}`,
       balance: balance.free,
       serverTime,
     };
   } catch (err: any) {
     return {
       success: false,
-      message: `Gagal verifikasi Tokocrypto: ${err.message}`,
+      message: `Tokocrypto verification failed: ${err.message}`,
     };
   }
 }

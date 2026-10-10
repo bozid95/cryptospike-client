@@ -32,18 +32,18 @@ export function validateTokocryptoSignal(signal: {
     return {
       allowed: false,
       reason:
-        "Tokocrypto adalah bursa Spot yang hanya mendukung posisi BUY / LONG. Sinyal SHORT otomatis dilewati.",
+        "Tokocrypto is a Spot exchange supporting only BUY / LONG positions. SHORT signals are automatically skipped.",
     };
   }
 
   if (side !== "LONG" && side !== "BUY") {
     return {
       allowed: false,
-      reason: `Arah sinyal '${side}' tidak valid untuk pasar spot Tokocrypto.`,
+      reason: `Signal side '${side}' is not valid for Tokocrypto spot market.`,
     };
   }
 
-  return { allowed: true, reason: "Sinyal valid untuk spot BUY/LONG." };
+  return { allowed: true, reason: "Signal is valid for spot BUY/LONG." };
 }
 
 /**
@@ -80,7 +80,7 @@ export function calculateSpotOrderQuantity(params: {
       quantity: 0,
       notional: 0,
       isValid: false,
-      reason: "Saldo dompet tidak mencukupi (0).",
+      reason: "Insufficient wallet balance (0).",
     };
   }
 
@@ -89,7 +89,7 @@ export function calculateSpotOrderQuantity(params: {
       quantity: 0,
       notional: 0,
       isValid: false,
-      reason: "Harga pasar koin tidak valid (<= 0).",
+      reason: "Invalid coin market price (<= 0).",
     };
   }
 
@@ -120,7 +120,7 @@ export function calculateSpotOrderQuantity(params: {
         quantity: 0,
         notional: targetAllocation,
         isValid: false,
-        reason: `Alokasi modal ($${targetAllocation.toFixed(2)}) di bawah batas minimum transaksi bursa ($${minNotional.toFixed(2)}).`,
+        reason: `Capital allocation ($${targetAllocation.toFixed(2)}) is below exchange minimum notional requirement ($${minNotional.toFixed(2)}).`,
       };
     }
   }
@@ -140,7 +140,7 @@ export function calculateSpotOrderQuantity(params: {
       quantity: 0,
       notional: actualNotional,
       isValid: false,
-      reason: `Kuantitas koin setelah pembulatan (${quantity}) menghasilkan nominal ($${actualNotional.toFixed(2)}) di bawah batas minimum ($${minNotional.toFixed(2)}).`,
+      reason: `Coin quantity after rounding (${quantity}) produces notional value ($${actualNotional.toFixed(2)}) below minimum requirement ($${minNotional.toFixed(2)}).`,
     };
   }
 
@@ -201,7 +201,7 @@ export async function placeTokocryptoOrder(
 
   const json = (await res.json()) as any;
   if (json.code !== undefined && json.code !== 0 && json.code !== 200) {
-    throw new Error(`Tokocrypto Order Gagal [${json.code}]: ${json.msg}`);
+    throw new Error(`Tokocrypto Order Failed [${json.code}]: ${json.msg}`);
   }
 
   const data = json.data || {};
@@ -256,7 +256,7 @@ export async function executeTokocryptoSignalOrder(
   if (!config.autoExecute) {
     return {
       success: false,
-      message: "Auto-trade nonaktif di konfigurasi Tokocrypto.",
+      message: "Auto-trade is disabled in Tokocrypto configuration.",
     };
   }
 
@@ -308,14 +308,14 @@ export async function executeTokocryptoSignalOrder(
         addAppLog(
           "INFO",
           "Tokocrypto",
-          `[FeeShield] TP1 ${signal.symbol} (+${tp1GainPct.toFixed(2)}%) terlalu tipis (<${minGainPct}%). Target dialihkan ke TP2: $${targetTp} (+${newGain}%). Fee bursa aman.`,
+          `[FeeShield] TP1 ${signal.symbol} (+${tp1GainPct.toFixed(2)}%) is too tight (<${minGainPct}%). Target diverted to TP2: $${targetTp} (+${newGain}%). Exchange fee protected.`,
         );
       } else {
         targetTp = entryPrice * 1.03; // Fallback pengaman minimal +3.0%
         addAppLog(
           "INFO",
           "Tokocrypto",
-          `[FeeShield] TP1 ${signal.symbol} (+${tp1GainPct.toFixed(2)}%) terlalu tipis. Disesuaikan ke target aman minimal +3.0%: $${targetTp.toFixed(4)}.`,
+          `[FeeShield] TP1 ${signal.symbol} (+${tp1GainPct.toFixed(2)}%) is too tight. Adjusted to safe minimum target +3.0%: $${targetTp.toFixed(4)}.`,
         );
       }
     }
@@ -326,7 +326,7 @@ export async function executeTokocryptoSignalOrder(
 
   // 4. Mode Dry-Run (Simulasi)
   if (config.dryRun) {
-    const simulatedMsg = `[SIMULASI] Order BUY ${formattedSymbol} pada harga $${entryPrice} berhasil. Target TP1: $${tpPrice.toFixed(4)}, SL: $${slPrice.toFixed(4)}.`;
+    const simulatedMsg = `[SIMULATION] BUY order ${formattedSymbol} at $${entryPrice} succeeded. Target TP: $${tpPrice.toFixed(4)}, SL: $${slPrice.toFixed(4)}.`;
     addAppLog("SUCCESS", "Tokocrypto", simulatedMsg);
 
     // Kuantitas simulasi disesuaikan dengan nominal kas ($ / Rp) yang disetel
@@ -359,7 +359,7 @@ export async function executeTokocryptoSignalOrder(
   const apiSecret = (config.tokocryptoApiSecret || "").trim();
 
   if (!apiKey || !apiSecret) {
-    const msg = "API Key / Secret Tokocrypto belum dikonfigurasi.";
+    const msg = "Tokocrypto API Key / Secret is not configured.";
     addAppLog("ERROR", "Tokocrypto", msg);
     return { success: false, message: msg };
   }
@@ -403,7 +403,7 @@ export async function executeTokocryptoSignalOrder(
     });
 
     if (!qtyResult.isValid) {
-      const msg = `Gagal menghitung alokasi koin ${formattedSymbol}: ${qtyResult.reason}`;
+      const msg = `Failed to calculate coin allocation for ${formattedSymbol}: ${qtyResult.reason}`;
       addAppLog("WARN", "Tokocrypto", msg);
       return { success: false, message: msg };
     }
@@ -412,7 +412,7 @@ export async function executeTokocryptoSignalOrder(
     addAppLog(
       "INFO",
       "Tokocrypto",
-      `Menembakkan BUY Market ${formattedSymbol} sebanyak ${qtyResult.quantity} (~$${qtyResult.notional})...`,
+      `Submitting MARKET BUY order for ${formattedSymbol} qty ${qtyResult.quantity} (~$${qtyResult.notional})...`,
     );
 
     const orderResult = await placeTokocryptoOrder(
@@ -428,7 +428,7 @@ export async function executeTokocryptoSignalOrder(
       customFetch,
     );
 
-    const successMsg = `Order BUY ${formattedSymbol} berhasil dieksekusi di Tokocrypto! OrderID: ${orderResult.orderId}`;
+    const successMsg = `BUY order for ${formattedSymbol} executed successfully on Tokocrypto! OrderID: ${orderResult.orderId}`;
     addAppLog("SUCCESS", "Tokocrypto", successMsg);
 
     return {
@@ -439,7 +439,7 @@ export async function executeTokocryptoSignalOrder(
       slPrice,
     };
   } catch (err: any) {
-    const errorMsg = `Gagal eksekusi order Tokocrypto untuk ${formattedSymbol}: ${err.message}`;
+    const errorMsg = `Failed to execute Tokocrypto order for ${formattedSymbol}: ${err.message}`;
     addAppLog("ERROR", "Tokocrypto", errorMsg, err);
     return {
       success: false,

@@ -287,7 +287,7 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: "Konfigurasi berhasil disimpan dan bot diperbarui!",
+      message: "Configuration saved successfully and bot updated!",
       data: mergedSaved,
     });
   } catch (err: any) {
@@ -307,7 +307,7 @@ configRouter.post(
         return res.status(400).json({
           success: false,
           message:
-            "Binance API Key dan API Secret wajib diisi untuk menguji koneksi.",
+            "Binance API Key and API Secret are required to test connection.",
         });
       }
 
@@ -321,7 +321,7 @@ configRouter.post(
     } catch (err: any) {
       res.status(500).json({
         success: false,
-        message: err.message || "Gagal menguji koneksi.",
+        message: err.message || "Failed to test Binance connection.",
       });
     }
   },
@@ -339,7 +339,7 @@ configRouter.post(
         return res.status(400).json({
           success: false,
           message:
-            "Tokocrypto API Key dan API Secret wajib diisi untuk menguji koneksi.",
+            "Tokocrypto API Key and API Secret are required to test connection.",
         });
       }
 
@@ -353,7 +353,7 @@ configRouter.post(
     } catch (err: any) {
       res.status(500).json({
         success: false,
-        message: err.message || "Gagal menguji koneksi Tokocrypto.",
+        message: err.message || "Failed to test Tokocrypto connection.",
       });
     }
   },

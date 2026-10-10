@@ -13,6 +13,6 @@ logsRouter.get("/", requireAuth, (req: Request, res: Response) => {
 // 2. Bersihkan Log Aktivitas
 logsRouter.delete("/", requireAuth, (req: Request, res: Response) => {
   clearAppLogs();
-  addAppLog("INFO", "System", "Log aktivitas dibersihkan.");
-  res.json({ success: true, message: "Log berhasil dibersihkan." });
+  addAppLog("INFO", "System", "Activity logs cleared.");
+  res.json({ success: true, message: "Logs cleared successfully." });
 });

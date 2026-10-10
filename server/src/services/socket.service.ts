@@ -32,7 +32,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
       activeToken =
         config?.clientToken || process.env.CLIENT_TOKEN || undefined;
     } catch (err) {
-      console.error("[Bot] Gagal membaca token dari database:", err);
+      console.error("[Bot] Failed to read token from database:", err);
     }
   }
 
@@ -40,7 +40,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     addAppLog(
       "WARN",
       "SignalClient",
-      "Belum ada Client Token. Masukkan Client Token di Web Dashboard (Menu Config).",
+      "No Client Token installed. Please input your Client Token in Web Dashboard (Config menu).",
     );
     return;
   }
@@ -49,7 +49,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     addAppLog(
       "INFO",
       "SignalClient",
-      "Memperbarui sesi WebSocket dengan token baru...",
+      "Updating WebSocket session with new token...",
     );
     socket.disconnect();
     socket = null;
@@ -58,7 +58,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
   addAppLog(
     "INFO",
     "SignalClient",
-    `Menghubungkan ke Server Sinyal (${SERVER_URL})...`,
+    `Connecting to Signal Server (${SERVER_URL})...`,
   );
 
   socket = Client(SERVER_URL, {
@@ -73,7 +73,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     addAppLog(
       "SUCCESS",
       "SignalClient",
-      `Terhubung ke Server Sinyal (${SERVER_URL})!`,
+      `Connected to Signal Server (${SERVER_URL})!`,
     );
   });
 
@@ -81,7 +81,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     addAppLog(
       "WARN",
       "SignalClient",
-      `Terputus dari Server Sinyal (${reason})`,
+      `Disconnected from Signal Server (${reason})`,
     );
   });
 
@@ -89,7 +89,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     addAppLog(
       "WARN",
       "SignalClient",
-      `Gagal terhubung ke sinyal (${err.message})`,
+      `Failed to connect to Signal Server (${err.message})`,
     );
   });
 
@@ -109,7 +109,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
       addAppLog(
         "WARN",
         "SignalEngine",
-        "Konfigurasi bot belum tersimpan di database.",
+        "Bot configuration is not saved in the database.",
       );
       return;
     }
@@ -134,7 +134,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           addAppLog(
             "WARN",
             "Tokocrypto",
-            `Maksimal posisi terbuka (${openSpotCount}/${maxPos}) telah tercapai. Sinyal ${data?.symbol} dilewati.`,
+            `Max open positions limit reached (${openSpotCount}/${maxPos}). Signal ${data?.symbol} skipped.`,
           );
         } else {
           const result = await executeTokocryptoSignalOrder(data, {
@@ -170,7 +170,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
         addAppLog(
           "ERROR",
           "Tokocrypto",
-          `Gagal eksekusi sinyal Tokocrypto: ${tokoErr.message}`,
+          `Failed to execute Tokocrypto signal: ${tokoErr.message}`,
           tokoErr,
         );
       }
@@ -195,7 +195,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
         addAppLog(
           "ERROR",
           "Binance",
-          `Gagal eksekusi sinyal Binance: ${binanceErr.message}`,
+          `Failed to execute Binance signal: ${binanceErr.message}`,
           binanceErr,
         );
       }
@@ -204,7 +204,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
     addAppLog(
       "ERROR",
       "SignalEngine",
-      `Error saat memproses sinyal: ${err.message}`,
+      `Error processing signal: ${err.message}`,
       err,
     );
   }

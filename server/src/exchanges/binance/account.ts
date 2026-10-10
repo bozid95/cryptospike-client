@@ -40,13 +40,13 @@ export async function testBinanceConnection(
 
     return {
       success: true,
-      message: `Terhubung ke Binance Futures (${mode})! Saldo: ${totalWalletBalance.toLocaleString()} USDT`,
+      message: `Connected to Binance Futures (${mode})! Wallet Balance: ${totalWalletBalance.toLocaleString()} USDT`,
       balance: totalWalletBalance,
     };
   } catch (err: any) {
     return {
       success: false,
-      message: err.message || "Gagal menghubungi server Binance.",
+      message: err.message || "Failed to connect to Binance server.",
     };
   }
 }
@@ -77,7 +77,7 @@ export async function getAccountAndPositions(
   const accData = (await accRes.json()) as any;
 
   if (!accRes.ok || accData.code !== undefined) {
-    throw new Error(accData.msg || "Gagal mengambil data akun Binance.");
+    throw new Error(accData.msg || "Failed to retrieve Binance account data.");
   }
 
   // 2. Ambil data posisi aktif (/fapi/v2/positionRisk)

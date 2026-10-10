@@ -35,7 +35,7 @@ export function loginRateLimiter(
       );
       return res.status(429).json({
         success: false,
-        message: `Terlalu banyak percobaan login yang gagal. Silakan coba lagi dalam ${waitMinutes} menit.`,
+        message: `Too many failed login attempts. Please try again in ${waitMinutes} minutes.`,
       });
     }
 

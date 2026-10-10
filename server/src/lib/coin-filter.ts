@@ -30,7 +30,7 @@ export function evaluateCoinFilter(
   if (mode === "ALL") {
     return {
       allowed: true,
-      reason: "Mode ALL: semua koin diizinkan.",
+      reason: "ALL mode: all coins allowed.",
       cleanSignal,
     };
   }
@@ -66,13 +66,13 @@ export function evaluateCoinFilter(
     if (!isMatch) {
       return {
         allowed: false,
-        reason: `[WHITELIST BLOCKED] Sinyal ${cleanSignal} dilewati karena TIDAK ADA di Whitelist Anda (${coinList.join(", ") || "Kosong"}).`,
+        reason: `[WHITELIST BLOCKED] Signal ${cleanSignal} skipped: NOT in your Whitelist (${coinList.join(", ") || "Empty"}).`,
         cleanSignal,
       };
     }
     return {
       allowed: true,
-      reason: `[WHITELIST MATCH] Sinyal ${cleanSignal} diizinkan karena cocok dengan Whitelist Anda.`,
+      reason: `[WHITELIST MATCH] Signal ${cleanSignal} allowed: matches your Whitelist.`,
       cleanSignal,
     };
   }
@@ -81,20 +81,20 @@ export function evaluateCoinFilter(
     if (isMatch) {
       return {
         allowed: false,
-        reason: `[BLACKLIST BLOCKED] Sinyal ${cleanSignal} dilewati karena ADA dalam Blacklist Anda (${coinList.join(", ")}).`,
+        reason: `[BLACKLIST BLOCKED] Signal ${cleanSignal} skipped: included in your Blacklist (${coinList.join(", ")}).`,
         cleanSignal,
       };
     }
     return {
       allowed: true,
-      reason: `[BLACKLIST PASS] Sinyal ${cleanSignal} diizinkan karena tidak termasuk dalam Blacklist.`,
+      reason: `[BLACKLIST PASS] Signal ${cleanSignal} allowed: not in Blacklist.`,
       cleanSignal,
     };
   }
 
   return {
     allowed: true,
-    reason: "Filter mode tidak dikenali, default diizinkan.",
+    reason: "Unrecognized filter mode, allowed by default.",
     cleanSignal,
   };
 }

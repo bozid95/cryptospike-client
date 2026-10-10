@@ -84,14 +84,14 @@ export async function checkSpotTradesCycle(): Promise<void> {
           addAppLog(
             logTag,
             "SpotMonitor",
-            `[${actionType} HIT] ${trade.symbol} telah ditutup di harga $${currentPrice.toFixed(4)}. PnL: ${pnlUsd >= 0 ? "+" : ""}$${pnlUsd.toFixed(2)} (${pnlPct.toFixed(2)}%). OrderID: ${exitOrderId}`,
+            `[${actionType} HIT] ${trade.symbol} closed at $${currentPrice.toFixed(4)}. PnL: ${pnlUsd >= 0 ? "+" : ""}$${pnlUsd.toFixed(2)} (${pnlPct.toFixed(2)}%). OrderID: ${exitOrderId}`,
           );
         }
       } catch (err: any) {
         addAppLog(
           "ERROR",
           "SpotMonitor",
-          `Gagal memproses evaluasi harga untuk ${trade.symbol}: ${err.message}`,
+          `Failed to process price evaluation for ${trade.symbol}: ${err.message}`,
         );
       }
     }
@@ -119,7 +119,7 @@ export async function closeSpotTradeManually(tradeId: string): Promise<{
     if (!trade || trade.status !== "OPEN") {
       return {
         success: false,
-        message: "Posisi tidak ditemukan atau sudah ditutup sebelumnya.",
+        message: "Position not found or already closed.",
       };
     }
 
@@ -141,7 +141,7 @@ export async function closeSpotTradeManually(tradeId: string): Promise<{
       if (!apiKey || !apiSecret) {
         return {
           success: false,
-          message: "API Key / Secret Tokocrypto belum dikonfigurasi.",
+          message: "Tokocrypto API Key / Secret is not configured.",
         };
       }
 
@@ -171,19 +171,19 @@ export async function closeSpotTradeManually(tradeId: string): Promise<{
     addAppLog(
       "INFO",
       "SpotMonitor",
-      `[MANUAL CLOSE] Posisi ${trade.symbol} ditutup manual di $${currentPrice.toFixed(4)}. PnL: ${pnlUsd >= 0 ? "+" : ""}$${pnlUsd.toFixed(2)} (${pnlPct.toFixed(2)}%).`,
+      `[MANUAL CLOSE] Position ${trade.symbol} manually closed at $${currentPrice.toFixed(4)}. PnL: ${pnlUsd >= 0 ? "+" : ""}$${pnlUsd.toFixed(2)} (${pnlPct.toFixed(2)}%).`,
     );
 
     return {
       success: true,
-      message: `Posisi ${trade.symbol} berhasil dijual di harga $${currentPrice.toFixed(4)}.`,
+      message: `Position ${trade.symbol} sold successfully at $${currentPrice.toFixed(4)}.`,
       exitPrice: currentPrice,
       pnlUsd,
     };
   } catch (err: any) {
     return {
       success: false,
-      message: `Gagal menutup posisi: ${err.message}`,
+      message: `Failed to close position: ${err.message}`,
     };
   }
 }

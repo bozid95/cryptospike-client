@@ -62,7 +62,7 @@ authRouter.post("/setup", async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: "Akun Admin berhasil dibuat!",
+      message: "Admin account created successfully!",
       token,
       user: {
         id: adminUser.id,
@@ -85,7 +85,7 @@ authRouter.post(
       if (!username || !password) {
         return res.status(400).json({
           success: false,
-          message: "Username dan password wajib diisi.",
+          message: "Username and password are required.",
         });
       }
 
@@ -96,7 +96,7 @@ authRouter.post(
       if (!user || !verifyPassword(password, user.passwordHash)) {
         return res.status(401).json({
           success: false,
-          message: "Username atau password salah.",
+          message: "Invalid username or password.",
         });
       }
 
@@ -108,7 +108,7 @@ authRouter.post(
 
       res.json({
         success: true,
-        message: "Login berhasil!",
+        message: "Login successful!",
         token,
         user: {
           id: user.id,
@@ -132,14 +132,14 @@ authRouter.post(
       if (!currentPassword || !newPassword) {
         return res.status(400).json({
           success: false,
-          message: "Password saat ini dan password baru wajib diisi.",
+          message: "Current password and new password are required.",
         });
       }
 
       if (newPassword.length < 6) {
         return res.status(400).json({
           success: false,
-          message: "Password baru minimal 6 karakter.",
+          message: "New password must be at least 6 characters.",
         });
       }
 
@@ -147,7 +147,7 @@ authRouter.post(
       if (!userId) {
         return res
           .status(401)
-          .json({ success: false, message: "Sesi tidak valid." });
+          .json({ success: false, message: "Invalid session." });
       }
 
       const user = await prisma.user.findUnique({
@@ -157,14 +157,14 @@ authRouter.post(
       if (!user) {
         return res
           .status(404)
-          .json({ success: false, message: "Pengguna tidak ditemukan." });
+          .json({ success: false, message: "User not found." });
       }
 
       // Verifikasi password saat ini
       if (!verifyPassword(currentPassword, user.passwordHash)) {
         return res.status(400).json({
           success: false,
-          message: "Password saat ini salah.",
+          message: "Current password is incorrect.",
         });
       }
 
@@ -178,13 +178,13 @@ authRouter.post(
       addAppLog(
         "INFO",
         "Auth",
-        `Password untuk user [${user.username}] berhasil diperbarui.`,
+        `Password for user [${user.username}] updated successfully.`,
       );
 
       res.json({
         success: true,
         message:
-          "Password berhasil diperbarui! Silakan gunakan password baru untuk login berikutnya.",
+          "Password updated successfully! Please use your new password for your next login.",
       });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });

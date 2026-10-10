@@ -644,7 +644,6 @@ export default function CredentialConfig({
   const tokoTotalCapital =
     Number(tokocryptoRiskPerTradePct) * Number(tokocryptoMaxOpenPositions);
 
-
   const coinList = targetCoins
     .split(",")
     .map((c) => c.trim().toUpperCase())
@@ -1338,10 +1337,10 @@ export default function CredentialConfig({
                     </div>
                     {tokoTotalCapital > activeTestResult.balance && (
                       <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
-                        * Peringatan: Total alokasi (
+                        * Warning: Total allocation (
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
-                        {tokoTotalCapital.toLocaleString()}) melebihi saldo kas
-                        saat ini (
+                        {tokoTotalCapital.toLocaleString()}) exceeds current cash
+                        balance (
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {activeTestResult.balance.toLocaleString()}).
                       </p>
@@ -1421,9 +1420,9 @@ export default function CredentialConfig({
                     </div>
                     {binanceTotalRiskPct > 100 && (
                       <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
-                        * Peringatan: Total alokasi margin ({binanceTotalRiskPct}
-                        %) melebihi 100% saldo dompet. Kurangi Risk per Trade
-                        atau Max Open Positions.
+                        * Warning: Total margin allocation ({binanceTotalRiskPct}
+                        %) exceeds 100% of wallet balance. Reduce Risk per Trade
+                        or Max Open Positions.
                       </p>
                     )}
                   </div>
@@ -1847,8 +1846,10 @@ export default function CredentialConfig({
                     className={`text-xs mt-2 p-2.5 rounded-md ${binanceRiskInfo.bg} border ${binanceRiskInfo.border} ${binanceRiskInfo.color} leading-relaxed space-y-2`}
                   >
                     <p>
-                      <strong>Balance Preview [{binanceRiskInfo.label}]:</strong> Out
-                      of your available balance of{" "}
+                      <strong>
+                        Balance Preview [{binanceRiskInfo.label}]:
+                      </strong>{" "}
+                      Out of your available balance of{" "}
                       <strong>
                         {activeTestResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
