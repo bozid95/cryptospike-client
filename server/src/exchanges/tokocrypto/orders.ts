@@ -230,6 +230,8 @@ export async function executeTokocryptoSignalOrder(
     side: string;
     entryPrice: number;
     tp1?: number;
+    tp2?: number;
+    tp3?: number;
     sl?: number;
     score?: number;
     [key: string]: any;
@@ -285,9 +287,41 @@ export async function executeTokocryptoSignalOrder(
   const quoteAsset = config.tokocryptoQuoteAsset || "USDT";
   const formattedSymbol = normalizeTokocryptoSymbol(signal.symbol, quoteAsset);
 
-  // Perhitungan target Take Profit (+5% atau dari sinyal) dan Stop Loss (-2.5% atau dari sinyal)
+  // ── FEE SHIELD: Perhitungan target Take Profit & Stop Loss ──
+  // Biaya Tokocrypto round-trip adalah 0.8088% (Taker 0.15% + PPh 0.21% + ICEx 0.0444% x 2).
+  // Target minimal kotor adalah +2.5% agar margin profit bersih tetap tebal di atas biaya bursa.
   const entryPrice = Number(signal.entryPrice);
-  const tpPrice = signal.tp1 ? Number(signal.tp1) : entryPrice * 1.05;
+  const minGainPct = 2.5;
+  let targetTp = signal.tp1 ? Number(signal.tp1) : entryPrice * 1.05;
+
+  if (signal.tp1) {
+    const tp1GainPct = ((Number(signal.tp1) - entryPrice) / entryPrice) * 100;
+    if (tp1GainPct < minGainPct) {
+      if (
+        signal.tp2 &&
+        ((Number(signal.tp2) - entryPrice) / entryPrice) * 100 >= minGainPct
+      ) {
+        targetTp = Number(signal.tp2);
+        const newGain = (((targetTp - entryPrice) / entryPrice) * 100).toFixed(
+          2,
+        );
+        addAppLog(
+          "INFO",
+          "Tokocrypto",
+          `[FeeShield] TP1 ${signal.symbol} (+${tp1GainPct.toFixed(2)}%) terlalu tipis (<${minGainPct}%). Target dialihkan ke TP2: $${targetTp} (+${newGain}%). Fee bursa aman.`,
+        );
+      } else {
+        targetTp = entryPrice * 1.03; // Fallback pengaman minimal +3.0%
+        addAppLog(
+          "INFO",
+          "Tokocrypto",
+          `[FeeShield] TP1 ${signal.symbol} (+${tp1GainPct.toFixed(2)}%) terlalu tipis. Disesuaikan ke target aman minimal +3.0%: $${targetTp.toFixed(4)}.`,
+        );
+      }
+    }
+  }
+
+  const tpPrice = targetTp;
   const slPrice = signal.sl ? Number(signal.sl) : entryPrice * 0.975;
 
   // 4. Mode Dry-Run (Simulasi)
