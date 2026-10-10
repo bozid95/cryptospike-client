@@ -252,7 +252,8 @@ export default function CredentialConfig({
           if (json.success && json.data) {
             const d = json.data;
             setToken(d.clientToken || "");
-            const ex = forcedExchange || (d.targetExchange || "BINANCE").toUpperCase();
+            const ex =
+              forcedExchange || (d.targetExchange || "BINANCE").toUpperCase();
             setTargetExchange(ex === "TOKOCRYPTO" ? "TOKOCRYPTO" : "BINANCE");
             const env = d.environment === "LIVE" ? "LIVE" : "TESTNET";
             setEnvironment(env);

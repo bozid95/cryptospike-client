@@ -36,7 +36,8 @@ export function MobileBottomNav({
       id: "tokocrypto-positions",
       label: "Tokocrypto",
       icon: Coins,
-      badge: tokocryptoPositionsCount > 0 ? tokocryptoPositionsCount : undefined,
+      badge:
+        tokocryptoPositionsCount > 0 ? tokocryptoPositionsCount : undefined,
     },
     {
       id: "logs",

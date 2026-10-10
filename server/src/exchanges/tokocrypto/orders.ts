@@ -274,6 +274,12 @@ export async function executeTokocryptoSignalOrder(
   if (config.dryRun) {
     const simulatedMsg = `[SIMULASI] Order BUY ${formattedSymbol} pada harga $${entryPrice} berhasil. Target TP1: $${tpPrice.toFixed(4)}, SL: $${slPrice.toFixed(4)}.`;
     addAppLog("SUCCESS", "Tokocrypto", simulatedMsg);
+
+    // Kuantitas simulasi disesuaikan dengan nilai notional wajar ($50 paper trading)
+    const simNotional = 50;
+    const rawQty = simNotional / entryPrice;
+    const simQty = Number(rawQty.toFixed(rawQty < 1 ? 6 : 4));
+
     return {
       success: true,
       message: simulatedMsg,
@@ -286,8 +292,8 @@ export async function executeTokocryptoSignalOrder(
         side: "BUY",
         type: "MARKET",
         status: "SIMULATED_FILLED",
-        executedQty: 10,
-        cummulativeQuoteQty: entryPrice * 10,
+        executedQty: simQty > 0 ? simQty : 1,
+        cummulativeQuoteQty: simNotional,
         price: entryPrice,
       },
     };

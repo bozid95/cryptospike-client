@@ -94,85 +94,89 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
   });
 
   socket.on("new_signal", async (data) => {
-    try {
-      const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-      if (!config) {
+    await handleIncomingSignal(data);
+  });
+}
+
+export async function handleIncomingSignal(data: any): Promise<void> {
+  try {
+    const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
+    if (!config) {
+      addAppLog(
+        "WARN",
+        "SignalEngine",
+        "Konfigurasi bot belum tersimpan di database.",
+      );
+      return;
+    }
+
+    const targetExchange = (config.targetExchange || "BINANCE").toUpperCase();
+
+    if (targetExchange === "TOKOCRYPTO") {
+      // Cek batasan maksimum posisi terbuka Spot
+      const openSpotCount = await prisma.spotTrade.count({
+        where: { status: "OPEN" },
+      });
+
+      const maxPos = config.maxOpenPositions || 3;
+      if (openSpotCount >= maxPos) {
         addAppLog(
           "WARN",
-          "SignalEngine",
-          "Konfigurasi bot belum tersimpan di database.",
+          "Tokocrypto",
+          `Maksimal posisi terbuka (${openSpotCount}/${maxPos}) telah tercapai. Sinyal ${data?.symbol} dilewati.`,
         );
         return;
       }
 
-      const targetExchange = (config.targetExchange || "BINANCE").toUpperCase();
+      const result = await executeTokocryptoSignalOrder(data, {
+        autoExecute: config.autoExecute,
+        dryRun: config.dryRun,
+        tokocryptoApiKey: config.tokocryptoApiKey,
+        tokocryptoApiSecret: config.tokocryptoApiSecret,
+        tokocryptoQuoteAsset:
+          (config.tokocryptoQuoteAsset as "USDT" | "BIDR") || "USDT",
+        riskPerTradePct: config.riskPerTradePct || 2.0,
+        maxOpenPositions: maxPos,
+        coinFilterMode: config.coinFilterMode || "ALL",
+        targetCoins: config.targetCoins || "",
+      });
 
-      if (targetExchange === "TOKOCRYPTO") {
-        // Cek batasan maksimum posisi terbuka Spot
-        const openSpotCount = await prisma.spotTrade.count({
-          where: { status: "OPEN" },
-        });
-
-        const maxPos = config.maxOpenPositions || 3;
-        if (openSpotCount >= maxPos) {
-          addAppLog(
-            "WARN",
-            "Tokocrypto",
-            `Maksimal posisi terbuka (${openSpotCount}/${maxPos}) telah tercapai. Sinyal ${data?.symbol} dilewati.`,
-          );
-          return;
-        }
-
-        const result = await executeTokocryptoSignalOrder(data, {
-          autoExecute: config.autoExecute,
-          dryRun: config.dryRun,
-          tokocryptoApiKey: config.tokocryptoApiKey,
-          tokocryptoApiSecret: config.tokocryptoApiSecret,
-          tokocryptoQuoteAsset:
-            (config.tokocryptoQuoteAsset as "USDT" | "BIDR") || "USDT",
-          riskPerTradePct: config.riskPerTradePct || 2.0,
-          maxOpenPositions: maxPos,
-          coinFilterMode: config.coinFilterMode || "ALL",
-          targetCoins: config.targetCoins || "",
-        });
-
-        // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
-        if (result.success && result.order) {
-          await prisma.spotTrade.create({
-            data: {
-              exchange: "TOKOCRYPTO",
-              symbol: result.order.symbol,
-              buyOrderId: result.order.orderId,
-              entryPrice: Number(data.entryPrice),
-              quantity: result.order.executedQty,
-              tpPrice: result.tpPrice || Number(data.entryPrice) * 1.05,
-              slPrice: result.slPrice || Number(data.entryPrice) * 0.975,
-              status: "OPEN",
-            },
-          });
-        }
-      } else {
-        // Default: Eksekusi ke Binance Futures
-        await executeSignalOrder(data, {
-          autoExecute: config.autoExecute,
-          binanceApiKey: config.binanceApiKey,
-          binanceApiSecret: config.binanceApiSecret,
-          environment: config.environment || "TESTNET",
-          marginType: config.marginType || "ISOLATED",
-          leverage: config.leverage || 10,
-          riskPerTradePct: config.riskPerTradePct || 2.0,
-          maxOpenPositions: config.maxOpenPositions || 3,
-          coinFilterMode: config.coinFilterMode || "ALL",
-          targetCoins: config.targetCoins || "",
+      // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
+      if (result.success && result.order) {
+        await prisma.spotTrade.create({
+          data: {
+            exchange: "TOKOCRYPTO",
+            symbol: result.order.symbol,
+            buyOrderId: result.order.orderId,
+            entryPrice: Number(data.entryPrice),
+            quantity: result.order.executedQty,
+            tpPrice: result.tpPrice || Number(data.entryPrice) * 1.05,
+            slPrice: result.slPrice || Number(data.entryPrice) * 0.975,
+            status: "OPEN",
+          },
         });
       }
-    } catch (err: any) {
-      addAppLog(
-        "ERROR",
-        "SignalEngine",
-        `Error saat memproses sinyal: ${err.message}`,
-        err,
-      );
+    } else {
+      // Default: Eksekusi ke Binance Futures
+      await executeSignalOrder(data, {
+        autoExecute: config.autoExecute,
+        binanceApiKey: config.binanceApiKey,
+        binanceApiSecret: config.binanceApiSecret,
+        environment: config.environment || "TESTNET",
+        marginType: config.marginType || "ISOLATED",
+        leverage: config.leverage || 10,
+        riskPerTradePct: config.riskPerTradePct || 2.0,
+        maxOpenPositions: config.maxOpenPositions || 3,
+        coinFilterMode: config.coinFilterMode || "ALL",
+        targetCoins: config.targetCoins || "",
+      });
     }
-  });
+  } catch (err: any) {
+    addAppLog(
+      "ERROR",
+      "SignalEngine",
+      `Error saat memproses sinyal: ${err.message}`,
+      err,
+    );
+  }
 }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import http from "http";
 import { app } from "../src/app";
 import { signJWT } from "../src/lib/jwt";
+import { disconnectSocket } from "../src/services/socket.service";
 
 describe("Express App Modular Routing Integration Tests", () => {
   let server: http.Server;
@@ -22,6 +23,7 @@ describe("Express App Modular Routing Integration Tests", () => {
   });
 
   after(async () => {
+    disconnectSocket();
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });

@@ -54,7 +54,8 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [binancePositionsCount, setBinancePositionsCount] = useState<number>(0);
-  const [tokocryptoPositionsCount, setTokocryptoPositionsCount] = useState<number>(0);
+  const [tokocryptoPositionsCount, setTokocryptoPositionsCount] =
+    useState<number>(0);
   const [status, setStatus] = useState({
     bot_connected: false,
     server_url: "",

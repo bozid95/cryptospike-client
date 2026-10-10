@@ -394,7 +394,8 @@ export function DashboardSummary({
                           </Badge>
                         </div>
                         <p className="text-[10px] text-muted-foreground font-mono">
-                          Entry: ${pos.entryPrice} • Liq: ${pos.liquidationPrice}
+                          Entry: ${pos.entryPrice} • Liq: $
+                          {pos.liquidationPrice}
                         </p>
                       </div>
                       <div className="text-right font-mono">
