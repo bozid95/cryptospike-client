@@ -90,6 +90,34 @@ describe("Express App Modular Routing Integration Tests", () => {
       assert.ok(data.data !== undefined);
     });
 
+    it("POST /api/config harus berhasil menyimpan dan memuat coinFilterMode serta targetCoins", async () => {
+      const saveRes = await fetch(`${baseUrl}/api/config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${validToken}`,
+        },
+        body: JSON.stringify({
+          coinFilterMode: "WHITELIST",
+          targetCoins: "BTCUSDT,ETHUSDT",
+          autoExecute: true,
+        }),
+      });
+
+      assert.equal(saveRes.status, 200);
+      const saveData = await saveRes.json();
+      assert.equal(saveData.success, true);
+      assert.equal(saveData.data.coinFilterMode, "WHITELIST");
+      assert.equal(saveData.data.targetCoins, "BTCUSDT,ETHUSDT");
+
+      const getRes = await fetch(`${baseUrl}/api/config`, {
+        headers: { Authorization: `Bearer ${validToken}` },
+      });
+      const getData = await getRes.json();
+      assert.equal(getData.data.coinFilterMode, "WHITELIST");
+      assert.equal(getData.data.targetCoins, "BTCUSDT,ETHUSDT");
+    });
+
     it("POST /api/config/test-connection tanpa API key harus mengembalikan 400", async () => {
       const res = await fetch(`${baseUrl}/api/config/test-connection`, {
         method: "POST",

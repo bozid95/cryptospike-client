@@ -57,21 +57,31 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       targetCoins,
     } = req.body;
 
+    const updateData: Record<string, any> = {};
+    if (clientToken !== undefined)
+      updateData.clientToken = clientToken ? clientToken.trim() : null;
+    if (binanceApiKey !== undefined)
+      updateData.binanceApiKey = binanceApiKey ? binanceApiKey.trim() : null;
+    if (binanceApiSecret !== undefined)
+      updateData.binanceApiSecret = binanceApiSecret
+        ? binanceApiSecret.trim()
+        : null;
+    if (environment !== undefined) updateData.environment = environment;
+    if (autoExecute !== undefined) updateData.autoExecute = autoExecute;
+    if (marginType !== undefined) updateData.marginType = marginType;
+    if (leverage !== undefined) updateData.leverage = Number(leverage);
+    if (riskPerTradePct !== undefined)
+      updateData.riskPerTradePct = Number(riskPerTradePct);
+    if (maxOpenPositions !== undefined)
+      updateData.maxOpenPositions = Number(maxOpenPositions);
+    if (coinFilterMode !== undefined) updateData.coinFilterMode = coinFilterMode;
+    if (targetCoins !== undefined)
+      updateData.targetCoins =
+        typeof targetCoins === "string" ? targetCoins.trim() : "";
+
     const saved = await prisma.appConfig.upsert({
       where: { id: 1 },
-      update: {
-        clientToken: clientToken ? clientToken.trim() : null,
-        binanceApiKey: binanceApiKey ? binanceApiKey.trim() : null,
-        binanceApiSecret: binanceApiSecret ? binanceApiSecret.trim() : null,
-        environment: environment || "TESTNET",
-        autoExecute: autoExecute ?? false,
-        marginType: marginType || "ISOLATED",
-        leverage: leverage ? Number(leverage) : 10,
-        riskPerTradePct: riskPerTradePct ? Number(riskPerTradePct) : 2.0,
-        maxOpenPositions: maxOpenPositions ? Number(maxOpenPositions) : 3,
-        coinFilterMode: coinFilterMode || "ALL",
-        targetCoins: typeof targetCoins === "string" ? targetCoins.trim() : "",
-      },
+      update: updateData,
       create: {
         id: 1,
         clientToken: clientToken ? clientToken.trim() : null,

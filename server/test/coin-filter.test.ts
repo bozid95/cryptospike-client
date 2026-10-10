@@ -8,7 +8,13 @@ export function evaluateCoinFilter(
   rawTargetCoins: string = ""
 ): { allowed: boolean; reason: string } {
   const mode = (filterMode || "ALL").toUpperCase();
-  const cleanSymbol = symbol.trim().toUpperCase();
+  const cleanSignal = symbol.trim().replace(/[\/\-_\s]/g, "").toUpperCase();
+  const signalBase = cleanSignal.endsWith("USDT")
+    ? cleanSignal.slice(0, -4)
+    : cleanSignal;
+  const signalWithUsdt = cleanSignal.endsWith("USDT")
+    ? cleanSignal
+    : `${cleanSignal}USDT`;
 
   if (mode === "ALL") {
     return { allowed: true, reason: "Mode ALL: semua koin diizinkan" };
@@ -16,29 +22,43 @@ export function evaluateCoinFilter(
 
   const coinList = rawTargetCoins
     .split(/[,;\s]+/)
-    .map((c) => c.trim().toUpperCase())
+    .map((c) => c.trim().replace(/[\/\-_\s]/g, "").toUpperCase())
     .filter(Boolean);
 
-  const isMatch = coinList.includes(cleanSymbol);
+  const isMatch = coinList.some((target) => {
+    const targetBase = target.endsWith("USDT")
+      ? target.slice(0, -4)
+      : target;
+    const targetWithUsdt = target.endsWith("USDT")
+      ? target
+      : `${target}USDT`;
+
+    return (
+      cleanSignal === target ||
+      cleanSignal === targetWithUsdt ||
+      signalBase === targetBase ||
+      signalWithUsdt === targetWithUsdt
+    );
+  });
 
   if (mode === "WHITELIST") {
     if (!isMatch) {
       return {
         allowed: false,
-        reason: `Sinyal ${cleanSymbol} dilewati karena tidak ada dalam Whitelist`,
+        reason: `Sinyal ${cleanSignal} dilewati karena tidak ada dalam Whitelist`,
       };
     }
-    return { allowed: true, reason: `Sinyal ${cleanSymbol} diizinkan oleh Whitelist` };
+    return { allowed: true, reason: `Sinyal ${cleanSignal} diizinkan oleh Whitelist` };
   }
 
   if (mode === "BLACKLIST") {
     if (isMatch) {
       return {
         allowed: false,
-        reason: `Sinyal ${cleanSymbol} dilewati karena ada dalam Blacklist`,
+        reason: `Sinyal ${cleanSignal} dilewati karena ada dalam Blacklist`,
       };
     }
-    return { allowed: true, reason: `Sinyal ${cleanSymbol} tidak ada dalam Blacklist` };
+    return { allowed: true, reason: `Sinyal ${cleanSignal} tidak ada dalam Blacklist` };
   }
 
   return { allowed: true, reason: "Default fallback" };
@@ -190,5 +210,38 @@ describe("Coin Filter Feature Unit Tests", () => {
       }
     });
   });
+
+  describe("6. Smart Dual-Match (Format Simbol Fleksibel: Slash, Underscore, Base Coin)", () => {
+    it("harus mencocokkan sinyal berformat BTC/USDT dengan whitelist BTCUSDT", () => {
+      const res = evaluateCoinFilter("BTC/USDT", "WHITELIST", "BTCUSDT");
+      assert.equal(res.allowed, true);
+    });
+
+    it("harus mencocokkan sinyal berformat BTCUSDT dengan whitelist base coin BTC", () => {
+      const res = evaluateCoinFilter("BTCUSDT", "WHITELIST", "BTC");
+      assert.equal(res.allowed, true);
+    });
+
+    it("harus mencocokkan sinyal berformat SOL_USDT dengan whitelist SOLUSDT", () => {
+      const res = evaluateCoinFilter("SOL_USDT", "WHITELIST", "SOLUSDT");
+      assert.equal(res.allowed, true);
+    });
+
+    it("harus memblokir sinyal ETH/USDT jika blacklist berisi base coin ETH", () => {
+      const res = evaluateCoinFilter("ETH/USDT", "BLACKLIST", "ETH");
+      assert.equal(res.allowed, false);
+    });
+
+    it("harus memblokir sinyal DOGEUSDT jika blacklist berisi DOGE", () => {
+      const res = evaluateCoinFilter("DOGEUSDT", "BLACKLIST", "DOGE");
+      assert.equal(res.allowed, false);
+    });
+
+    it("harus mengizinkan koin yang tidak cocok di blacklist meskipun beda format", () => {
+      const res = evaluateCoinFilter("SOL/USDT", "BLACKLIST", "BTC, ETH");
+      assert.equal(res.allowed, true);
+    });
+  });
 });
+
 

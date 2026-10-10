@@ -575,31 +575,69 @@ export async function executeSignalOrder(
   // 2. Cek Filter Koin (Trading Scope: WHITELIST / BLACKLIST)
   const filterMode = (config.coinFilterMode || "ALL").toUpperCase();
   if (filterMode !== "ALL") {
+    // Normalisasi simbol sinyal yang masuk
+    const rawSymbol = (
+      signal?.symbol ||
+      signal?.pair ||
+      signal?.coin ||
+      signal?.data?.symbol ||
+      symbol ||
+      ""
+    ).toString().trim();
+
+    const cleanSignal = rawSymbol.replace(/[\/\-_\s]/g, "").toUpperCase();
+    const signalBase = cleanSignal.endsWith("USDT")
+      ? cleanSignal.slice(0, -4)
+      : cleanSignal;
+    const signalWithUsdt = cleanSignal.endsWith("USDT")
+      ? cleanSignal
+      : `${cleanSignal}USDT`;
+
     const rawTarget = config.targetCoins || "";
     const coinList = rawTarget
       .split(/[,;\s]+/)
-      .map((c) => c.trim().toUpperCase())
+      .map((c) => c.trim().replace(/[\/\-_\s]/g, "").toUpperCase())
       .filter(Boolean);
 
-    const isMatch = coinList.includes(symbol.toUpperCase());
+    const isMatch = coinList.some((target) => {
+      const targetBase = target.endsWith("USDT")
+        ? target.slice(0, -4)
+        : target;
+      const targetWithUsdt = target.endsWith("USDT")
+        ? target
+        : `${target}USDT`;
+
+      return (
+        cleanSignal === target ||
+        cleanSignal === targetWithUsdt ||
+        signalBase === targetBase ||
+        signalWithUsdt === targetWithUsdt
+      );
+    });
 
     if (filterMode === "WHITELIST" && !isMatch) {
       addAppLog(
-        "INFO",
-        "Executor",
-        `Sinyal ${symbol} dilewati karena tidak termasuk dalam Whitelist Koin Anda (${coinList.join(", ") || "Kosong"}).`,
+        "WARN",
+        "CoinFilter",
+        `[WHITELIST BLOCKED] Sinyal ${cleanSignal} dilewati karena TIDAK ADA di Whitelist Anda (${coinList.join(", ") || "Kosong"}).`,
       );
       return;
     }
 
     if (filterMode === "BLACKLIST" && isMatch) {
       addAppLog(
-        "INFO",
-        "Executor",
-        `Sinyal ${symbol} dilewati karena ada dalam Blacklist Koin Anda.`,
+        "WARN",
+        "CoinFilter",
+        `[BLACKLIST BLOCKED] Sinyal ${cleanSignal} dilewati karena ADA dalam Blacklist Anda (${coinList.join(", ")}).`,
       );
       return;
     }
+
+    addAppLog(
+      "INFO",
+      "CoinFilter",
+      `[COIN ALLOWED] Sinyal ${cleanSignal} lolos aturan filter [${filterMode}].`,
+    );
   }
 
   // 2. Cek Kredensial API

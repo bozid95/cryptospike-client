@@ -278,6 +278,23 @@ export default function CredentialConfig() {
       const currentKey = isTestnet ? testnetApiKey : liveApiKey;
       const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
 
+      let finalTargetCoins = targetCoins.trim();
+      if (coinInput.trim()) {
+        let clean = coinInput.trim().toUpperCase();
+        if (!clean.endsWith("USDT")) {
+          clean = `${clean}USDT`;
+        }
+        const existingList = finalTargetCoins
+          .split(",")
+          .map((c) => c.trim().toUpperCase())
+          .filter(Boolean);
+        if (!existingList.includes(clean)) {
+          finalTargetCoins = [...existingList, clean].join(",");
+          setTargetCoins(finalTargetCoins);
+        }
+        setCoinInput("");
+      }
+
       const payload = {
         clientToken: token.trim(),
         binanceApiKey: currentKey.trim(),
@@ -289,7 +306,7 @@ export default function CredentialConfig() {
         riskPerTradePct: Number(riskPerTradePct),
         maxOpenPositions: Number(maxOpenPositions),
         coinFilterMode,
-        targetCoins: targetCoins.trim(),
+        targetCoins: finalTargetCoins,
       };
 
       const res = await authFetch("/api/config", {
