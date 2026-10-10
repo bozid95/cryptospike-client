@@ -404,7 +404,7 @@ export async function placeOrder(
   params: {
     symbol: string;
     side: "BUY" | "SELL";
-    type: "MARKET" | "LIMIT" | "STOP_MARKET";
+    type: "MARKET" | "LIMIT" | "STOP_MARKET" | "TAKE_PROFIT_MARKET";
     quantity?: number;
     price?: number;
     stopPrice?: number;

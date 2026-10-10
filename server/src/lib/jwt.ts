@@ -100,6 +100,7 @@ export function verifyJWT(token: string): JWTPayload | null {
     if (parts.length !== 3) return null;
 
     const [encodedHeader, encodedPayload, signature] = parts;
+    if (!encodedHeader || !encodedPayload || !signature) return null;
 
     // Verifikasi Signature
     const expectedSignature = crypto

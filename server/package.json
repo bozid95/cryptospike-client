@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
-    "test": "tsx --test test/coin-filter.test.ts"
+    "test": "tsx --test test/*.test.ts"
   },
   "keywords": [],
   "author": "",
