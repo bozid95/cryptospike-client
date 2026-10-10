@@ -606,15 +606,20 @@ export async function executeSignalOrder(
       )
       .filter(Boolean);
 
+    const strip1000 = (s: string) => (s.startsWith("1000") ? s.slice(4) : s);
+    const signalPure = strip1000(signalBase);
+
     const isMatch = coinList.some((target) => {
       const targetBase = target.endsWith("USDT") ? target.slice(0, -4) : target;
       const targetWithUsdt = target.endsWith("USDT") ? target : `${target}USDT`;
+      const targetPure = strip1000(targetBase);
 
       return (
         cleanSignal === target ||
         cleanSignal === targetWithUsdt ||
         signalBase === targetBase ||
-        signalWithUsdt === targetWithUsdt
+        signalWithUsdt === targetWithUsdt ||
+        signalPure === targetPure
       );
     });
 

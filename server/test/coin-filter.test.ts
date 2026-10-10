@@ -33,15 +33,20 @@ export function evaluateCoinFilter(
     )
     .filter(Boolean);
 
+  const strip1000 = (s: string) => (s.startsWith("1000") ? s.slice(4) : s);
+  const signalPure = strip1000(signalBase);
+
   const isMatch = coinList.some((target) => {
     const targetBase = target.endsWith("USDT") ? target.slice(0, -4) : target;
     const targetWithUsdt = target.endsWith("USDT") ? target : `${target}USDT`;
+    const targetPure = strip1000(targetBase);
 
     return (
       cleanSignal === target ||
       cleanSignal === targetWithUsdt ||
       signalBase === targetBase ||
-      signalWithUsdt === targetWithUsdt
+      signalWithUsdt === targetWithUsdt ||
+      signalPure === targetPure
     );
   });
 
@@ -88,108 +93,109 @@ export function normalizeSymbolInput(input: string): string {
 export const TOP_50_CMC: string[] = [
   "BTCUSDT",
   "ETHUSDT",
-  "SOLUSDT",
   "BNBUSDT",
   "XRPUSDT",
-  "DOGEUSDT",
-  "ADAUSDT",
-  "AVAXUSDT",
-  "LINKUSDT",
-  "SUIUSDT",
-  "SHIBUSDT",
-  "DOTUSDT",
-  "NEARUSDT",
-  "LTCUSDT",
-  "BCHUSDT",
-  "UNIUSDT",
-  "PEPEUSDT",
-  "APTUSDT",
-  "ICPUSDT",
+  "SOLUSDT",
   "TRXUSDT",
-  "TAOUSDT",
-  "FETUSDT",
-  "RENDERUSDT",
+  "HYPEUSDT",
+  "ZECUSDT",
+  "DOGEUSDT",
+  "LINKUSDT",
+  "ADAUSDT",
+  "NEARUSDT",
   "XLMUSDT",
-  "AAVEUSDT",
-  "ETCUSDT",
-  "POLUSDT",
-  "ARBUSDT",
-  "OPUSDT",
-  "ATOMUSDT",
-  "INJUSDT",
-  "SEIUSDT",
-  "FILUSDT",
-  "RUNEUSDT",
-  "TIAUSDT",
+  "BCHUSDT",
+  "LTCUSDT",
+  "UNIUSDT",
+  "AVAXUSDT",
+  "SUIUSDT",
   "HBARUSDT",
-  "IMXUSDT",
-  "WIFUSDT",
-  "BONKUSDT",
-  "GRTUSDT",
-  "STXUSDT",
-  "FLOKIUSDT",
-  "VETUSDT",
-  "MKRUSDT",
+  "TAOUSDT",
+  "1000SHIBUSDT",
   "ENAUSDT",
-  "JUPUSDT",
-  "ALGOUSDT",
-  "FTMUSDT",
-  "THETAUSDT",
+  "QNTUSDT",
+  "AAVEUSDT",
+  "PUMPUSDT",
   "ONDOUSDT",
+  "DOTUSDT",
+  "WLDUSDT",
+  "ICPUSDT",
+  "1000PEPEUSDT",
+  "ETCUSDT",
+  "ARBUSDT",
+  "JUPUSDT",
+  "KASUSDT",
+  "POLUSDT",
+  "ALGOUSDT",
+  "ATOMUSDT",
+  "RENDERUSDT",
+  "FILUSDT",
+  "AEROUSDT",
+  "ZROUSDT",
+  "CAKEUSDT",
+  "INJUSDT",
+  "APTUSDT",
+  "XDCUSDT",
+  "STRKUSDT",
+  "STXUSDT",
+  "VETUSDT",
+  "DASHUSDT",
+  "ETHFIUSDT",
 ];
 
 export const TOP_100_CMC: string[] = Array.from(
   new Set([
     ...TOP_50_CMC,
-    "SANDUSDT",
-    "MANAUSDT",
-    "AXSUSDT",
-    "GALAUSDT",
-    "NEOUSDT",
-    "CRVUSDT",
-    "FLOWUSDT",
-    "DYDXUSDT",
-    "BEAMUSDT",
-    "PENDLEUSDT",
-    "KSMUSDT",
-    "CHZUSDT",
-    "ZECUSDT",
-    "1INCHUSDT",
-    "CFXUSDT",
-    "EGLDUSDT",
-    "EOSUSDT",
-    "IOTAUSDT",
-    "QNTUSDT",
-    "SNXUSDT",
-    "ROSEUSDT",
-    "MINAUSDT",
-    "CAKEUSDT",
-    "LDOUSDT",
-    "WLDUSDT",
+    "RAYUSDT",
     "PYTHUSDT",
-    "STRKUSDT",
-    "BLURUSDT",
-    "ORDIUSDT",
-    "MEMEUSDT",
-    "ARKMUSDT",
+    "FLRUSDT",
+    "CRVUSDT",
+    "TRUMPUSDT",
+    "FETUSDT",
+    "SEIUSDT",
+    "PENGUUSDT",
+    "VIRTUALUSDT",
+    "TIAUSDT",
+    "IMXUSDT",
+    "PENDLEUSDT",
+    "KAIAUSDT",
+    "LDOUSDT",
+    "CFXUSDT",
+    "XTZUSDT",
+    "SUNUSDT",
+    "OPUSDT",
+    "GNOUSDT",
+    "DCRUSDT",
+    "1000BONKUSDT",
+    "GRTUSDT",
+    "MONUSDT",
     "JTOUSDT",
-    "NOTUSDT",
-    "WUSDT",
-    "ZKUSDT",
-    "IOUSDT",
-    "ZROUSDT",
-    "POPCATUSDT",
-    "TURBOUSDT",
-    "BRETTUSDT",
-    "NEIROUSDT",
-    "AEROUSDT",
-    "KAVAUSDT",
+    "1000LUNCUSDT",
+    "SYRUPUSDT",
+    "ARUSDT",
+    "ENSUSDT",
+    "1000FLOKIUSDT",
+    "JASMYUSDT",
+    "PONSUSDT",
     "COMPUSDT",
-    "GMXUSDT",
-    "DYMUSDT",
-    "ALTUSDT",
-    "PORTALUSDT",
-    "PIXELUSDT",
+    "IOTAUSDT",
+    "METUSDT",
+    "NFTUSDT",
+    "EIGENUSDT",
+    "ZBCNUSDT",
+    "RUNEUSDT",
+    "THETAUSDT",
+    "TWTUSDT",
+    "AXSUSDT",
+    "AKTUSDT",
+    "WIFUSDT",
+    "TRACUSDT",
+    "CVXUSDT",
+    "KMNOUSDT",
+    "SANDUSDT",
+    "BATUSDT",
+    "ZAMAUSDT",
+    "MANAUSDT",
   ]),
 );
 
@@ -376,6 +382,17 @@ describe("Coin Filter Feature Unit Tests", () => {
     it("harus mengizinkan koin yang tidak cocok di blacklist meskipun beda format", () => {
       const res = evaluateCoinFilter("SOL/USDT", "BLACKLIST", "BTC, ETH");
       assert.equal(res.allowed, true);
+    });
+
+    it("harus mencocokkan sinyal 1000PEPEUSDT dengan whitelist PEPE maupun PEPEUSDT", () => {
+      const res1 = evaluateCoinFilter("1000PEPEUSDT", "WHITELIST", "PEPEUSDT");
+      assert.equal(res1.allowed, true);
+
+      const res2 = evaluateCoinFilter("PEPEUSDT", "WHITELIST", "1000PEPEUSDT");
+      assert.equal(res2.allowed, true);
+
+      const res3 = evaluateCoinFilter("1000SHIBUSDT", "WHITELIST", "SHIB");
+      assert.equal(res3.allowed, true);
     });
   });
 });
