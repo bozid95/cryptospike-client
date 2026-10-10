@@ -8,35 +8,46 @@ datasource db {
 
 // Pengaturan Utama Bot & Kredensial (Single-row config)
 model AppConfig {
-  id                   Int      @id @default(1)
+  id                      Int      @id @default(1)
   
   // Pilihan Bursa Utama Aktif
-  targetExchange       String   @default("BINANCE") // "BINANCE" atau "TOKOCRYPTO"
+  targetExchange          String   @default("BINANCE") // "BINANCE", "TOKOCRYPTO", atau "BOTH"
 
-  // Kredensial & Lisensi
-  clientToken          String?  // Token langganan dari Server Utama CryptoSpike
-  binanceApiKey        String?  // API Key Binance
-  binanceApiSecret     String?  // API Secret Binance
-  environment          String   @default("TESTNET") // TESTNET atau MAINNET
+  // Kredensial & Lisensi Utama CryptoSpike
+  clientToken             String?  // Token langganan dari Server Utama CryptoSpike
 
-  // Kredensial Tokocrypto Spot
-  tokocryptoApiKey     String?  // API Key Tokocrypto
-  tokocryptoApiSecret  String?  // API Secret Tokocrypto
-  tokocryptoQuoteAsset String   @default("USDT") // "USDT" atau "BIDR"
+  // --- Binance Futures Dedicated Config ---
+  binanceApiKey           String?  // API Key Binance
+  binanceApiSecret        String?  // API Secret Binance
+  environment             String   @default("TESTNET") // TESTNET atau LIVE
+  binanceAutoExecute      Boolean  @default(false)
+  leverage                Int      @default(10)
+  marginType              String   @default("ISOLATED") // ISOLATED atau CROSSED
+  binanceRiskPerTradePct  Float    @default(2.0)
+  binanceMaxOpenPositions Int      @default(3)
+  binanceCoinFilterMode   String   @default("ALL") // ALL, WHITELIST, atau BLACKLIST
+  binanceTargetCoins      String?  @default("")
 
-  // Manajemen Risiko Bot Lokal
-  autoExecute          Boolean  @default(false)
-  dryRun               Boolean  @default(false) // Mode simulasi tanpa uang riil
-  leverage             Int      @default(10)
-  marginType           String   @default("ISOLATED") // ISOLATED atau CROSSED
-  riskPerTradePct      Float    @default(2.0)
-  maxOpenPositions     Int      @default(3)
+  // --- Tokocrypto Spot Dedicated Config ---
+  tokocryptoApiKey           String?  // API Key Tokocrypto
+  tokocryptoApiSecret        String?  // API Secret Tokocrypto
+  tokocryptoQuoteAsset       String   @default("USDT") // "USDT" atau "BIDR"
+  tokocryptoAutoExecute      Boolean  @default(false)
+  tokocryptoDryRun           Boolean  @default(false) // Mode simulasi tanpa uang riil
+  tokocryptoRiskPerTradePct  Float    @default(10.0)
+  tokocryptoMaxOpenPositions Int      @default(5)
+  tokocryptoCoinFilterMode   String   @default("ALL")
+  tokocryptoTargetCoins      String?  @default("")
 
-  // Filter Koin Eksekusi (Trading Scope)
-  coinFilterMode       String   @default("ALL") // ALL, WHITELIST, atau BLACKLIST
-  targetCoins          String?  @default("")    // Simbol koin koma terpisah (misal: "BTCUSDT,ETHUSDT,ADAUSDT")
+  // Legacy fallback fields (kompatibilitas query lama & test mocks)
+  autoExecute             Boolean  @default(false)
+  dryRun                  Boolean  @default(false)
+  riskPerTradePct         Float    @default(2.0)
+  maxOpenPositions        Int      @default(3)
+  coinFilterMode          String   @default("ALL")
+  targetCoins             String?  @default("")
 
-  updatedAt            DateTime @updatedAt
+  updatedAt               DateTime @updatedAt
 }
 
 // Akun Pengguna / Admin Aplikasi Lokal

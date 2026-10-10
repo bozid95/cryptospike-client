@@ -216,22 +216,33 @@ export default function CredentialConfig({
   const [tokocryptoQuoteAsset, setTokocryptoQuoteAsset] = useState<
     "USDT" | "BIDR"
   >("USDT");
-  const [dryRun, setDryRun] = useState(false);
 
-  // Risk Management
-  const [autoExecute, setAutoExecute] = useState(false);
+  // Binance Dedicated Risk & Execution
+  const [binanceAutoExecute, setBinanceAutoExecute] = useState(false);
   const [marginType, setMarginType] = useState<"ISOLATED" | "CROSSED">(
     "ISOLATED",
   );
   const [leverage, setLeverage] = useState(10);
-  const [riskPerTradePct, setRiskPerTradePct] = useState(2.0);
-  const [maxOpenPositions, setMaxOpenPositions] = useState(3);
-
-  // Coin Filter State
-  const [coinFilterMode, setCoinFilterMode] = useState<
+  const [binanceRiskPerTradePct, setBinanceRiskPerTradePct] = useState(2.0);
+  const [binanceMaxOpenPositions, setBinanceMaxOpenPositions] = useState(3);
+  const [binanceCoinFilterMode, setBinanceCoinFilterMode] = useState<
     "ALL" | "WHITELIST" | "BLACKLIST"
   >("ALL");
-  const [targetCoins, setTargetCoins] = useState("");
+  const [binanceTargetCoins, setBinanceTargetCoins] = useState("");
+
+  // Tokocrypto Dedicated Risk & Execution
+  const [tokocryptoAutoExecute, setTokocryptoAutoExecute] = useState(false);
+  const [tokocryptoDryRun, setTokocryptoDryRun] = useState(false);
+  const [tokocryptoRiskPerTradePct, setTokocryptoRiskPerTradePct] =
+    useState(10.0);
+  const [tokocryptoMaxOpenPositions, setTokocryptoMaxOpenPositions] =
+    useState(5);
+  const [tokocryptoCoinFilterMode, setTokocryptoCoinFilterMode] = useState<
+    "ALL" | "WHITELIST" | "BLACKLIST"
+  >("ALL");
+  const [tokocryptoTargetCoins, setTokocryptoTargetCoins] = useState("");
+
+  // Coin input for adding symbols
   const [coinInput, setCoinInput] = useState("");
 
   // Status State
@@ -244,6 +255,42 @@ export default function CredentialConfig({
     balance?: number;
     quoteAsset?: string;
   } | null>(null);
+
+  // Active form getters and setters
+  const isTokoForm = activeExchangeForm === "TOKOCRYPTO";
+  const autoExecute = isTokoForm ? tokocryptoAutoExecute : binanceAutoExecute;
+  const setAutoExecute = isTokoForm
+    ? setTokocryptoAutoExecute
+    : setBinanceAutoExecute;
+
+  const riskPerTradePct = isTokoForm
+    ? tokocryptoRiskPerTradePct
+    : binanceRiskPerTradePct;
+  const setRiskPerTradePct = isTokoForm
+    ? setTokocryptoRiskPerTradePct
+    : setBinanceRiskPerTradePct;
+
+  const maxOpenPositions = isTokoForm
+    ? tokocryptoMaxOpenPositions
+    : binanceMaxOpenPositions;
+  const setMaxOpenPositions = isTokoForm
+    ? setTokocryptoMaxOpenPositions
+    : setBinanceMaxOpenPositions;
+
+  const coinFilterMode = isTokoForm
+    ? tokocryptoCoinFilterMode
+    : binanceCoinFilterMode;
+  const setCoinFilterMode = isTokoForm
+    ? setTokocryptoCoinFilterMode
+    : setBinanceCoinFilterMode;
+
+  const targetCoins = isTokoForm ? tokocryptoTargetCoins : binanceTargetCoins;
+  const setTargetCoins = isTokoForm
+    ? setTokocryptoTargetCoins
+    : setBinanceTargetCoins;
+
+  const dryRun = tokocryptoDryRun;
+  const setDryRun = setTokocryptoDryRun;
 
   // 1. Muat konfigurasi dari database lokal SQLite
   useEffect(() => {
@@ -276,19 +323,46 @@ export default function CredentialConfig({
               setLiveApiKey(d.binanceApiKey || "");
               setLiveApiSecret(d.binanceApiSecret || "");
             }
+
+            // Binance Config
+            setBinanceAutoExecute(
+              d.binanceAutoExecute === 1 ||
+                d.binanceAutoExecute === true ||
+                d.autoExecute === 1 ||
+                d.autoExecute === true,
+            );
+            setMarginType(d.marginType || "ISOLATED");
+            setLeverage(d.leverage || 10);
+            setBinanceRiskPerTradePct(
+              d.binanceRiskPerTradePct ?? d.riskPerTradePct ?? 2.0,
+            );
+            setBinanceMaxOpenPositions(
+              d.binanceMaxOpenPositions ?? d.maxOpenPositions ?? 3,
+            );
+            setBinanceCoinFilterMode(
+              d.binanceCoinFilterMode || d.coinFilterMode || "ALL",
+            );
+            setBinanceTargetCoins(d.binanceTargetCoins || d.targetCoins || "");
+
+            // Tokocrypto Config
             setTokocryptoApiKey(d.tokocryptoApiKey || "");
             setTokocryptoApiSecret(d.tokocryptoApiSecret || "");
             setTokocryptoQuoteAsset(
               d.tokocryptoQuoteAsset === "BIDR" ? "BIDR" : "USDT",
             );
-            setDryRun(d.dryRun === 1 || d.dryRun === true);
-            setAutoExecute(d.autoExecute === 1 || d.autoExecute === true);
-            setMarginType(d.marginType || "ISOLATED");
-            setLeverage(d.leverage || 10);
-            setRiskPerTradePct(d.riskPerTradePct || 2.0);
-            setMaxOpenPositions(d.maxOpenPositions || 3);
-            setCoinFilterMode(d.coinFilterMode || "ALL");
-            setTargetCoins(d.targetCoins || "");
+            setTokocryptoAutoExecute(
+              d.tokocryptoAutoExecute === 1 || d.tokocryptoAutoExecute === true,
+            );
+            setTokocryptoDryRun(
+              d.tokocryptoDryRun === 1 ||
+                d.tokocryptoDryRun === true ||
+                d.dryRun === 1 ||
+                d.dryRun === true,
+            );
+            setTokocryptoRiskPerTradePct(d.tokocryptoRiskPerTradePct ?? 10.0);
+            setTokocryptoMaxOpenPositions(d.tokocryptoMaxOpenPositions ?? 5);
+            setTokocryptoCoinFilterMode(d.tokocryptoCoinFilterMode || "ALL");
+            setTokocryptoTargetCoins(d.tokocryptoTargetCoins || "");
           }
         }
       } catch (err: any) {
@@ -441,20 +515,33 @@ export default function CredentialConfig({
       const payload = {
         targetExchange,
         clientToken: token.trim(),
+        // Binance Dedicated Fields
         binanceApiKey: currentKey.trim(),
         binanceApiSecret: currentSecret.trim(),
         environment,
+        binanceAutoExecute,
+        marginType,
+        leverage: Number(leverage),
+        binanceRiskPerTradePct: Number(binanceRiskPerTradePct),
+        binanceMaxOpenPositions: Number(binanceMaxOpenPositions),
+        binanceCoinFilterMode: isTokoForm
+          ? binanceCoinFilterMode
+          : coinFilterMode,
+        binanceTargetCoins: isTokoForm ? binanceTargetCoins : finalTargetCoins,
+        // Tokocrypto Dedicated Fields
         tokocryptoApiKey: tokocryptoApiKey.trim(),
         tokocryptoApiSecret: tokocryptoApiSecret.trim(),
         tokocryptoQuoteAsset,
-        autoExecute,
-        dryRun,
-        marginType,
-        leverage: Number(leverage),
-        riskPerTradePct: Number(riskPerTradePct),
-        maxOpenPositions: Number(maxOpenPositions),
-        coinFilterMode,
-        targetCoins: finalTargetCoins,
+        tokocryptoAutoExecute,
+        tokocryptoDryRun,
+        tokocryptoRiskPerTradePct: Number(tokocryptoRiskPerTradePct),
+        tokocryptoMaxOpenPositions: Number(tokocryptoMaxOpenPositions),
+        tokocryptoCoinFilterMode: isTokoForm
+          ? coinFilterMode
+          : tokocryptoCoinFilterMode,
+        tokocryptoTargetCoins: isTokoForm
+          ? finalTargetCoins
+          : tokocryptoTargetCoins,
       };
 
       const res = await authFetch("/api/config", {
@@ -1091,9 +1178,10 @@ export default function CredentialConfig({
                   Market: Spot 1x Cash-Only
                 </span>
                 <p>
-                  Tokocrypto Spot operates without leverage or margin liquidation risks.
-                  Each buy position is monitored automatically with targets of <strong>TP +5%</strong>{" "}
-                  and <strong>SL -2.5%</strong>.
+                  Tokocrypto Spot operates without leverage or margin
+                  liquidation risks. Each buy position is monitored
+                  automatically with targets of <strong>TP +5%</strong> and{" "}
+                  <strong>SL -2.5%</strong>.
                 </p>
               </div>
             )}
@@ -1119,8 +1207,8 @@ export default function CredentialConfig({
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 p-2.5 rounded-md leading-relaxed mt-2 space-y-1.5">
                     <p>
-                      <strong>Spot Allocation Preview:</strong> Bot is authorized
-                      to allocate a maximum of{" "}
+                      <strong>Spot Allocation Preview:</strong> Bot is
+                      authorized to allocate a maximum of{" "}
                       <strong>
                         ~
                         {(
@@ -1135,8 +1223,9 @@ export default function CredentialConfig({
                     </p>
                     <p className="opacity-90">
                       <strong>Max Cash Allocation:</strong> If all{" "}
-                      <strong>{maxOpenPositions}</strong> allowed coin positions are open
-                      simultaneously, total estimated capital allocated is{" "}
+                      <strong>{maxOpenPositions}</strong> allowed coin positions
+                      are open simultaneously, total estimated capital allocated
+                      is{" "}
                       <strong>
                         ~
                         {(
@@ -1573,7 +1662,8 @@ export default function CredentialConfig({
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
                     <p>
-                      <strong>Tokocrypto Cash Allocation:</strong> Out of your balance of{" "}
+                      <strong>Tokocrypto Cash Allocation:</strong> Out of your
+                      balance of{" "}
                       <strong>
                         {testResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,

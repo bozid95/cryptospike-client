@@ -123,7 +123,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           where: { status: "OPEN" },
         });
 
-        const maxPos = config.maxOpenPositions || 3;
+        const maxPos =
+          config.tokocryptoMaxOpenPositions ?? config.maxOpenPositions ?? 5;
         if (openSpotCount >= maxPos) {
           addAppLog(
             "WARN",
@@ -132,16 +133,22 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           );
         } else {
           const result = await executeTokocryptoSignalOrder(data, {
-            autoExecute: config.autoExecute,
-            dryRun: config.dryRun,
+            autoExecute:
+              config.tokocryptoAutoExecute ?? config.autoExecute ?? false,
+            dryRun: config.tokocryptoDryRun ?? config.dryRun ?? false,
             tokocryptoApiKey: config.tokocryptoApiKey,
             tokocryptoApiSecret: config.tokocryptoApiSecret,
             tokocryptoQuoteAsset:
               (config.tokocryptoQuoteAsset as "USDT" | "BIDR") || "USDT",
-            riskPerTradePct: config.riskPerTradePct || 2.0,
+            riskPerTradePct:
+              config.tokocryptoRiskPerTradePct ??
+              config.riskPerTradePct ??
+              10.0,
             maxOpenPositions: maxPos,
-            coinFilterMode: config.coinFilterMode || "ALL",
-            targetCoins: config.targetCoins || "",
+            coinFilterMode:
+              config.tokocryptoCoinFilterMode ?? config.coinFilterMode ?? "ALL",
+            targetCoins:
+              config.tokocryptoTargetCoins ?? config.targetCoins ?? "",
           });
 
           // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
@@ -174,16 +181,19 @@ export async function handleIncomingSignal(data: any): Promise<void> {
     if (shouldExecuteBinance) {
       try {
         await executeSignalOrder(data, {
-          autoExecute: config.autoExecute,
+          autoExecute: config.binanceAutoExecute ?? config.autoExecute ?? false,
           binanceApiKey: config.binanceApiKey,
           binanceApiSecret: config.binanceApiSecret,
           environment: config.environment || "TESTNET",
           marginType: config.marginType || "ISOLATED",
           leverage: config.leverage || 10,
-          riskPerTradePct: config.riskPerTradePct || 2.0,
-          maxOpenPositions: config.maxOpenPositions || 3,
-          coinFilterMode: config.coinFilterMode || "ALL",
-          targetCoins: config.targetCoins || "",
+          riskPerTradePct:
+            config.binanceRiskPerTradePct ?? config.riskPerTradePct ?? 2.0,
+          maxOpenPositions:
+            config.binanceMaxOpenPositions ?? config.maxOpenPositions ?? 3,
+          coinFilterMode:
+            config.binanceCoinFilterMode ?? config.coinFilterMode ?? "ALL",
+          targetCoins: config.binanceTargetCoins ?? config.targetCoins ?? "",
         });
       } catch (binanceErr: any) {
         addAppLog(

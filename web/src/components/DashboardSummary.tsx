@@ -103,8 +103,16 @@ export function DashboardSummary({
   const targetExchange = (config?.targetExchange || "BINANCE").toUpperCase();
   const isTokocrypto = targetExchange === "TOKOCRYPTO";
   const isDual = targetExchange === "BOTH";
-  const autoTrade = Boolean(config?.autoExecute);
-  const isDryRun = Boolean(config?.dryRun);
+  const binanceAuto = Boolean(
+    config?.binanceAutoExecute ?? config?.autoExecute,
+  );
+  const tokocryptoAuto = Boolean(config?.tokocryptoAutoExecute);
+  const autoTrade = isDual
+    ? binanceAuto || tokocryptoAuto
+    : isTokocrypto
+      ? tokocryptoAuto
+      : binanceAuto;
+  const isDryRun = Boolean(config?.tokocryptoDryRun ?? config?.dryRun);
 
   const binancePnl = binanceData.positions.reduce(
     (acc, p) => acc + (p.unRealizedProfit || 0),
@@ -185,16 +193,41 @@ export function DashboardSummary({
             Socket: {botConnected ? "Connected" : "Disconnected"}
           </Badge>
 
-          <Badge
-            variant="outline"
-            className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
-              autoTrade
-                ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
-                : "border-amber-500/40 text-amber-600 bg-amber-500/10"
-            }`}
-          >
-            Auto-Trade: {autoTrade ? "ACTIVE" : "PAUSED"}
-          </Badge>
+          {isDual ? (
+            <>
+              <Badge
+                variant="outline"
+                className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
+                  binanceAuto
+                    ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
+                    : "border-amber-500/40 text-amber-600 bg-amber-500/10"
+                }`}
+              >
+                Binance: {binanceAuto ? "ACTIVE" : "PAUSED"}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
+                  tokocryptoAuto
+                    ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
+                    : "border-amber-500/40 text-amber-600 bg-amber-500/10"
+                }`}
+              >
+                Tokocrypto: {tokocryptoAuto ? "ACTIVE" : "PAUSED"}
+              </Badge>
+            </>
+          ) : (
+            <Badge
+              variant="outline"
+              className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
+                autoTrade
+                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
+                  : "border-amber-500/40 text-amber-600 bg-amber-500/10"
+              }`}
+            >
+              Auto-Trade: {autoTrade ? "ACTIVE" : "PAUSED"}
+            </Badge>
+          )}
 
           <Button
             variant="outline"
@@ -472,9 +505,11 @@ export function DashboardSummary({
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
               <span>Coin Scope:</span>
               <span className="font-semibold text-foreground">
-                {config?.coinFilterMode === "ALL"
-                  ? "All Market"
-                  : `${config?.coinFilterMode || "ALL"}`}
+                {isDual
+                  ? `Binance: ${config?.binanceCoinFilterMode || config?.coinFilterMode || "ALL"} • Toko: ${config?.tokocryptoCoinFilterMode || "ALL"}`
+                  : isTokocrypto
+                    ? `${config?.tokocryptoCoinFilterMode || "ALL"}`
+                    : `${config?.binanceCoinFilterMode || config?.coinFilterMode || "ALL"}`}
               </span>
             </div>
             <div className="pt-2">
