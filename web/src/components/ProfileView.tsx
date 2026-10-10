@@ -101,10 +101,10 @@ export function ProfileView({
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
           Profile & System Info
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
           Manage local operator login session and monitor your Client App
           connection status.
         </p>
@@ -206,7 +206,7 @@ export function ProfileView({
                 <KeyIcon className="size-4 text-primary" />
                 Change Dashboard Password
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs hidden sm:block">
                 Update your credentials to secure your web dashboard against
                 unauthorized access.
               </CardDescription>

@@ -178,19 +178,19 @@ export function AppLogsView() {
                 <CardTitle className="text-base font-semibold leading-tight">
                   Bot Application Logs
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground hidden sm:block">
                   Real-time event stream for incoming signals, order executions,
                   and system events.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-                className={`h-8 text-xs cursor-pointer flex-1 sm:flex-none ${
+                className={`h-7 sm:h-8 text-[11px] sm:text-xs cursor-pointer flex-1 sm:flex-none ${
                   isAutoRefresh
                     ? "border-emerald-500/40 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10"
                     : "text-muted-foreground"
@@ -198,12 +198,12 @@ export function AppLogsView() {
               >
                 {isAutoRefresh ? (
                   <>
-                    <Pause className="size-3.5 mr-1" />
+                    <Pause className="size-3 sm:size-3.5 mr-1" />
                     Live (Auto)
                   </>
                 ) : (
                   <>
-                    <Play className="size-3.5 mr-1" />
+                    <Play className="size-3 sm:size-3.5 mr-1" />
                     Paused
                   </>
                 )}
@@ -214,10 +214,10 @@ export function AppLogsView() {
                 size="sm"
                 onClick={fetchLogs}
                 disabled={isLoading}
-                className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
+                className="h-7 sm:h-8 text-[11px] sm:text-xs cursor-pointer flex-1 sm:flex-none"
               >
                 <RefreshCw
-                  className={`size-3.5 mr-1 ${isLoading ? "animate-spin" : ""}`}
+                  className={`size-3 sm:size-3.5 mr-1 ${isLoading ? "animate-spin" : ""}`}
                 />
                 Refresh
               </Button>
@@ -226,9 +226,9 @@ export function AppLogsView() {
                 variant="destructive"
                 size="sm"
                 onClick={() => setIsClearDialogOpen(true)}
-                className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
+                className="h-7 sm:h-8 text-[11px] sm:text-xs cursor-pointer flex-1 sm:flex-none"
               >
-                <Trash2 className="size-3.5 mr-1" />
+                <Trash2 className="size-3 sm:size-3.5 mr-1" />
                 Clear
               </Button>
             </div>
@@ -239,15 +239,15 @@ export function AppLogsView() {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
               <Input
-                placeholder="Search log messages or modules (e.g. SignalEngine, Binance)..."
+                placeholder="Search log messages or modules..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 text-xs pl-8"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              <Filter className="size-3.5 text-muted-foreground ml-1 mr-0.5 shrink-0" />
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+              <Filter className="size-3.5 text-muted-foreground ml-0.5 mr-0.5 shrink-0" />
               {["ALL", "SUCCESS", "INFO", "WARN", "ERROR"].map((lvl) => (
                 <Button
                   key={lvl}
@@ -255,7 +255,7 @@ export function AppLogsView() {
                   variant={filterLevel === lvl ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setFilterLevel(lvl)}
-                  className={`h-7 text-xs px-2.5 cursor-pointer font-mono ${
+                  className={`h-7 text-[11px] sm:text-xs px-2 sm:px-2.5 cursor-pointer font-mono shrink-0 ${
                     filterLevel === lvl
                       ? "font-bold text-foreground"
                       : "text-muted-foreground"
@@ -271,7 +271,7 @@ export function AppLogsView() {
         <CardContent className="p-0">
           <div
             ref={scrollRef}
-            className="bg-zinc-950 p-3 sm:p-4 font-mono text-xs text-zinc-300 min-h-[420px] max-h-[620px] overflow-y-auto space-y-1 rounded-b-xl border-t border-zinc-900 select-text scroll-smooth"
+            className="bg-zinc-950 p-2.5 sm:p-4 font-mono text-xs text-zinc-300 min-h-[300px] sm:min-h-[420px] max-h-[55vh] sm:max-h-[620px] overflow-y-auto space-y-1 rounded-b-xl border-t border-zinc-900 select-text scroll-smooth"
           >
             {reversedLogs.length === 0 ? (
               <div className="text-zinc-500 text-center py-20 flex flex-col items-center gap-2">

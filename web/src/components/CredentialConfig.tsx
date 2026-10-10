@@ -665,7 +665,7 @@ export default function CredentialConfig({
               </>
             )}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground hidden sm:block">
             {activeExchangeForm === "TOKOCRYPTO"
               ? "OpenAPI v1 credentials, quote asset, simulation mode, and spot filters for Tokocrypto."
               : "API keys, license token, leverage, margin settings, and trading filters for Binance Futures."}
@@ -728,7 +728,7 @@ export default function CredentialConfig({
       </div>
 
       {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-stretch">
         {/* Card 1: Kredensial Exchange Aktif */}
         {activeExchangeForm === "BINANCE" ? (
           <Card className="shadow-sm flex flex-col justify-between">
@@ -745,7 +745,7 @@ export default function CredentialConfig({
                   Futures Market
                 </Badge>
               </div>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs hidden sm:block">
                 API keys are stored and encrypted locally in the SQLite
                 database.
               </CardDescription>
@@ -924,7 +924,7 @@ export default function CredentialConfig({
                   Spot Market
                 </Badge>
               </div>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs hidden sm:block">
                 Tokocrypto OpenAPI v1 credentials using HMAC-SHA256 signature.
               </CardDescription>
             </CardHeader>
@@ -1073,7 +1073,7 @@ export default function CredentialConfig({
                 </Badge>
               )}
             </div>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs hidden sm:block">
               {activeExchangeForm === "TOKOCRYPTO"
                 ? "Spot trading execution parameters with auto TP (+5%) & SL (-2.5%)."
                 : "Execution parameters when a signal is received on Binance Futures."}
@@ -1311,7 +1311,7 @@ export default function CredentialConfig({
             <FilterIcon className="size-4 text-primary" />
             Coin Filter (Scope)
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-xs hidden sm:block">
             Filter which coins your bot is allowed to execute.
           </CardDescription>
         </CardHeader>
@@ -1343,7 +1343,7 @@ export default function CredentialConfig({
                 </option>
               </select>
             </div>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
+            <p className="text-[10px] text-muted-foreground leading-relaxed hidden sm:block">
               {coinFilterMode === "ALL" &&
                 "Bot will execute signals for any coin received from CryptoSpike."}
               {coinFilterMode === "WHITELIST" &&

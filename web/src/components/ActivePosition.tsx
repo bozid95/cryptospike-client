@@ -324,7 +324,7 @@ export default function ActivePosition({
             <Wallet className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono tracking-tight">
+            <div className="text-lg sm:text-2xl font-bold font-mono tracking-tight truncate">
               {account
                 ? `${quoteAsset === "BIDR" ? "Rp " : "$"}${account.totalWalletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "$0.00"}
@@ -335,7 +335,7 @@ export default function ActivePosition({
                   ? "Quote Asset:"
                   : "Available:"}
               </span>
-              <span className="font-mono font-medium text-foreground">
+              <span className="font-mono font-medium text-foreground truncate max-w-[90px] sm:max-w-none text-right">
                 {activeExchange === "TOKOCRYPTO"
                   ? quoteAsset
                   : `$${(account?.availableBalance || 0).toLocaleString(
@@ -366,7 +366,7 @@ export default function ActivePosition({
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold font-mono tracking-tight ${
+              className={`text-lg sm:text-2xl font-bold font-mono tracking-tight truncate ${
                 isLiveNetProfit ? "text-emerald-500" : "text-red-500"
               }`}
             >
@@ -400,19 +400,19 @@ export default function ActivePosition({
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold font-mono tracking-tight text-foreground">
+                <span className="text-lg sm:text-2xl font-bold font-mono tracking-tight text-foreground truncate">
                   SPOT (1x)
                 </span>
                 <Badge
                   variant="outline"
-                  className="text-[10px] px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
+                  className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 shrink-0"
                 >
-                  NO LIQ RISK
+                  NO LIQ
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
                 <span>Targets:</span>
-                <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400 text-[11px] sm:text-xs">
                   +5% TP / -2.5% SL
                 </span>
               </div>
@@ -427,15 +427,15 @@ export default function ActivePosition({
               <ShieldCheck className="size-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
+              <div className="flex items-baseline gap-1.5 sm:gap-2">
+                <span className="text-lg sm:text-2xl font-bold font-mono tracking-tight text-foreground truncate">
                   {account ? `${liveMarginRatioPct.toFixed(2)}%` : "0.00%"}
                 </span>
                 <Badge
                   variant="outline"
-                  className="text-[10px] px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
+                  className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 shrink-0"
                 >
-                  HEALTHY
+                  OK
                 </Badge>
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
@@ -454,15 +454,15 @@ export default function ActivePosition({
         {/* Card 4: Notional Exposure & Active Positions */}
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
+            <CardTitle className="text-xs font-medium text-muted-foreground truncate">
               {activeExchange === "TOKOCRYPTO"
                 ? "Active Spot Coins"
                 : "Market Exposure"}
             </CardTitle>
-            <Layers className="size-4 text-primary" />
+            <Layers className="size-4 text-primary shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono tracking-tight">
+            <div className="text-lg sm:text-2xl font-bold font-mono tracking-tight truncate">
               {activeExchange === "TOKOCRYPTO"
                 ? `${positions.length} Coins`
                 : `$${(account?.totalExposureUsd || 0).toLocaleString(
@@ -477,12 +477,12 @@ export default function ActivePosition({
               <span>
                 {activeExchange === "TOKOCRYPTO"
                   ? "Monitor:"
-                  : "Active Contracts:"}
+                  : "Active:"}
               </span>
               <span className="font-mono font-medium text-foreground">
                 {activeExchange === "TOKOCRYPTO"
-                  ? "Auto Worker ON"
-                  : `${positions.length} Positions`}
+                  ? "Auto ON"
+                  : `${positions.length} Pos`}
               </span>
             </div>
           </CardContent>
@@ -490,22 +490,22 @@ export default function ActivePosition({
       </div>
 
       {/* 2. TABEL / KARTU POSISI AKTIF */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-4 sm:p-6">
+      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-3.5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex flex-col space-y-1">
             <div className="flex items-center gap-2">
               <Coins className="size-4 text-primary" />
-              <h3 className="font-semibold text-lg leading-none tracking-tight">
+              <h3 className="font-semibold text-base sm:text-lg leading-none tracking-tight">
                 Active Positions
               </h3>
-              <Badge variant="outline" className="text-[11px] font-mono">
+              <Badge variant="outline" className="text-[10px] sm:text-[11px] font-mono">
                 {activeExchange === "TOKOCRYPTO"
                   ? "Tokocrypto Spot"
                   : "Binance Futures"}{" "}
                 • {positions.length} Open
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground hidden sm:block">
               {activeExchange === "TOKOCRYPTO"
                 ? "List of active Tokocrypto Spot coin holdings with automated TP (+5%) and SL (-2.5%) monitoring."
                 : "List of open Binance Futures positions with real-time entry, liquidation, and PnL."}

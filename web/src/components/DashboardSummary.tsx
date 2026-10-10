@@ -164,14 +164,14 @@ export function DashboardSummary({
   };
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-4 sm:space-y-6 w-full">
       {/* 1. HEADER & SYSTEM STATUS */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Dashboard Summary
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
             Live operational status across Binance Futures and Tokocrypto Spot.
           </p>
         </div>
@@ -234,7 +234,7 @@ export function DashboardSummary({
             size="sm"
             onClick={fetchAllSummary}
             disabled={isLoading}
-            className="h-8 text-xs cursor-pointer gap-1.5"
+            className="h-7 sm:h-8 text-xs cursor-pointer gap-1.5"
           >
             <RefreshCw
               className={`size-3.5 ${isLoading ? "animate-spin" : ""}`}
@@ -246,19 +246,19 @@ export function DashboardSummary({
 
       {/* 2. ACTIVE EXCHANGE MODE CONTROLLER (1-CLICK) */}
       <Card className="border-primary/20 bg-primary/5 shadow-sm">
-        <CardContent className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
-              <BotIcon className="size-5" />
+        <CardContent className="p-3 sm:p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="p-2 sm:p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
+              <BotIcon className="size-4 sm:size-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-foreground">
-                  Trading Execution Target:
+                  Trading Target:
                 </span>
                 <Badge
                   variant="outline"
-                  className={`text-[11px] font-bold px-2 py-0.5 ${
+                  className={`text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 ${
                     isDual
                       ? "border-primary/40 bg-primary/15 text-primary"
                       : isTokocrypto
@@ -267,13 +267,13 @@ export function DashboardSummary({
                   }`}
                 >
                   {isDual
-                    ? "Dual Mode (Binance Futures & Tokocrypto Spot)"
+                    ? "Dual Mode (Binance & Tokocrypto)"
                     : isTokocrypto
                       ? "Tokocrypto Spot Only"
                       : "Binance Futures Only"}
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">
                 {isDual
                   ? "Signals are executed simultaneously on Binance Futures (LONG & SHORT) and Tokocrypto Spot (LONG Only)."
                   : isTokocrypto
@@ -283,17 +283,17 @@ export function DashboardSummary({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 p-1 bg-background rounded-lg border shadow-xs shrink-0 self-start md:self-auto">
+          <div className="grid grid-cols-3 sm:flex items-center gap-1 sm:gap-1.5 p-1 bg-background rounded-lg border shadow-xs shrink-0 w-full md:w-auto">
             <Button
               type="button"
               size="sm"
               variant={targetExchange === "BINANCE" ? "default" : "ghost"}
               onClick={() => handleUpdateTargetExchange("BINANCE")}
               disabled={isUpdatingMode}
-              className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+              className="h-7 text-[11px] sm:text-xs font-semibold gap-1 sm:gap-1.5 cursor-pointer px-1 sm:px-3"
             >
-              <Layers className="size-3.5" />
-              Binance Only
+              <Layers className="size-3 sm:size-3.5" />
+              Binance
             </Button>
             <Button
               type="button"
@@ -301,10 +301,10 @@ export function DashboardSummary({
               variant={targetExchange === "TOKOCRYPTO" ? "default" : "ghost"}
               onClick={() => handleUpdateTargetExchange("TOKOCRYPTO")}
               disabled={isUpdatingMode}
-              className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+              className="h-7 text-[11px] sm:text-xs font-semibold gap-1 sm:gap-1.5 cursor-pointer px-1 sm:px-3"
             >
-              <Coins className="size-3.5 text-amber-500" />
-              Tokocrypto Only
+              <Coins className="size-3 sm:size-3.5 text-amber-500" />
+              Tokocrypto
             </Button>
             <Button
               type="button"
@@ -312,12 +312,12 @@ export function DashboardSummary({
               variant={targetExchange === "BOTH" ? "default" : "ghost"}
               onClick={() => handleUpdateTargetExchange("BOTH")}
               disabled={isUpdatingMode}
-              className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+              className="h-7 text-[11px] sm:text-xs font-semibold gap-1 sm:gap-1.5 cursor-pointer px-1 sm:px-3"
             >
               <span className="flex items-center gap-0.5">
-                <Layers className="size-3" />
-                <span className="text-[10px] text-muted-foreground">&</span>
-                <Coins className="size-3 text-amber-500" />
+                <Layers className="size-2.5 sm:size-3" />
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground">&</span>
+                <Coins className="size-2.5 sm:size-3 text-amber-500" />
               </span>
               Dual Mode
             </Button>
@@ -326,7 +326,7 @@ export function DashboardSummary({
       </Card>
 
       {/* 3. KARTU METRIK UTAMA (4 METRICS) */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Active Routing Target */}
         <Card className="shadow-sm border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -547,7 +547,7 @@ export function DashboardSummary({
                 <ArrowRight className="size-3" />
               </Button>
             </div>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs hidden sm:block">
               Live open contracts with leverage and liquidation risk.
             </CardDescription>
           </CardHeader>
@@ -627,7 +627,7 @@ export function DashboardSummary({
                 <ArrowRight className="size-3" />
               </Button>
             </div>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs hidden sm:block">
               Live spot coin holdings monitored with auto TP (+5%) & SL (-2.5%).
             </CardDescription>
           </CardHeader>
@@ -715,7 +715,7 @@ export function DashboardSummary({
               <ArrowRight className="size-3" />
             </Button>
           </div>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-xs hidden sm:block">
             Latest operational events, signal validation, and execution results.
           </CardDescription>
         </CardHeader>

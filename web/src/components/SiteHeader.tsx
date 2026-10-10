@@ -30,18 +30,36 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 backdrop-blur px-4 transition-all">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm hidden sm:inline-block">
+        <Separator orientation="vertical" className="mr-1.5 h-4" />
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-semibold text-xs sm:text-sm truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
             {activeTabTitle}
           </span>
         </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
-        {/* Status Indikator Bot */}
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        {/* Compact Mobile Bot Indicator */}
+        <div className="flex md:hidden items-center gap-1.5 px-2 py-0.5 rounded-full border border-border text-[10px] bg-muted/40 shrink-0">
+          <span
+            className={`inline-block size-1.5 rounded-full ${
+              botConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+            }`}
+          />
+          <span
+            className={
+              botConnected
+                ? "text-emerald-500 font-medium"
+                : "text-red-500 font-medium"
+            }
+          >
+            {botConnected ? "Online" : "Offline"}
+          </span>
+        </div>
+
+        {/* Desktop Status Indikator Bot */}
         <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full border border-border text-xs bg-muted/40">
           <ServerIcon className="size-3.5 text-muted-foreground" />
           <span className="text-muted-foreground truncate max-w-[150px]">

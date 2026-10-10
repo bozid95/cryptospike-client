@@ -23,6 +23,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -45,6 +46,14 @@ export function AppSidebar({
   tokocryptoPositionsCount = 0,
   ...props
 }: AppSidebarProps) {
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleSelectTab = (id: string) => {
+    setActiveTab(id);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
   const navGroups = [
     {
       label: "Overview",
@@ -160,7 +169,7 @@ export function AppSidebar({
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton
                         isActive={isActive}
-                        onClick={() => setActiveTab(item.id)}
+                        onClick={() => handleSelectTab(item.id)}
                         tooltip={item.title}
                         className="cursor-pointer text-xs"
                       >

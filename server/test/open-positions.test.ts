@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import { prisma } from "../src/lib/db";
 import { handleIncomingSignal } from "../src/services/socket.service";
 import { executeTokocryptoSignalOrder } from "../src/lib/tokocrypto";
-import { calculateSpotOrderQuantity, validateTokocryptoSignal, normalizeTokocryptoSymbol } from "../src/lib/tokocrypto";
+import {
+  calculateSpotOrderQuantity,
+  validateTokocryptoSignal,
+  normalizeTokocryptoSymbol,
+} from "../src/lib/tokocrypto";
 import { evaluateCoinFilter } from "../src/lib/coin-filter";
 
 describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", () => {
@@ -21,13 +25,35 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
       });
       await prisma.tokocryptoConfig.upsert({
         where: { id: 1 },
-        update: { autoExecute: true, dryRun: true, quoteAsset: "USDT", maxOpenPositions: 5, coinFilterMode: "ALL" },
-        create: { id: 1, autoExecute: true, dryRun: true, quoteAsset: "USDT", maxOpenPositions: 5, coinFilterMode: "ALL" },
+        update: {
+          autoExecute: true,
+          dryRun: true,
+          quoteAsset: "USDT",
+          maxOpenPositions: 5,
+          coinFilterMode: "ALL",
+        },
+        create: {
+          id: 1,
+          autoExecute: true,
+          dryRun: true,
+          quoteAsset: "USDT",
+          maxOpenPositions: 5,
+          coinFilterMode: "ALL",
+        },
       });
       await prisma.binanceConfig.upsert({
         where: { id: 1 },
-        update: { autoExecute: true, maxOpenPositions: 3, coinFilterMode: "ALL" },
-        create: { id: 1, autoExecute: true, maxOpenPositions: 3, coinFilterMode: "ALL" },
+        update: {
+          autoExecute: true,
+          maxOpenPositions: 3,
+          coinFilterMode: "ALL",
+        },
+        create: {
+          id: 1,
+          autoExecute: true,
+          maxOpenPositions: 3,
+          coinFilterMode: "ALL",
+        },
       });
 
       await handleIncomingSignal({
@@ -37,7 +63,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         source: "TEST_ROUTING_TOKO",
       });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 1);
       assert.equal(trades[0].symbol, "BTC_USDT");
       assert.equal(trades[0].entryPrice, 65000);
@@ -63,7 +91,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         source: "TEST_ROUTING_BINANCE",
       });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 0); // Tokocrypto tidak membuka posisi
     });
 
@@ -75,8 +105,21 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
       });
       await prisma.tokocryptoConfig.upsert({
         where: { id: 1 },
-        update: { autoExecute: true, dryRun: true, quoteAsset: "USDT", maxOpenPositions: 5, coinFilterMode: "ALL" },
-        create: { id: 1, autoExecute: true, dryRun: true, quoteAsset: "USDT", maxOpenPositions: 5, coinFilterMode: "ALL" },
+        update: {
+          autoExecute: true,
+          dryRun: true,
+          quoteAsset: "USDT",
+          maxOpenPositions: 5,
+          coinFilterMode: "ALL",
+        },
+        create: {
+          id: 1,
+          autoExecute: true,
+          dryRun: true,
+          quoteAsset: "USDT",
+          maxOpenPositions: 5,
+          coinFilterMode: "ALL",
+        },
       });
 
       await handleIncomingSignal({
@@ -86,7 +129,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         source: "TEST_ROUTING_BOTH",
       });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 1);
       assert.equal(trades[0].symbol, "SOL_USDT");
       assert.equal(trades[0].tpPrice, 150 * 1.05); // +5%
@@ -113,18 +158,32 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         entryPrice: 65000,
       });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 0); // SHORT ditolak, 0 posisi
     });
 
     it("Tokocrypto Spot harus mengizinkan sinyal BUY / LONG", () => {
-      const longRes = validateTokocryptoSignal({ symbol: "BTCUSDT", side: "LONG", entryPrice: 65000 });
+      const longRes = validateTokocryptoSignal({
+        symbol: "BTCUSDT",
+        side: "LONG",
+        entryPrice: 65000,
+      });
       assert.equal(longRes.allowed, true);
 
-      const buyRes = validateTokocryptoSignal({ symbol: "ETHUSDT", side: "BUY", entryPrice: 3500 });
+      const buyRes = validateTokocryptoSignal({
+        symbol: "ETHUSDT",
+        side: "BUY",
+        entryPrice: 3500,
+      });
       assert.equal(buyRes.allowed, true);
 
-      const sellRes = validateTokocryptoSignal({ symbol: "ETHUSDT", side: "SELL", entryPrice: 3500 });
+      const sellRes = validateTokocryptoSignal({
+        symbol: "ETHUSDT",
+        side: "SELL",
+        entryPrice: 3500,
+      });
       assert.equal(sellRes.allowed, false);
     });
   });
@@ -148,7 +207,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         entryPrice: 65000,
       });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 0);
     });
 
@@ -165,8 +226,19 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
       });
       await prisma.tokocryptoConfig.upsert({
         where: { id: 1 },
-        update: { autoExecute: true, dryRun: true, maxOpenPositions: 5, coinFilterMode: "ALL" },
-        create: { id: 1, autoExecute: true, dryRun: true, maxOpenPositions: 5, coinFilterMode: "ALL" },
+        update: {
+          autoExecute: true,
+          dryRun: true,
+          maxOpenPositions: 5,
+          coinFilterMode: "ALL",
+        },
+        create: {
+          id: 1,
+          autoExecute: true,
+          dryRun: true,
+          maxOpenPositions: 5,
+          coinFilterMode: "ALL",
+        },
       });
 
       await handleIncomingSignal({
@@ -175,7 +247,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         entryPrice: 30,
       });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 1);
       assert.equal(trades[0].symbol, "AVAX_USDT");
     });
@@ -183,44 +257,75 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
 
   describe("4. Coin Filter Execution (WHITELIST, BLACKLIST, ALL)", () => {
     it("Whitelist: Koin yang TIDAK ADA di whitelist harus ditolak", async () => {
-      const evaluation = evaluateCoinFilter("DOGEUSDT", "WHITELIST", "BTCUSDT,ETHUSDT");
+      const evaluation = evaluateCoinFilter(
+        "DOGEUSDT",
+        "WHITELIST",
+        "BTCUSDT,ETHUSDT",
+      );
       assert.equal(evaluation.allowed, false);
       assert.match(evaluation.reason, /WHITELIST BLOCKED/);
 
       const res = await executeTokocryptoSignalOrder(
         { symbol: "DOGEUSDT", side: "LONG", entryPrice: 0.15 },
-        { autoExecute: true, dryRun: true, coinFilterMode: "WHITELIST", targetCoins: "BTCUSDT,ETHUSDT" }
+        {
+          autoExecute: true,
+          dryRun: true,
+          coinFilterMode: "WHITELIST",
+          targetCoins: "BTCUSDT,ETHUSDT",
+        },
       );
       assert.equal(res.success, false);
       assert.match(res.message, /tidak ada di whitelist/i);
     });
 
     it("Whitelist: Koin yang ADA di whitelist harus diizinkan", async () => {
-      const evaluation = evaluateCoinFilter("BTCUSDT", "WHITELIST", "BTCUSDT,ETHUSDT");
+      const evaluation = evaluateCoinFilter(
+        "BTCUSDT",
+        "WHITELIST",
+        "BTCUSDT,ETHUSDT",
+      );
       assert.equal(evaluation.allowed, true);
 
       const res = await executeTokocryptoSignalOrder(
         { symbol: "BTCUSDT", side: "LONG", entryPrice: 65000 },
-        { autoExecute: true, dryRun: true, coinFilterMode: "WHITELIST", targetCoins: "BTCUSDT,ETHUSDT" }
+        {
+          autoExecute: true,
+          dryRun: true,
+          coinFilterMode: "WHITELIST",
+          targetCoins: "BTCUSDT,ETHUSDT",
+        },
       );
       assert.equal(res.success, true);
     });
 
     it("Blacklist: Koin yang ADA di blacklist harus ditolak", async () => {
-      const evaluation = evaluateCoinFilter("LUNAUSDT", "BLACKLIST", "LUNAUSDT,USTCUSDT");
+      const evaluation = evaluateCoinFilter(
+        "LUNAUSDT",
+        "BLACKLIST",
+        "LUNAUSDT,USTCUSDT",
+      );
       assert.equal(evaluation.allowed, false);
       assert.match(evaluation.reason, /BLACKLIST BLOCKED/);
 
       const res = await executeTokocryptoSignalOrder(
         { symbol: "LUNAUSDT", side: "LONG", entryPrice: 0.5 },
-        { autoExecute: true, dryRun: true, coinFilterMode: "BLACKLIST", targetCoins: "LUNAUSDT,USTCUSDT" }
+        {
+          autoExecute: true,
+          dryRun: true,
+          coinFilterMode: "BLACKLIST",
+          targetCoins: "LUNAUSDT,USTCUSDT",
+        },
       );
       assert.equal(res.success, false);
       assert.match(res.message, /blacklist/i);
     });
 
     it("Blacklist: Koin yang TIDAK ADA di blacklist harus diizinkan", async () => {
-      const evaluation = evaluateCoinFilter("SOLUSDT", "BLACKLIST", "LUNAUSDT,USTCUSDT");
+      const evaluation = evaluateCoinFilter(
+        "SOLUSDT",
+        "BLACKLIST",
+        "LUNAUSDT,USTCUSDT",
+      );
       assert.equal(evaluation.allowed, true);
     });
 
@@ -241,18 +346,43 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
       });
       await prisma.tokocryptoConfig.upsert({
         where: { id: 1 },
-        update: { autoExecute: true, dryRun: true, maxOpenPositions: 2, coinFilterMode: "ALL" },
-        create: { id: 1, autoExecute: true, dryRun: true, maxOpenPositions: 2, coinFilterMode: "ALL" },
+        update: {
+          autoExecute: true,
+          dryRun: true,
+          maxOpenPositions: 2,
+          coinFilterMode: "ALL",
+        },
+        create: {
+          id: 1,
+          autoExecute: true,
+          dryRun: true,
+          maxOpenPositions: 2,
+          coinFilterMode: "ALL",
+        },
       });
 
       // Buka posisi ke-1
-      await handleIncomingSignal({ symbol: "BTCUSDT", side: "LONG", entryPrice: 60000 });
+      await handleIncomingSignal({
+        symbol: "BTCUSDT",
+        side: "LONG",
+        entryPrice: 60000,
+      });
       // Buka posisi ke-2
-      await handleIncomingSignal({ symbol: "ETHUSDT", side: "LONG", entryPrice: 3000 });
+      await handleIncomingSignal({
+        symbol: "ETHUSDT",
+        side: "LONG",
+        entryPrice: 3000,
+      });
       // Coba buka posisi ke-3 (melebihi limit 2)
-      await handleIncomingSignal({ symbol: "SOLUSDT", side: "LONG", entryPrice: 150 });
+      await handleIncomingSignal({
+        symbol: "SOLUSDT",
+        side: "LONG",
+        entryPrice: 150,
+      });
 
-      const trades = await prisma.spotTrade.findMany({ where: { status: "OPEN" } });
+      const trades = await prisma.spotTrade.findMany({
+        where: { status: "OPEN" },
+      });
       assert.equal(trades.length, 2); // Tetap 2 posisi, posisi ke-3 ditolak!
       const symbols = trades.map((t) => t.symbol);
       assert.ok(symbols.includes("BTC_USDT"));
