@@ -47,12 +47,14 @@ export function validateTokocryptoSignal(signal: {
 }
 
 /**
- * Menghitung kuantitas koin yang dapat dibeli di pasar Spot berdasarkan saldo,
- * persentase risiko, pembulatan stepSize, dan validasi minNotional.
+/**
+ * Menghitung kuantitas koin yang dapat dibeli di pasar Spot berdasarkan nominal kas tetap ($ / Rp)
+ * atau persentase, pembulatan stepSize, dan validasi minNotional.
  */
 export function calculateSpotOrderQuantity(params: {
   balance: number;
-  riskPct: number;
+  riskPct?: number;
+  fixedAmount?: number;
   currentPrice: number;
   stepSize: number;
   minNotional: number;
@@ -66,6 +68,7 @@ export function calculateSpotOrderQuantity(params: {
   const {
     balance,
     riskPct,
+    fixedAmount,
     currentPrice,
     stepSize,
     minNotional,
@@ -90,9 +93,18 @@ export function calculateSpotOrderQuantity(params: {
     };
   }
 
-  // Hitung alokasi dana modal yang digunakan untuk transaksi ini
-  const rawAllocation = (balance * Math.max(0.1, riskPct)) / 100;
-  let targetAllocation = rawAllocation;
+  // Alokasi modal: Utamakan nominal kas tetap ($ / Rp) langsung (Opsi 1)
+  let targetAllocation =
+    fixedAmount && fixedAmount > 0
+      ? fixedAmount
+      : riskPct && riskPct > 0
+        ? riskPct
+        : minNotional;
+
+  // Jika alokasi melebihi sisa saldo kas yang tersedia, sesuaikan ke saldo
+  if (targetAllocation > balance) {
+    targetAllocation = balance;
+  }
 
   if (maxAllocationUsd && maxAllocationUsd > 0) {
     targetAllocation = Math.min(targetAllocation, maxAllocationUsd);
@@ -283,8 +295,9 @@ export async function executeTokocryptoSignalOrder(
     const simulatedMsg = `[SIMULASI] Order BUY ${formattedSymbol} pada harga $${entryPrice} berhasil. Target TP1: $${tpPrice.toFixed(4)}, SL: $${slPrice.toFixed(4)}.`;
     addAppLog("SUCCESS", "Tokocrypto", simulatedMsg);
 
-    // Kuantitas simulasi disesuaikan dengan nilai notional wajar ($50 paper trading)
-    const simNotional = 50;
+    // Kuantitas simulasi disesuaikan dengan nominal kas ($ / Rp) yang disetel
+    const fixedAmount = Number(config.riskPerTradePct) || 5.0;
+    const simNotional = fixedAmount;
     const rawQty = simNotional / entryPrice;
     const simQty = Number(rawQty.toFixed(rawQty < 1 ? 6 : 4));
 
@@ -345,11 +358,11 @@ export async function executeTokocryptoSignalOrder(
       currentPrice = ticker.lastPrice;
     }
 
-    // Hitung alokasi lot size
-    const riskPct = config.riskPerTradePct || 2.0;
+    // Hitung alokasi lot size menggunakan nominal kas tetap ($ / Rp)
+    const fixedAmount = Number(config.riskPerTradePct) || 5.0;
     const qtyResult = calculateSpotOrderQuantity({
       balance: balanceInfo.free,
-      riskPct,
+      fixedAmount,
       currentPrice,
       stepSize: rules.stepSize,
       minNotional: rules.minNotional,

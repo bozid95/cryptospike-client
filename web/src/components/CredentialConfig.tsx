@@ -1186,23 +1186,48 @@ export default function CredentialConfig({
               </div>
             )}
 
-            {/* Risk Per Trade % */}
+            {/* Risk / Allocation Input */}
             <div className="space-y-1.5">
               <Label htmlFor="risk-pct" className="text-xs font-medium">
                 {activeExchangeForm === "TOKOCRYPTO"
-                  ? `Allocation Per Trade (% ${tokocryptoQuoteAsset} Balance)`
+                  ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
                   : "Risk Per Trade (% Wallet)"}
               </Label>
               <Input
                 id="risk-pct"
                 type="number"
-                step="0.1"
-                min="0.1"
-                max="100"
+                step={
+                  activeExchangeForm === "TOKOCRYPTO"
+                    ? tokocryptoQuoteAsset === "BIDR"
+                      ? "10000"
+                      : "0.5"
+                    : "0.1"
+                }
+                min={
+                  activeExchangeForm === "TOKOCRYPTO"
+                    ? tokocryptoQuoteAsset === "BIDR"
+                      ? "50000"
+                      : "5"
+                    : "0.1"
+                }
+                max={
+                  activeExchangeForm === "TOKOCRYPTO"
+                    ? tokocryptoQuoteAsset === "BIDR"
+                      ? "100000000"
+                      : "100000"
+                    : "100"
+                }
                 value={riskPerTradePct}
                 onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
-                className="h-8 text-xs"
+                className="h-8 text-xs font-mono"
               />
+              {activeExchangeForm === "TOKOCRYPTO" && (
+                <p className="text-[10px] text-muted-foreground">
+                  * Minimum Tokocrypto:{" "}
+                  {tokocryptoQuoteAsset === "BIDR" ? "Rp 100.000" : "$5.00 USDT"}{" "}
+                  per order spot.
+                </p>
+              )}
               {testResult?.balance ? (
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-[10px] sm:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 p-2.5 rounded-md mt-2 space-y-1.5">
@@ -1219,14 +1244,11 @@ export default function CredentialConfig({
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        Order Cap ({riskPerTradePct}%):
+                        Order Allocation:
                       </span>
                       <span className="font-mono font-bold text-foreground">
-                        ~
-                        {(
-                          (testResult.balance * Number(riskPerTradePct)) /
-                          100
-                        ).toLocaleString(undefined, {
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        {Number(riskPerTradePct).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
                         {testResult.quoteAsset || tokocryptoQuoteAsset}
@@ -1237,17 +1259,25 @@ export default function CredentialConfig({
                         Max Capital ({maxOpenPositions} Coins):
                       </span>
                       <span className="font-mono font-bold text-foreground">
-                        ~
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {(
-                          (testResult.balance * totalRiskPct) /
-                          100
+                          Number(riskPerTradePct) * Number(maxOpenPositions)
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset} (
-                        {totalRiskPct}%)
+                        {testResult.quoteAsset || tokocryptoQuoteAsset}
                       </span>
                     </div>
+                    {Number(riskPerTradePct) * Number(maxOpenPositions) >
+                      testResult.balance && (
+                      <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium pt-1 border-t border-amber-500/20">
+                        * Total alokasi ({tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        {(
+                          Number(riskPerTradePct) * Number(maxOpenPositions)
+                        ).toLocaleString()}
+                        ) melebihi saldo kas saat ini.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div
@@ -1661,7 +1691,7 @@ export default function CredentialConfig({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   {activeExchangeForm === "TOKOCRYPTO"
-                    ? "Max Total Allocation:"
+                    ? "Max Total Capital:"
                     : "Total Max Risk:"}
                 </span>
                 <span
@@ -1671,33 +1701,22 @@ export default function CredentialConfig({
                       : riskInfo.color.split(" ")[0]
                   }`}
                 >
-                  {totalRiskPct}%
+                  {activeExchangeForm === "TOKOCRYPTO"
+                    ? `${tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}${(Number(riskPerTradePct) * Number(maxOpenPositions)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${tokocryptoQuoteAsset}`
+                    : `${totalRiskPct}%`}
                 </span>
               </div>
               {testResult?.balance ? (
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
                     <p>
-                      <strong>Tokocrypto Cash Allocation:</strong> Out of your
-                      balance of{" "}
+                      <strong>Tokocrypto Cash Allocation:</strong> Each spot buy order will allocate{" "}
                       <strong>
-                        {testResult.balance.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        {Number(riskPerTradePct).toLocaleString()}{" "}
                         {testResult.quoteAsset || tokocryptoQuoteAsset}
-                      </strong>
-                      , estimated allocation per spot buy order is{" "}
-                      <strong>
-                        ~
-                        {(
-                          (testResult.balance * Number(riskPerTradePct)) /
-                          100
-                        ).toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset}
-                      </strong>
-                      .
+                      </strong>{" "}
+                      (Fixed Cash).
                     </p>
                   </div>
                 ) : (
