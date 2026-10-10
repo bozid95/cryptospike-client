@@ -541,7 +541,24 @@ export default function CredentialConfig({
   };
 
   const handleSetPreset = (preset: string[]) => {
-    setTargetCoins(preset.join(","));
+    if (activeExchangeForm === "TOKOCRYPTO") {
+      const quote = tokocryptoQuoteAsset;
+      const formatted = preset.map((c) => {
+        let sym = c.trim().toUpperCase();
+        if (sym.startsWith("1000")) {
+          sym = sym.slice(4);
+        }
+        if (sym.endsWith("USDT")) {
+          sym = sym.slice(0, -4);
+        } else if (sym.endsWith("BIDR")) {
+          sym = sym.slice(0, -4);
+        }
+        return `${sym}_${quote}`;
+      });
+      setTargetCoins(formatted.join(","));
+    } else {
+      setTargetCoins(preset.join(","));
+    }
   };
 
   return (
@@ -607,7 +624,9 @@ export default function CredentialConfig({
             <Button
               type="button"
               size="sm"
-              variant={activeExchangeForm === "TOKOCRYPTO" ? "default" : "ghost"}
+              variant={
+                activeExchangeForm === "TOKOCRYPTO" ? "default" : "ghost"
+              }
               onClick={() => {
                 setActiveExchangeForm("TOKOCRYPTO");
                 setTestResult(null);
@@ -1098,41 +1117,75 @@ export default function CredentialConfig({
                 className="h-8 text-xs"
               />
               {testResult?.balance ? (
-                <div
-                  className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} leading-relaxed mt-2 space-y-1.5`}
-                >
-                  <p>
-                    <strong>Risk Preview [{riskInfo.label}]:</strong> You are
-                    authorizing the bot to allocate a maximum of{" "}
-                    <strong>
-                      ~
-                      {(
-                        (testResult.balance * Number(riskPerTradePct)) /
-                        100
-                      ).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")}
-                    </strong>{" "}
-                    per single trade.
-                  </p>
-                  <p className="opacity-90">
-                    <strong>Worst-Case Scenario:</strong> If all{" "}
-                    <strong>{maxOpenPositions}</strong> allowed positions hit
-                    Stop Loss simultaneously, your total exposure is up to{" "}
-                    <strong>
-                      ~
-                      {(
-                        (testResult.balance * totalRiskPct) /
-                        100
-                      ).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")} ({totalRiskPct}%)
-                    </strong>{" "}
-                    of your available balance.
-                  </p>
-                </div>
+                activeExchangeForm === "TOKOCRYPTO" ? (
+                  <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 p-2.5 rounded-md leading-relaxed mt-2 space-y-1.5">
+                    <p>
+                      <strong>Spot Allocation Preview:</strong> Bot dialokasikan menggunakan modal kas maksimal{" "}
+                      <strong>
+                        ~
+                        {(
+                          (testResult.balance * Number(riskPerTradePct)) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                      </strong>{" "}
+                      per single spot order (1x Cash).
+                    </p>
+                    <p className="opacity-90">
+                      <strong>Maksimal Alokasi Kas:</strong> Jika terdapat{" "}
+                      <strong>{maxOpenPositions}</strong> koin posisi terbuka secara bersamaan, estimasi total modal teralokasi adalah{" "}
+                      <strong>
+                        ~
+                        {(
+                          (testResult.balance * totalRiskPct) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || tokocryptoQuoteAsset} ({totalRiskPct}%)
+                      </strong>{" "}
+                      dari saldo kas tersedia.
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} leading-relaxed mt-2 space-y-1.5`}
+                  >
+                    <p>
+                      <strong>Risk Preview [{riskInfo.label}]:</strong> You are
+                      authorizing the bot to allocate a maximum of{" "}
+                      <strong>
+                        ~
+                        {(
+                          (testResult.balance * Number(riskPerTradePct)) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || "USDT"}
+                      </strong>{" "}
+                      per single trade.
+                    </p>
+                    <p className="opacity-90">
+                      <strong>Worst-Case Scenario:</strong> If all{" "}
+                      <strong>{maxOpenPositions}</strong> allowed positions hit
+                      Stop Loss simultaneously, your total exposure is up to{" "}
+                      <strong>
+                        ~
+                        {(
+                          (testResult.balance * totalRiskPct) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || "USDT"} ({totalRiskPct}%)
+                      </strong>{" "}
+                      of your available balance.
+                    </p>
+                  </div>
+                )
               ) : (
                 <p className="text-[10px] text-muted-foreground italic mt-1">
                   * Please run 'Test Connection' first to see the estimated
@@ -1222,7 +1275,11 @@ export default function CredentialConfig({
                 {/* Add coin input */}
                 <div className="flex gap-1.5 w-full sm:w-72">
                   <Input
-                    placeholder="e.g. BTC, ETH, ADAUSDT"
+                    placeholder={
+                      activeExchangeForm === "TOKOCRYPTO"
+                        ? `e.g. BTC, ETH, BTC_${tokocryptoQuoteAsset}`
+                        : "e.g. BTC, ETH, ADAUSDT"
+                    }
                     value={coinInput}
                     onChange={(e) => setCoinInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -1417,7 +1474,9 @@ export default function CredentialConfig({
 
           <div className="space-y-3 py-2 text-sm">
             <div className="flex justify-between border-b pb-2">
-              <span className="text-muted-foreground">Configuration Target:</span>
+              <span className="text-muted-foreground">
+                Configuration Target:
+              </span>
               <span className="font-semibold text-primary">
                 {activeExchangeForm === "TOKOCRYPTO"
                   ? "Tokocrypto (Spot Market)"
@@ -1462,7 +1521,9 @@ export default function CredentialConfig({
                   <span className="font-semibold">{environment}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-muted-foreground">Leverage & Margin:</span>
+                  <span className="text-muted-foreground">
+                    Leverage & Margin:
+                  </span>
                   <span className="font-semibold">
                     {leverage}x ({marginType})
                   </span>
@@ -1496,37 +1557,69 @@ export default function CredentialConfig({
                     ? "Max Total Allocation:"
                     : "Total Max Risk:"}
                 </span>
-                <span className={`font-bold ${riskInfo.color.split(" ")[0]}`}>
+                <span
+                  className={`font-bold ${
+                    activeExchangeForm === "TOKOCRYPTO"
+                      ? "text-amber-600"
+                      : riskInfo.color.split(" ")[0]
+                  }`}
+                >
                   {totalRiskPct}%
                 </span>
               </div>
               {testResult?.balance ? (
-                <div
-                  className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed space-y-2`}
-                >
-                  <p>
-                    <strong>Balance Preview [{riskInfo.label}]:</strong> Out of
-                    your available balance of{" "}
-                    <strong>
-                      {testResult.balance.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")}
-                    </strong>
-                    , allocation per trade is approximately{" "}
-                    <strong>
-                      ~
-                      {(
-                        (testResult.balance * Number(riskPerTradePct)) /
-                        100
-                      ).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")}
-                    </strong>
-                    .
-                  </p>
-                </div>
+                activeExchangeForm === "TOKOCRYPTO" ? (
+                  <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
+                    <p>
+                      <strong>Alokasi Kas Tokocrypto:</strong> Dari saldo{" "}
+                      <strong>
+                        {testResult.balance.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                      </strong>
+                      , estimasi alokasi per order beli spot adalah{" "}
+                      <strong>
+                        ~
+                        {(
+                          (testResult.balance * Number(riskPerTradePct)) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                      </strong>
+                      .
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed space-y-2`}
+                  >
+                    <p>
+                      <strong>Balance Preview [{riskInfo.label}]:</strong> Out of
+                      your available balance of{" "}
+                      <strong>
+                        {testResult.balance.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || "USDT"}
+                      </strong>
+                      , allocation per trade is approximately{" "}
+                      <strong>
+                        ~
+                        {(
+                          (testResult.balance * Number(riskPerTradePct)) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {testResult.quoteAsset || "USDT"}
+                      </strong>
+                      .
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
                   * Please run 'Test Connection' first to see the estimated

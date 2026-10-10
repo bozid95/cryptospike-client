@@ -356,9 +356,7 @@ export function DashboardSummary({
                   className="w-full h-7 text-[11px] gap-1 cursor-pointer bg-background"
                 >
                   <SlidersIcon className="size-3" />
-                  {isTokocrypto
-                    ? "Configure Tokocrypto"
-                    : "Configure Binance"}
+                  {isTokocrypto ? "Configure Tokocrypto" : "Configure Binance"}
                 </Button>
               )}
             </div>
