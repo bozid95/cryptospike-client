@@ -9,6 +9,9 @@ import {
   ShieldAlert,
   ShieldCheck,
   SaveIcon,
+  FilterIcon,
+  PlusIcon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api";
@@ -57,6 +60,13 @@ export default function CredentialConfig() {
   const [riskPerTradePct, setRiskPerTradePct] = useState(2.0);
   const [maxOpenPositions, setMaxOpenPositions] = useState(3);
 
+  // Coin Filter State
+  const [coinFilterMode, setCoinFilterMode] = useState<
+    "ALL" | "WHITELIST" | "BLACKLIST"
+  >("ALL");
+  const [targetCoins, setTargetCoins] = useState("");
+  const [coinInput, setCoinInput] = useState("");
+
   // Status State
   const [isSaving, setIsSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -91,6 +101,8 @@ export default function CredentialConfig() {
             setLeverage(d.leverage || 10);
             setRiskPerTradePct(d.riskPerTradePct || 2.0);
             setMaxOpenPositions(d.maxOpenPositions || 3);
+            setCoinFilterMode(d.coinFilterMode || "ALL");
+            setTargetCoins(d.targetCoins || "");
           }
         }
       } catch (err: any) {
@@ -168,6 +180,8 @@ export default function CredentialConfig() {
         leverage: Number(leverage),
         riskPerTradePct: Number(riskPerTradePct),
         maxOpenPositions: Number(maxOpenPositions),
+        coinFilterMode,
+        targetCoins: targetCoins.trim(),
       };
 
       const res = await authFetch("/api/config", {
@@ -220,6 +234,33 @@ export default function CredentialConfig() {
 
   const totalRiskPct = Number(riskPerTradePct) * Number(maxOpenPositions);
   const riskInfo = getRiskLevel(totalRiskPct);
+
+  const coinList = targetCoins
+    .split(",")
+    .map((c) => c.trim().toUpperCase())
+    .filter(Boolean);
+
+  const handleAddCoin = (symbol: string) => {
+    let clean = symbol.trim().toUpperCase();
+    if (!clean) return;
+    if (!clean.endsWith("USDT")) {
+      clean = `${clean}USDT`;
+    }
+    if (!coinList.includes(clean)) {
+      const updated = [...coinList, clean].join(",");
+      setTargetCoins(updated);
+    }
+    setCoinInput("");
+  };
+
+  const handleRemoveCoin = (symbol: string) => {
+    const updated = coinList.filter((c) => c !== symbol).join(",");
+    setTargetCoins(updated);
+  };
+
+  const handleSetPreset = (preset: string[]) => {
+    setTargetCoins(preset.join(","));
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -550,6 +591,167 @@ export default function CredentialConfig() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Card Coin Filter */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FilterIcon className="size-4 text-primary" />
+                Coin Filter (Scope)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Filter which coins your bot is allowed to execute.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3.5 text-xs">
+              {/* Mode Selector */}
+              <div className="space-y-1.5">
+                <Label htmlFor="filter-mode" className="text-xs font-medium">
+                  Filter Mode
+                </Label>
+                <select
+                  id="filter-mode"
+                  value={coinFilterMode}
+                  onChange={(e) =>
+                    setCoinFilterMode(
+                      e.target.value as "ALL" | "WHITELIST" | "BLACKLIST",
+                    )
+                  }
+                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="ALL" className="text-black">
+                    All Market (No Filter)
+                  </option>
+                  <option value="WHITELIST" className="text-black">
+                    Whitelist (Only Selected Coins)
+                  </option>
+                  <option value="BLACKLIST" className="text-black">
+                    Blacklist (Exclude Selected Coins)
+                  </option>
+                </select>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  {coinFilterMode === "ALL" &&
+                    "Bot will execute signals for any coin received from CryptoSpike."}
+                  {coinFilterMode === "WHITELIST" &&
+                    "Bot will ONLY execute signals matching your selected coins below."}
+                  {coinFilterMode === "BLACKLIST" &&
+                    "Bot will execute all signals EXCEPT the coins in your blacklist below."}
+                </p>
+              </div>
+
+              {coinFilterMode !== "ALL" && (
+                <div className="space-y-2.5 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">
+                      {coinFilterMode === "WHITELIST"
+                        ? "Allowed Coins"
+                        : "Blocked Coins"}{" "}
+                      ({coinList.length})
+                    </Label>
+                  </div>
+
+                  {/* Preset quick buttons */}
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer"
+                      onClick={() =>
+                        handleSetPreset([
+                          "BTCUSDT",
+                          "ETHUSDT",
+                          "SOLUSDT",
+                          "BNBUSDT",
+                          "XRPUSDT",
+                        ])
+                      }
+                    >
+                      Bluechips
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer"
+                      onClick={() =>
+                        handleSetPreset([
+                          "ADAUSDT",
+                          "AVAXUSDT",
+                          "NEARUSDT",
+                          "SUIUSDT",
+                          "DOTUSDT",
+                        ])
+                      }
+                    >
+                      Top L1
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-1.5 py-0 text-muted-foreground hover:text-destructive cursor-pointer"
+                      onClick={() => setTargetCoins("")}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+
+                  {/* Add coin input */}
+                  <div className="flex gap-1.5">
+                    <Input
+                      placeholder="e.g. BTC, ETH, ADAUSDT"
+                      value={coinInput}
+                      onChange={(e) => setCoinInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCoin(coinInput);
+                        }
+                      }}
+                      className="h-8 text-xs font-mono uppercase"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleAddCoin(coinInput)}
+                      className="h-8 px-2.5 text-xs cursor-pointer"
+                    >
+                      <PlusIcon className="size-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Badges container */}
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 rounded-md border bg-muted/20">
+                    {coinList.length === 0 ? (
+                      <span className="text-[10px] text-muted-foreground italic">
+                        No coins specified. Type a symbol above or select a
+                        preset.
+                      </span>
+                    ) : (
+                      coinList.map((coin) => (
+                        <Badge
+                          key={coin}
+                          variant="secondary"
+                          className="text-[10px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
+                        >
+                          {coin}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCoin(coin)}
+                            className="hover:text-destructive transition-colors cursor-pointer"
+                          >
+                            <XIcon className="size-3" />
+                          </button>
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -620,6 +822,14 @@ export default function CredentialConfig() {
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Max Open Positions:</span>
               <span className="font-semibold">{maxOpenPositions}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Coin Filter:</span>
+              <span className="font-semibold text-right">
+                {coinFilterMode === "ALL"
+                  ? "All Market"
+                  : `${coinFilterMode} (${coinList.length} coins)`}
+              </span>
             </div>
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">

@@ -352,6 +352,8 @@ app.get("/api/config", requireAuth, async (req, res) => {
         leverage: 10,
         riskPerTradePct: 2.0,
         maxOpenPositions: 3,
+        coinFilterMode: "ALL",
+        targetCoins: "",
       },
     });
   } catch (err: any) {
@@ -372,6 +374,8 @@ app.post("/api/config", requireAuth, async (req, res) => {
       leverage,
       riskPerTradePct,
       maxOpenPositions,
+      coinFilterMode,
+      targetCoins,
     } = req.body;
 
     const saved = await prisma.appConfig.upsert({
@@ -386,6 +390,8 @@ app.post("/api/config", requireAuth, async (req, res) => {
         leverage: leverage ? Number(leverage) : 10,
         riskPerTradePct: riskPerTradePct ? Number(riskPerTradePct) : 2.0,
         maxOpenPositions: maxOpenPositions ? Number(maxOpenPositions) : 3,
+        coinFilterMode: coinFilterMode || "ALL",
+        targetCoins: typeof targetCoins === "string" ? targetCoins.trim() : "",
       },
       create: {
         id: 1,
@@ -398,6 +404,8 @@ app.post("/api/config", requireAuth, async (req, res) => {
         leverage: leverage ? Number(leverage) : 10,
         riskPerTradePct: riskPerTradePct ? Number(riskPerTradePct) : 2.0,
         maxOpenPositions: maxOpenPositions ? Number(maxOpenPositions) : 3,
+        coinFilterMode: coinFilterMode || "ALL",
+        targetCoins: typeof targetCoins === "string" ? targetCoins.trim() : "",
       },
     });
 
@@ -705,6 +713,8 @@ async function connectToNestJS(tokenOverride?: string) {
         leverage: config.leverage || 10,
         riskPerTradePct: config.riskPerTradePct || 2.0,
         maxOpenPositions: config.maxOpenPositions || 3,
+        coinFilterMode: config.coinFilterMode || "ALL",
+        targetCoins: config.targetCoins || "",
       });
     } catch (err: any) {
       addAppLog(

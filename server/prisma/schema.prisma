@@ -23,6 +23,10 @@ model AppConfig {
   riskPerTradePct  Float    @default(2.0)
   maxOpenPositions Int      @default(3)
 
+  // Filter Koin Eksekusi (Trading Scope)
+  coinFilterMode   String   @default("ALL") // ALL, WHITELIST, atau BLACKLIST
+  targetCoins      String?  @default("")    // Simbol koin koma terpisah (misal: "BTCUSDT,ETHUSDT,ADAUSDT")
+
   updatedAt        DateTime @updatedAt
 }
 

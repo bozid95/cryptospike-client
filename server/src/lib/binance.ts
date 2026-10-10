@@ -547,6 +547,8 @@ export async function executeSignalOrder(
     leverage: number;
     riskPerTradePct: number;
     maxOpenPositions: number;
+    coinFilterMode?: string;
+    targetCoins?: string | null;
   },
 ) {
   const { symbol, side, entryPrice, tp1, tp2, tp3, sl, strategy } = signal;
@@ -568,6 +570,36 @@ export async function executeSignalOrder(
       `AutoExecute dinonaktifkan di konfigurasi. Sinyal ${symbol} dilewati.`,
     );
     return;
+  }
+
+  // 2. Cek Filter Koin (Trading Scope: WHITELIST / BLACKLIST)
+  const filterMode = (config.coinFilterMode || "ALL").toUpperCase();
+  if (filterMode !== "ALL") {
+    const rawTarget = config.targetCoins || "";
+    const coinList = rawTarget
+      .split(/[,;\s]+/)
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean);
+
+    const isMatch = coinList.includes(symbol.toUpperCase());
+
+    if (filterMode === "WHITELIST" && !isMatch) {
+      addAppLog(
+        "INFO",
+        "Executor",
+        `Sinyal ${symbol} dilewati karena tidak termasuk dalam Whitelist Koin Anda (${coinList.join(", ") || "Kosong"}).`,
+      );
+      return;
+    }
+
+    if (filterMode === "BLACKLIST" && isMatch) {
+      addAppLog(
+        "INFO",
+        "Executor",
+        `Sinyal ${symbol} dilewati karena ada dalam Blacklist Koin Anda.`,
+      );
+      return;
+    }
   }
 
   // 2. Cek Kredensial API
