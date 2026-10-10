@@ -116,40 +116,61 @@ export function AppLogsView() {
         <Card className="border-border/80 shadow-sm p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground font-medium">
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-4">
+        <Card className="border-border/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate">
               Total Events
             </p>
             <p className="text-2xl font-bold font-mono mt-1">{totalCount}</p>
+            <p className="text-lg sm:text-2xl font-bold font-mono mt-0.5 sm:mt-1 truncate">
+              {totalCount}
+            </p>
           </div>
           <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
             <Terminal className="size-5" />
+          <div className="size-8 sm:size-10 rounded-lg sm:rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Terminal className="size-4 sm:size-5" />
           </div>
         </Card>
 
         <Card className="border-border/80 shadow-sm p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground font-medium">
+        <Card className="border-border/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate">
               Success Orders
             </p>
             <p className="text-2xl font-bold font-mono text-emerald-500 mt-1">
+            <p className="text-lg sm:text-2xl font-bold font-mono text-emerald-500 mt-0.5 sm:mt-1 truncate">
               {successCount}
             </p>
           </div>
           <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
             <CheckCircle2 className="size-5" />
+          <div className="size-8 sm:size-10 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="size-4 sm:size-5" />
           </div>
         </Card>
 
         <Card className="border-border/80 shadow-sm p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground font-medium">
+        <Card className="border-border/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate">
               Warnings
             </p>
             <p className="text-2xl font-bold font-mono text-amber-500 mt-1">
+            <p className="text-lg sm:text-2xl font-bold font-mono text-amber-500 mt-0.5 sm:mt-1 truncate">
               {warnCount}
             </p>
           </div>
           <div className="size-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
             <AlertTriangle className="size-5" />
+          <div className="size-8 sm:size-10 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+            <AlertTriangle className="size-4 sm:size-5" />
           </div>
         </Card>
 
@@ -157,11 +178,19 @@ export function AppLogsView() {
           <div>
             <p className="text-xs text-muted-foreground font-medium">Errors</p>
             <p className="text-2xl font-bold font-mono text-red-500 mt-1">
+        <Card className="border-border/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate">
+              Errors
+            </p>
+            <p className="text-lg sm:text-2xl font-bold font-mono text-red-500 mt-0.5 sm:mt-1 truncate">
               {errorCount}
             </p>
           </div>
           <div className="size-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
             <XCircle className="size-5" />
+          <div className="size-8 sm:size-10 rounded-lg sm:rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+            <XCircle className="size-4 sm:size-5" />
           </div>
         </Card>
       </div>
