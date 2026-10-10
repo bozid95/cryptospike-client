@@ -119,19 +119,41 @@ export async function getTokocryptoTicker(
   customFetch: typeof fetch = fetch,
 ): Promise<{ symbol: string; lastPrice: number }> {
   const normSymbol = normalizeTokocryptoSymbol(symbol);
+
+  // 1. Coba ambil dari Tokocrypto Order Book Depth (Endpoint aktif)
   try {
     const res = await customFetch(
-      `${baseUrl}/open/v1/market/ticker/price?symbol=${encodeURIComponent(normSymbol)}`,
+      `${baseUrl}/open/v1/market/depth?symbol=${encodeURIComponent(normSymbol)}&limit=5`,
     );
     if (res.ok) {
       const json = (await res.json()) as any;
-      const price = parseFloat(
-        json?.data?.price || json?.data?.lastPrice || "0",
-      );
+      const bids = json?.data?.bids || [];
+      const asks = json?.data?.asks || [];
+      if (bids.length > 0 && asks.length > 0) {
+        const bestBid = parseFloat(bids[0][0]);
+        const bestAsk = parseFloat(asks[0][0]);
+        if (bestBid > 0 && bestAsk > 0) {
+          const midPrice = (bestBid + bestAsk) / 2;
+          return { symbol: normSymbol, lastPrice: midPrice };
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Fallback ke Binance Public Ticker jika endpoint Tokocrypto tidak tersedia
+  try {
+    const cleanBinance = normSymbol.replace(/_/g, "");
+    const res = await customFetch(
+      `https://api.binance.com/api/v3/ticker/price?symbol=${encodeURIComponent(cleanBinance)}`,
+    );
+    if (res.ok) {
+      const json = (await res.json()) as any;
+      const price = parseFloat(json?.price || "0");
       if (price > 0) {
         return { symbol: normSymbol, lastPrice: price };
       }
     }
   } catch {}
+
   return { symbol: normSymbol, lastPrice: 0 };
 }
