@@ -12,6 +12,8 @@ import {
   FilterIcon,
   PlusIcon,
   XIcon,
+  Coins,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api";
@@ -177,17 +179,24 @@ const TOP_100_NO_MEME: string[] = TOP_100_CMC.filter(
 
 export default function CredentialConfig() {
   const [token, setToken] = useState("");
+  const [targetExchange, setTargetExchange] = useState<"BINANCE" | "TOKOCRYPTO">("BINANCE");
   const [environment, setEnvironment] = useState<"TESTNET" | "LIVE">("TESTNET");
 
-  // Testnet Credentials
+  // Binance Credentials
   const [testnetApiKey, setTestnetApiKey] = useState("");
   const [testnetApiSecret, setTestnetApiSecret] = useState("");
   const [showTestnetSecret, setShowTestnetSecret] = useState(false);
 
-  // Live Credentials
   const [liveApiKey, setLiveApiKey] = useState("");
   const [liveApiSecret, setLiveApiSecret] = useState("");
   const [showLiveSecret, setShowLiveSecret] = useState(false);
+
+  // Tokocrypto Credentials
+  const [tokocryptoApiKey, setTokocryptoApiKey] = useState("");
+  const [tokocryptoApiSecret, setTokocryptoApiSecret] = useState("");
+  const [showTokocryptoSecret, setShowTokocryptoSecret] = useState(false);
+  const [tokocryptoQuoteAsset, setTokocryptoQuoteAsset] = useState<"USDT" | "BIDR">("USDT");
+  const [dryRun, setDryRun] = useState(false);
 
   // Risk Management
   const [autoExecute, setAutoExecute] = useState(false);
@@ -213,6 +222,7 @@ export default function CredentialConfig() {
     success: boolean;
     message: string;
     balance?: number;
+    quoteAsset?: string;
   } | null>(null);
 
   // 1. Muat konfigurasi dari database lokal SQLite
@@ -225,6 +235,8 @@ export default function CredentialConfig() {
           if (json.success && json.data) {
             const d = json.data;
             setToken(d.clientToken || "");
+            const ex = (d.targetExchange || "BINANCE").toUpperCase();
+            setTargetExchange(ex === "TOKOCRYPTO" ? "TOKOCRYPTO" : "BINANCE");
             const env = d.environment === "LIVE" ? "LIVE" : "TESTNET";
             setEnvironment(env);
             if (env === "TESTNET") {
@@ -234,6 +246,12 @@ export default function CredentialConfig() {
               setLiveApiKey(d.binanceApiKey || "");
               setLiveApiSecret(d.binanceApiSecret || "");
             }
+            setTokocryptoApiKey(d.tokocryptoApiKey || "");
+            setTokocryptoApiSecret(d.tokocryptoApiSecret || "");
+            setTokocryptoQuoteAsset(
+              d.tokocryptoQuoteAsset === "BIDR" ? "BIDR" : "USDT",
+            );
+            setDryRun(d.dryRun === 1 || d.dryRun === true);
             setAutoExecute(d.autoExecute === 1 || d.autoExecute === true);
             setMarginType(d.marginType || "ISOLATED");
             setLeverage(d.leverage || 10);
@@ -251,8 +269,59 @@ export default function CredentialConfig() {
     fetchConfig();
   }, []);
 
-  // 2. Fungsi Tes Koneksi API Binance
+  // 2. Fungsi Tes Koneksi API (Binance atau Tokocrypto)
   const handleTestConnection = async () => {
+    if (targetExchange === "TOKOCRYPTO") {
+      if (!tokocryptoApiKey.trim() || !tokocryptoApiSecret.trim()) {
+        toast.error("Validation Failed", {
+          description: "Please enter Tokocrypto API Key and API Secret first.",
+        });
+        return;
+      }
+
+      try {
+        setTestingConnection(true);
+        setTestResult(null);
+
+        const res = await authFetch("/api/config/test-tokocrypto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            apiKey: tokocryptoApiKey.trim(),
+            apiSecret: tokocryptoApiSecret.trim(),
+            quoteAsset: tokocryptoQuoteAsset,
+          }),
+        });
+
+        const data = await res.json();
+        setTestResult({
+          success: data.success,
+          message: data.message,
+          balance: data.balance?.free,
+          quoteAsset: tokocryptoQuoteAsset,
+        });
+
+        if (data.success) {
+          toast.success("Tokocrypto Connection Successful!", {
+            description: data.message,
+          });
+        } else {
+          toast.error("Tokocrypto Connection Failed", {
+            description: data.message,
+          });
+        }
+      } catch (err: any) {
+        toast.error("Failed to Test Connection", {
+          description:
+            err.message || "Make sure local backend is running on port 3030.",
+        });
+      } finally {
+        setTestingConnection(false);
+      }
+      return;
+    }
+
+    // Default: Binance Futures
     const isTestnet = environment === "TESTNET";
     const currentKey = isTestnet ? testnetApiKey : liveApiKey;
     const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
@@ -279,7 +348,10 @@ export default function CredentialConfig() {
       });
 
       const data = await res.json();
-      setTestResult(data);
+      setTestResult({
+        ...data,
+        quoteAsset: "USDT",
+      });
 
       if (data.success) {
         toast.success("Connection Successful!", {
@@ -311,7 +383,15 @@ export default function CredentialConfig() {
       let finalTargetCoins = targetCoins.trim();
       if (coinInput.trim()) {
         let clean = coinInput.trim().toUpperCase();
-        if (!clean.endsWith("USDT")) {
+        if (targetExchange === "TOKOCRYPTO") {
+          // Normalize for Tokocrypto if user types coin
+          const quote = tokocryptoQuoteAsset;
+          if (!clean.includes("_")) {
+            clean = clean.endsWith(quote)
+              ? `${clean.slice(0, -quote.length)}_${quote}`
+              : `${clean}_${quote}`;
+          }
+        } else if (!clean.endsWith("USDT")) {
           clean = `${clean}USDT`;
         }
         const existingList = finalTargetCoins
@@ -326,11 +406,16 @@ export default function CredentialConfig() {
       }
 
       const payload = {
+        targetExchange,
         clientToken: token.trim(),
         binanceApiKey: currentKey.trim(),
         binanceApiSecret: currentSecret.trim(),
         environment,
+        tokocryptoApiKey: tokocryptoApiKey.trim(),
+        tokocryptoApiSecret: tokocryptoApiSecret.trim(),
+        tokocryptoQuoteAsset,
         autoExecute,
+        dryRun,
         marginType,
         leverage: Number(leverage),
         riskPerTradePct: Number(riskPerTradePct),
@@ -419,194 +504,372 @@ export default function CredentialConfig() {
 
   return (
     <div className="space-y-6 w-full">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">
-          Bot Config & Credentials
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Bot license, Binance API keys, and local execution risk management.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Bot Config & Credentials
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Bot license, exchange API keys, and local execution risk management.
+          </p>
+        </div>
+
+        {/* Exchange Market Selector */}
+        <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-lg border w-fit">
+          <Button
+            type="button"
+            size="sm"
+            variant={targetExchange === "BINANCE" ? "default" : "ghost"}
+            onClick={() => {
+              setTargetExchange("BINANCE");
+              setTestResult(null);
+            }}
+            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+          >
+            <Layers className="size-3.5" />
+            Binance Futures
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={targetExchange === "TOKOCRYPTO" ? "default" : "ghost"}
+            onClick={() => {
+              setTargetExchange("TOKOCRYPTO");
+              setTestResult(null);
+            }}
+            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+          >
+            <Coins className="size-3.5 text-amber-500" />
+            Tokocrypto Spot
+          </Button>
+        </div>
       </div>
 
       {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Card 1: Kredensial Binance & Token */}
-        <Card className="shadow-sm flex flex-col justify-between">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <KeyIcon className="size-4 text-primary" />
-              Binance Futures Credentials
-            </CardTitle>
-            <CardDescription className="text-xs">
-              API keys are stored and encrypted locally in the SQLite database.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5 flex-1">
-            {/* Client Token */}
-            <div className="space-y-2">
+        {/* Card 1: Kredensial Exchange Aktif */}
+        {targetExchange === "BINANCE" ? (
+          <Card className="shadow-sm flex flex-col justify-between">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="client-token" className="text-xs font-semibold">
-                  Client Token (CryptoSpike License)
-                </Label>
-                {token && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] text-emerald-600 border-emerald-500/30"
-                  >
-                    Token Installed
-                  </Badge>
-                )}
+                <CardTitle className="text-base flex items-center gap-2">
+                  <KeyIcon className="size-4 text-primary" />
+                  Binance Futures Credentials
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] text-primary border-primary/30">
+                  Futures Market
+                </Badge>
               </div>
-              <Input
-                id="client-token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
-                className="font-mono text-xs"
-              />
-            </div>
-
-            <div className="border-t pt-4" />
-
-            {/* Environment Tabs */}
-            <Tabs
-              value={environment.toLowerCase()}
-              onValueChange={(val) =>
-                setEnvironment(val.toUpperCase() as "TESTNET" | "LIVE")
-              }
-              className="w-full"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                <Label className="text-xs font-semibold text-muted-foreground">
-                  Select API Environment
-                </Label>
-                <TabsList className="grid w-full sm:w-[220px] grid-cols-2">
-                  <TabsTrigger value="testnet" className="text-xs gap-1.5">
-                    <FlaskConicalIcon className="size-3.5 text-amber-500" />
-                    Testnet
-                  </TabsTrigger>
-                  <TabsTrigger value="live" className="text-xs gap-1.5">
-                    <GlobeIcon className="size-3.5 text-emerald-500" />
-                    Live
-                  </TabsTrigger>
-                </TabsList>
+              <CardDescription className="text-xs">
+                API keys are stored and encrypted locally in the SQLite database.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5 flex-1">
+              {/* Client Token */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="client-token" className="text-xs font-semibold">
+                    Client Token (CryptoSpike License)
+                  </Label>
+                  {token && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] text-emerald-600 border-emerald-500/30"
+                    >
+                      Token Installed
+                    </Badge>
+                  )}
+                </div>
+                <Input
+                  id="client-token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
+                  className="font-mono text-xs"
+                />
               </div>
 
-              {/* Tab Testnet */}
-              <TabsContent value="testnet" className="space-y-4 pt-1">
+              <div className="border-t pt-4" />
+
+              {/* Environment Tabs */}
+              <Tabs
+                value={environment.toLowerCase()}
+                onValueChange={(val) =>
+                  setEnvironment(val.toUpperCase() as "TESTNET" | "LIVE")
+                }
+                className="w-full"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                  <Label className="text-xs font-semibold text-muted-foreground">
+                    Select API Environment
+                  </Label>
+                  <TabsList className="grid w-full sm:w-[220px] grid-cols-2">
+                    <TabsTrigger value="testnet" className="text-xs gap-1.5">
+                      <FlaskConicalIcon className="size-3.5 text-amber-500" />
+                      Testnet
+                    </TabsTrigger>
+                    <TabsTrigger value="live" className="text-xs gap-1.5">
+                      <GlobeIcon className="size-3.5 text-emerald-500" />
+                      Live
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Tab Testnet */}
+                <TabsContent value="testnet" className="space-y-4 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                      Binance Testnet API Key
+                    </Label>
+                    <Input
+                      value={testnetApiKey}
+                      onChange={(e) => setTestnetApiKey(e.target.value)}
+                      placeholder="Enter Binance Testnet API Key..."
+                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                        Binance Testnet API Secret
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                        onClick={() => setShowTestnetSecret(!showTestnetSecret)}
+                      >
+                        {showTestnetSecret ? "Hide" : "Show"}
+                      </Button>
+                    </div>
+                    <Input
+                      type={showTestnetSecret ? "text" : "password"}
+                      value={testnetApiSecret}
+                      onChange={(e) => setTestnetApiSecret(e.target.value)}
+                      placeholder="Enter Binance Testnet API Secret..."
+                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* Tab Live */}
+                <TabsContent value="live" className="space-y-4 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                      Binance Live API Key
+                    </Label>
+                    <Input
+                      value={liveApiKey}
+                      onChange={(e) => setLiveApiKey(e.target.value)}
+                      placeholder="Enter Binance Live API Key..."
+                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                        Binance Live API Secret
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
+                        onClick={() => setShowLiveSecret(!showLiveSecret)}
+                      >
+                        {showLiveSecret ? "Hide" : "Show"}
+                      </Button>
+                    </div>
+                    <Input
+                      type={showLiveSecret ? "text" : "password"}
+                      value={liveApiSecret}
+                      onChange={(e) => setLiveApiSecret(e.target.value)}
+                      placeholder="Enter Binance Live API Secret..."
+                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Feedback Hasil Test Connection */}
+              {testResult && (
+                <div
+                  className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                    testResult.success
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                      : "border-destructive/30 bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {testResult.success ? (
+                    <ShieldCheck className="size-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <ShieldAlert className="size-4 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <p className="font-semibold">
+                      {testResult.success
+                        ? "Status Verified"
+                        : "Verification Failed"}
+                    </p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {testResult.message}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="shadow-sm flex flex-col justify-between">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <KeyIcon className="size-4 text-amber-500" />
+                  Tokocrypto Spot Credentials
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/5">
+                  Spot Market
+                </Badge>
+              </div>
+              <CardDescription className="text-xs">
+                Tokocrypto OpenAPI v1 credentials using HMAC-SHA256 signature.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 flex-1">
+              {/* Client Token */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="client-token" className="text-xs font-semibold">
+                    Client Token (CryptoSpike License)
+                  </Label>
+                  {token && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] text-emerald-600 border-emerald-500/30"
+                    >
+                      Token Installed
+                    </Badge>
+                  )}
+                </div>
+                <Input
+                  id="client-token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div className="border-t pt-3 space-y-3">
+                {/* Tokocrypto API Key */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                    Binance Testnet API Key
+                    Tokocrypto API Key
                   </Label>
                   <Input
-                    value={testnetApiKey}
-                    onChange={(e) => setTestnetApiKey(e.target.value)}
-                    placeholder="Enter Binance Testnet API Key..."
+                    value={tokocryptoApiKey}
+                    onChange={(e) => setTokocryptoApiKey(e.target.value)}
+                    placeholder="Enter Tokocrypto API Key..."
                     className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
                   />
                 </div>
+
+                {/* Tokocrypto API Secret */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                      Binance Testnet API Secret
+                      Tokocrypto API Secret
                     </Label>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
-                      onClick={() => setShowTestnetSecret(!showTestnetSecret)}
+                      onClick={() => setShowTokocryptoSecret(!showTokocryptoSecret)}
                     >
-                      {showTestnetSecret ? "Hide" : "Show"}
+                      {showTokocryptoSecret ? "Hide" : "Show"}
                     </Button>
                   </div>
                   <Input
-                    type={showTestnetSecret ? "text" : "password"}
-                    value={testnetApiSecret}
-                    onChange={(e) => setTestnetApiSecret(e.target.value)}
-                    placeholder="Enter Binance Testnet API Secret..."
+                    type={showTokocryptoSecret ? "text" : "password"}
+                    value={tokocryptoApiSecret}
+                    onChange={(e) => setTokocryptoApiSecret(e.target.value)}
+                    placeholder="Enter Tokocrypto API Secret..."
                     className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
                   />
                 </div>
-              </TabsContent>
 
-              {/* Tab Live */}
-              <TabsContent value="live" className="space-y-4 pt-1">
+                {/* Quote Asset Selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                    Binance Live API Key
+                  <Label className="text-xs font-semibold">
+                    Quote Trading Asset
                   </Label>
-                  <Input
-                    value={liveApiKey}
-                    onChange={(e) => setLiveApiKey(e.target.value)}
-                    placeholder="Enter Binance Live API Key..."
-                    className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                      Binance Live API Secret
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
-                      onClick={() => setShowLiveSecret(!showLiveSecret)}
-                    >
-                      {showLiveSecret ? "Hide" : "Show"}
-                    </Button>
-                  </div>
-                  <Input
-                    type={showLiveSecret ? "text" : "password"}
-                    value={liveApiSecret}
-                    onChange={(e) => setLiveApiSecret(e.target.value)}
-                    placeholder="Enter Binance Live API Secret..."
-                    className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            {/* Feedback Hasil Test Connection */}
-            {testResult && (
-              <div
-                className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
-                  testResult.success
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                    : "border-destructive/30 bg-destructive/10 text-destructive"
-                }`}
-              >
-                {testResult.success ? (
-                  <ShieldCheck className="size-4 shrink-0 mt-0.5" />
-                ) : (
-                  <ShieldAlert className="size-4 shrink-0 mt-0.5" />
-                )}
-                <div className="space-y-0.5">
-                  <p className="font-semibold">
-                    {testResult.success
-                      ? "Status Verified"
-                      : "Verification Failed"}
-                  </p>
-                  <p className="text-[11px] leading-relaxed opacity-90">
-                    {testResult.message}
-                  </p>
+                  <select
+                    value={tokocryptoQuoteAsset}
+                    onChange={(e) =>
+                      setTokocryptoQuoteAsset(e.target.value as "USDT" | "BIDR")
+                    }
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="USDT" className="text-black">
+                      USDT (Tether USD) — e.g. BTC_USDT, ETH_USDT
+                    </option>
+                    <option value="BIDR" className="text-black">
+                      BIDR (Binance Indonesia Rupiah) — e.g. BTC_BIDR
+                    </option>
+                  </select>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Feedback Hasil Test Connection Tokocrypto */}
+              {testResult && (
+                <div
+                  className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                    testResult.success
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                      : "border-destructive/30 bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {testResult.success ? (
+                    <ShieldCheck className="size-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <ShieldAlert className="size-4 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <p className="font-semibold">
+                      {testResult.success
+                        ? "Tokocrypto Verified"
+                        : "Verification Failed"}
+                    </p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {testResult.message}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Card 2: Pengaturan Risiko & Eksekusi Bot */}
         <Card className="shadow-sm flex flex-col justify-between">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckIcon className="size-4 text-primary" />
-              Risk Management
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CheckIcon className="size-4 text-primary" />
+                Risk & Execution Management
+              </CardTitle>
+              {targetExchange === "TOKOCRYPTO" && (
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
+                  Spot Execution
+                </Badge>
+              )}
+            </div>
             <CardDescription className="text-xs">
-              Execution parameters when a signal is received.
+              {targetExchange === "TOKOCRYPTO"
+                ? "Spot trading execution parameters with auto TP (+5%) & SL (-2.5%)."
+                : "Execution parameters when a signal is received on Binance Futures."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-xs flex-1">
@@ -620,7 +883,9 @@ export default function CredentialConfig() {
                   Auto-Trade
                 </Label>
                 <p className="text-[10px] text-muted-foreground">
-                  Automatic execution
+                  {targetExchange === "TOKOCRYPTO"
+                    ? "Automatic execution of LONG / BUY spot orders"
+                    : "Automatic execution of Binance Futures signals"}
                 </p>
               </div>
               <Switch
@@ -630,48 +895,90 @@ export default function CredentialConfig() {
               />
             </div>
 
-            {/* Margin Type */}
-            <div className="space-y-1.5 mt-2">
-              <Label htmlFor="margin-type" className="text-xs font-medium">
-                Margin Type
-              </Label>
-              <select
-                id="margin-type"
-                value={marginType}
-                onChange={(e) =>
-                  setMarginType(e.target.value as "ISOLATED" | "CROSSED")
-                }
-                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="ISOLATED" className="text-black">
-                  ISOLATED
-                </option>
-                <option value="CROSSED" className="text-black">
-                  CROSS
-                </option>
-              </select>
-            </div>
+            {/* Dry-Run Simulation Switch (Tokocrypto Spot only) */}
+            {targetExchange === "TOKOCRYPTO" && (
+              <div className="flex items-center justify-between p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label
+                      htmlFor="dry-run"
+                      className="text-xs font-semibold cursor-pointer text-amber-600 dark:text-amber-500"
+                    >
+                      Dry-Run Mode (Simulation)
+                    </Label>
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 border-amber-500/40 text-amber-600">
+                      Paper Trading
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Simulate spot buy & TP/SL monitoring locally without real funds.
+                  </p>
+                </div>
+                <Switch
+                  id="dry-run"
+                  checked={dryRun}
+                  onCheckedChange={setDryRun}
+                />
+              </div>
+            )}
 
-            {/* Leverage */}
-            <div className="space-y-1.5 mt-2">
-              <Label htmlFor="leverage" className="text-xs font-medium">
-                Default Leverage (x)
-              </Label>
-              <Input
-                id="leverage"
-                type="number"
-                min={1}
-                max={125}
-                value={leverage}
-                onChange={(e) => setLeverage(Number(e.target.value))}
-                className="h-8 text-xs"
-              />
-            </div>
+            {/* Margin Type & Leverage (Only relevant for Binance Futures) */}
+            {targetExchange === "BINANCE" ? (
+              <>
+                <div className="space-y-1.5 mt-2">
+                  <Label htmlFor="margin-type" className="text-xs font-medium">
+                    Margin Type
+                  </Label>
+                  <select
+                    id="margin-type"
+                    value={marginType}
+                    onChange={(e) =>
+                      setMarginType(e.target.value as "ISOLATED" | "CROSSED")
+                    }
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="ISOLATED" className="text-black">
+                      ISOLATED
+                    </option>
+                    <option value="CROSSED" className="text-black">
+                      CROSS
+                    </option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 mt-2">
+                  <Label htmlFor="leverage" className="text-xs font-medium">
+                    Default Leverage (x)
+                  </Label>
+                  <Input
+                    id="leverage"
+                    type="number"
+                    min={1}
+                    max={125}
+                    value={leverage}
+                    onChange={(e) => setLeverage(Number(e.target.value))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="p-2.5 rounded-lg border bg-muted/30 text-[11px] text-muted-foreground space-y-1">
+                <span className="font-semibold text-foreground block">
+                  Market: Spot 1x Cash-Only
+                </span>
+                <p>
+                  Pasar Spot Tokocrypto tidak menggunakan leverage maupun sistem margin likuidasi.
+                  Setiap posisi beli akan dipantau otomatis oleh background worker dengan target <strong>TP +5%</strong> dan <strong>SL -2.5%</strong>.
+                </p>
+              </div>
+            )}
 
             {/* Risk Per Trade % */}
             <div className="space-y-1.5">
               <Label htmlFor="risk-pct" className="text-xs font-medium">
-                Risk Per Trade (% Wallet)
+                {targetExchange === "TOKOCRYPTO"
+                  ? `Allocation Per Trade (% ${tokocryptoQuoteAsset} Balance)`
+                  : "Risk Per Trade (% Wallet)"}
               </Label>
               <Input
                 id="risk-pct"
@@ -689,35 +996,36 @@ export default function CredentialConfig() {
                 >
                   <p>
                     <strong>Risk Preview [{riskInfo.label}]:</strong> You are
-                    authorizing the bot to risk a maximum of{" "}
+                    authorizing the bot to allocate a maximum of{" "}
                     <strong>
-                      ~$
+                      ~
                       {(
                         (testResult.balance * Number(riskPerTradePct)) /
                         100
-                      ).toFixed(2)}{" "}
-                      USD
+                      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                      {testResult.quoteAsset || "USDT"}
                     </strong>{" "}
                     per single trade.
                   </p>
                   <p className="opacity-90">
                     <strong>Worst-Case Scenario:</strong> If all{" "}
                     <strong>{maxOpenPositions}</strong> allowed positions hit
-                    Stop Loss simultaneously, your total potential loss is up to{" "}
+                    Stop Loss simultaneously, your total exposure is up to{" "}
                     <strong>
-                      ~$
-                      {((testResult.balance * totalRiskPct) / 100).toFixed(
-                        2,
+                      ~
+                      {((testResult.balance * totalRiskPct) / 100).toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 2 },
                       )}{" "}
-                      USD ({totalRiskPct}%)
+                      {testResult.quoteAsset || "USDT"} ({totalRiskPct}%)
                     </strong>{" "}
-                    of your balance.
+                    of your available balance.
                   </p>
                 </div>
               ) : (
                 <p className="text-[10px] text-muted-foreground italic mt-1">
-                  * Please run 'Test Connection' first to see the estimated risk
-                  amount (USD) per trade.
+                  * Please run 'Test Connection' first to see the estimated allocation
+                  amount per trade.
                 </p>
               )}
             </div>
@@ -998,9 +1306,30 @@ export default function CredentialConfig() {
 
           <div className="space-y-3 py-2 text-sm">
             <div className="flex justify-between border-b pb-2">
-              <span className="text-muted-foreground">Environment:</span>
-              <span className="font-semibold">{environment}</span>
+              <span className="text-muted-foreground">Market Exchange:</span>
+              <span className="font-semibold text-primary">
+                {targetExchange === "TOKOCRYPTO" ? "Tokocrypto (Spot)" : "Binance (Futures)"}
+              </span>
             </div>
+            {targetExchange === "TOKOCRYPTO" ? (
+              <>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Quote Asset:</span>
+                  <span className="font-semibold">{tokocryptoQuoteAsset}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Execution Mode:</span>
+                  <span className={`font-semibold ${dryRun ? "text-amber-500" : "text-emerald-500"}`}>
+                    {dryRun ? "Paper Trading (Dry-Run)" : "Live Spot Order"}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Environment:</span>
+                <span className="font-semibold">{environment}</span>
+              </div>
+            )}
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Auto-Trade:</span>
               <span
@@ -1009,12 +1338,21 @@ export default function CredentialConfig() {
                 {autoExecute ? "ON" : "OFF"}
               </span>
             </div>
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-muted-foreground">Leverage:</span>
-              <span className="font-semibold">
-                {leverage}x ({marginType})
-              </span>
-            </div>
+            {targetExchange === "BINANCE" ? (
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Leverage:</span>
+                <span className="font-semibold">
+                  {leverage}x ({marginType})
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Target TP / SL:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  +5% TP / -2.5% SL
+                </span>
+              </div>
+            )}
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Max Open Positions:</span>
               <span className="font-semibold">{maxOpenPositions}</span>
@@ -1029,7 +1367,9 @@ export default function CredentialConfig() {
             </div>
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Max Risk:</span>
+                <span className="text-muted-foreground">
+                  {targetExchange === "TOKOCRYPTO" ? "Max Total Allocation:" : "Total Max Risk:"}
+                </span>
                 <span className={`font-bold ${riskInfo.color.split(" ")[0]}`}>
                   {totalRiskPct}%
                 </span>
@@ -1039,37 +1379,28 @@ export default function CredentialConfig() {
                   className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed space-y-2`}
                 >
                   <p>
-                    <strong>Risk Warning [{riskInfo.label}]:</strong> Out of
-                    your total balance of{" "}
-                    <strong>${testResult.balance.toFixed(2)}</strong>, the
-                    potential loss per trade is approximately{" "}
+                    <strong>Balance Preview [{riskInfo.label}]:</strong> Out of
+                    your available balance of{" "}
                     <strong>
-                      ~$
+                      {testResult.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                      {testResult.quoteAsset || "USDT"}
+                    </strong>
+                    , allocation per trade is approximately{" "}
+                    <strong>
+                      ~
                       {(
                         (testResult.balance * Number(riskPerTradePct)) /
                         100
-                      ).toFixed(2)}{" "}
-                      USD
-                    </strong>
-                    .
-                  </p>
-                  <p className="opacity-90 border-t border-current/20 pt-1.5">
-                    <strong>Worst-Case Scenario:</strong> If {maxOpenPositions}{" "}
-                    positions hit Stop Loss simultaneously, you could lose up to{" "}
-                    <strong>
-                      ~$
-                      {((testResult.balance * totalRiskPct) / 100).toFixed(
-                        2,
-                      )}{" "}
-                      USD ({totalRiskPct}%)
+                      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                      {testResult.quoteAsset || "USDT"}
                     </strong>
                     .
                   </p>
                 </div>
               ) : (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
-                  * Please run 'Test Connection' first to see the estimated risk
-                  amount (USD).
+                  * Please run 'Test Connection' first to see the estimated allocation
+                  amount.
                 </div>
               )}
             </div>

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 
 export type PositionItem = {
+  id?: string;
   symbol: string;
   side: "LONG" | "SHORT";
   entryPrice: number;
@@ -52,18 +53,24 @@ export type PositionItem = {
   notionalValue: number;
   roiPct: number;
   distanceToLiqPct: number;
-  marginType?: "ISOLATED" | "CROSSED" | string;
+  marginType?: "ISOLATED" | "CROSSED" | "SPOT" | string;
+  tpPrice?: number;
+  slPrice?: number;
+  status?: string;
+  createdAt?: string;
+  isDryRun?: boolean;
 };
 
 export type AccountOverview = {
   totalWalletBalance: number;
   totalUnrealizedProfit: number;
-  totalMarginBalance: number;
-  availableBalance: number;
-  totalMaintMargin: number;
-  marginRatioPct: number;
-  openPositionsCount: number;
-  totalExposureUsd: number;
+  totalMarginBalance?: number;
+  availableBalance?: number;
+  totalMaintMargin?: number;
+  marginRatioPct?: number;
+  openPositionsCount?: number;
+  totalExposureUsd?: number;
+  quoteAsset?: string;
 };
 
 interface ActivePositionProps {
@@ -73,20 +80,30 @@ interface ActivePositionProps {
 export default function ActivePosition({
   onPositionsCountChange,
 }: ActivePositionProps = {}) {
+  const [activeExchange, setActiveExchange] = useState<"BINANCE" | "TOKOCRYPTO">("BINANCE");
+  const [quoteAsset, setQuoteAsset] = useState<string>("USDT");
   const [positions, setPositions] = useState<PositionItem[]>([]);
   const [account, setAccount] = useState<AccountOverview | null>(null);
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
-  const [symbolToClose, setSymbolToClose] = useState<string | null>(null);
+  const [itemToClose, setItemToClose] = useState<PositionItem | null>(null);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
-  // Ambil data posisi & ringkasan akun live dari Binance
+  // Ambil data posisi & ringkasan akun live dari bursa aktif
   const fetchPositions = async () => {
     try {
       const res = await authFetch("/api/positions");
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
+          if (data.exchange) {
+            setActiveExchange(
+              data.exchange.toUpperCase() === "TOKOCRYPTO" ? "TOKOCRYPTO" : "BINANCE",
+            );
+          }
+          if (data.account?.quoteAsset) {
+            setQuoteAsset(data.account.quoteAsset);
+          }
           if (Array.isArray(data.positions)) {
             setPositions(data.positions);
             onPositionsCountChange?.(data.positions.length);
@@ -111,11 +128,11 @@ export default function ActivePosition({
     return () => clearInterval(interval);
   }, []);
 
-  // Live WebSocket untuk Mark Price All Symbols
+  // Live WebSocket untuk Mark Price Binance Futures
   useEffect(() => {
-    // Menggunakan Live Websocket sesuai permintaan
-    const wsUrl = "wss://fstream.binance.com/ws/!markPrice@arr@1s";
+    if (activeExchange !== "BINANCE") return;
 
+    const wsUrl = "wss://fstream.binance.com/ws/!markPrice@arr@1s";
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -150,7 +167,7 @@ export default function ActivePosition({
     };
 
     return () => ws.close();
-  }, []);
+  }, [activeExchange]);
 
   const [isCloseAllModalOpen, setIsCloseAllModalOpen] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
@@ -180,22 +197,22 @@ export default function ActivePosition({
   };
 
   const handleConfirmClose = async () => {
-    if (!symbolToClose) return;
-    const symbol = symbolToClose;
+    if (!itemToClose) return;
+    const { symbol, id } = itemToClose;
 
     try {
       setIsClosingSymbol(symbol);
       const res = await authFetch("/api/positions/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol }),
+        body: JSON.stringify({ symbol, tradeId: id }),
       });
       const data = await res.json();
 
       if (data.success) {
-        toast.success(`Position ${symbol} successfully closed!`);
+        toast.success(data.message || `Position ${symbol} successfully closed!`);
         fetchPositions();
-        setSymbolToClose(null);
+        setItemToClose(null);
       } else {
         toast.error(`Failed to close position ${symbol}`, {
           description: data.message,
@@ -210,10 +227,21 @@ export default function ActivePosition({
 
   // Derivasi data live dari WebSocket vs Polling
   const livePositions = positions.map((pos) => {
-    const isLong = pos.side === "LONG";
-    const currentMarkPrice = livePrices[pos.symbol] || pos.markPrice;
+    const isSpot = activeExchange === "TOKOCRYPTO" || pos.marginType === "SPOT";
+    const currentMarkPrice = (!isSpot && livePrices[pos.symbol]) ? livePrices[pos.symbol] : pos.markPrice;
 
-    // Kalkulasi perbedaan PnL berdasarkan pergerakan mark price sejak polling terakhir
+    if (isSpot) {
+      const liveUnRealizedProfit = (currentMarkPrice - pos.entryPrice) * pos.positionAmt;
+      const liveRoiPct = pos.entryPrice > 0 ? ((currentMarkPrice - pos.entryPrice) / pos.entryPrice) * 100 : 0;
+      return {
+        ...pos,
+        liveMarkPrice: currentMarkPrice,
+        liveUnRealizedProfit,
+        liveRoiPct,
+      };
+    }
+
+    const isLong = pos.side === "LONG";
     const originalPnlDiff = isLong
       ? (pos.markPrice - pos.entryPrice) * pos.positionAmt
       : (pos.entryPrice - pos.markPrice) * pos.positionAmt;
@@ -224,8 +252,7 @@ export default function ActivePosition({
     const liveUnRealizedProfit =
       pos.unRealizedProfit + (currentPnlDiff - originalPnlDiff);
 
-    // Kalkulasi ROI
-    const initialMargin = (pos.entryPrice * pos.positionAmt) / pos.leverage;
+    const initialMargin = (pos.entryPrice * pos.positionAmt) / (pos.leverage || 1);
     const liveRoiPct =
       initialMargin > 0
         ? (liveUnRealizedProfit / initialMargin) * 100
@@ -245,42 +272,43 @@ export default function ActivePosition({
     0,
   );
   const liveTotalMarginBalance = account
-    ? account.totalWalletBalance + liveTotalUnrealizedProfit
+    ? (account.totalWalletBalance || 0) + liveTotalUnrealizedProfit
     : 0;
   const liveMarginRatioPct =
-    liveTotalMarginBalance > 0 && account
+    liveTotalMarginBalance > 0 && account && account.totalMaintMargin !== undefined
       ? (account.totalMaintMargin / liveTotalMarginBalance) * 100
       : account?.marginRatioPct || 0;
   const isLiveNetProfit = liveTotalUnrealizedProfit >= 0;
 
   return (
     <div className="space-y-6">
-      {/* 1. KARTU ANALITIK & METRIK BINANCE FUTURES */}
+      {/* 1. KARTU ANALITIK & METRIK (ADAPTIF UNTUK FUTURES / SPOT) */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Saldo Dompet */}
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Total Wallet Balance
+              {activeExchange === "TOKOCRYPTO"
+                ? `Wallet Balance (${quoteAsset})`
+                : "Total Wallet Balance"}
             </CardTitle>
             <Wallet className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono tracking-tight">
               {account
-                ? `$${account.totalWalletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                ? `${quoteAsset === "BIDR" ? "Rp " : "$"}${account.totalWalletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "$0.00"}
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
-              <span>Available:</span>
+              <span>{activeExchange === "TOKOCRYPTO" ? "Quote Asset:" : "Available:"}</span>
               <span className="font-mono font-medium text-foreground">
-                $
-                {account
-                  ? account.availableBalance.toLocaleString(undefined, {
+                {activeExchange === "TOKOCRYPTO"
+                  ? quoteAsset
+                  : `$${(account?.availableBalance || 0).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })
-                  : "0.00"}
+                    })}`}
               </span>
             </div>
           </CardContent>
@@ -290,7 +318,9 @@ export default function ActivePosition({
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Total Unrealized PnL
+              {activeExchange === "TOKOCRYPTO"
+                ? "Total Unrealized PnL"
+                : "Total Unrealized PnL"}
             </CardTitle>
             {isLiveNetProfit ? (
               <ArrowUpRight className="size-4 text-emerald-500" />
@@ -305,69 +335,100 @@ export default function ActivePosition({
               }`}
             >
               {account
-                ? `${liveTotalUnrealizedProfit >= 0 ? "+" : ""}$${liveTotalUnrealizedProfit.toFixed(2)}`
+                ? `${liveTotalUnrealizedProfit >= 0 ? "+" : ""}${quoteAsset === "BIDR" ? "Rp " : "$"}${liveTotalUnrealizedProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "$0.00"}
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
-              <span>Margin Balance:</span>
+              <span>{activeExchange === "TOKOCRYPTO" ? "Position Type:" : "Margin Balance:"}</span>
               <span className="font-mono font-medium text-foreground">
-                ${account ? liveTotalMarginBalance.toFixed(2) : "0.00"}
+                {activeExchange === "TOKOCRYPTO"
+                  ? "Open Spot Trades"
+                  : `$${liveTotalMarginBalance.toFixed(2)}`}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Card 3: Margin Health & Risk Ratio */}
-        <Card className="border-border/80 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
-              Margin Ratio (Risk)
-            </CardTitle>
-            <ShieldCheck className="size-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-                {account ? `${liveMarginRatioPct.toFixed(2)}%` : "0.00%"}
-              </span>
-              <Badge
-                variant="outline"
-                className="text-[10px] px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
-              >
-                HEALTHY
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
-              <span>Maint. Margin:</span>
-              <span className="font-mono font-medium text-foreground">
-                ${account ? account.totalMaintMargin.toFixed(2) : "0.00"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Card 3: Margin Health (Futures) vs Market Mode (Spot) */}
+        {activeExchange === "TOKOCRYPTO" ? (
+          <Card className="border-border/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Market & Safety
+              </CardTitle>
+              <ShieldCheck className="size-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold font-mono tracking-tight text-foreground">
+                  SPOT (1x)
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
+                >
+                  NO LIQ RISK
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
+                <span>Targets:</span>
+                <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                  +5% TP / -2.5% SL
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-border/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Margin Ratio (Risk)
+              </CardTitle>
+              <ShieldCheck className="size-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
+                  {account ? `${liveMarginRatioPct.toFixed(2)}%` : "0.00%"}
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10"
+                >
+                  HEALTHY
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
+                <span>Maint. Margin:</span>
+                <span className="font-mono font-medium text-foreground">
+                  ${account ? (account.totalMaintMargin || 0).toFixed(2) : "0.00"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Card 4: Notional Exposure & Active Positions */}
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Market Exposure
+              {activeExchange === "TOKOCRYPTO" ? "Active Spot Coins" : "Market Exposure"}
             </CardTitle>
             <Layers className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono tracking-tight">
-              $
-              {account
-                ? account.totalExposureUsd.toLocaleString(undefined, {
+              {activeExchange === "TOKOCRYPTO"
+                ? `${positions.length} Coins`
+                : `$${(account?.totalExposureUsd || 0).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
-                  })
-                : "0.00"}
+                  })}`}
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
-              <span>Active Contracts:</span>
+              <span>{activeExchange === "TOKOCRYPTO" ? "Monitor:" : "Active Contracts:"}</span>
               <span className="font-mono font-medium text-foreground">
-                {positions.length} Positions
+                {activeExchange === "TOKOCRYPTO" ? "Auto Worker ON" : `${positions.length} Positions`}
               </span>
             </div>
           </CardContent>
@@ -384,12 +445,13 @@ export default function ActivePosition({
                 Active Positions
               </h3>
               <Badge variant="outline" className="text-[11px] font-mono">
-                {positions.length} Open
+                {activeExchange === "TOKOCRYPTO" ? "Tokocrypto Spot" : "Binance Futures"} • {positions.length} Open
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              List of open Binance Futures positions with real-time entry,
-              liquidation, and PnL.
+              {activeExchange === "TOKOCRYPTO"
+                ? "List of active Tokocrypto Spot coin holdings with automated TP (+5%) and SL (-2.5%) monitoring."
+                : "List of open Binance Futures positions with real-time entry, liquidation, and PnL."}
             </p>
           </div>
 
@@ -403,7 +465,7 @@ export default function ActivePosition({
                 className="h-8 text-xs cursor-pointer w-full sm:w-auto font-semibold"
               >
                 <Trash2Icon className="mr-1.5 size-3.5" />
-                Close All
+                {activeExchange === "TOKOCRYPTO" ? "Sell All Coins" : "Close All"}
               </Button>
             )}
             <Button
@@ -425,13 +487,15 @@ export default function ActivePosition({
         {isLoadingPositions && positions.length === 0 ? (
           <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="size-5 animate-spin text-primary" />
-            <span>Loading position data from Binance Futures...</span>
+            <span>Loading position data from {activeExchange === "TOKOCRYPTO" ? "Tokocrypto Spot" : "Binance Futures"}...</span>
           </div>
         ) : positions.length === 0 ? (
           <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center gap-1 text-muted-foreground text-sm p-4 text-center">
             <p className="font-medium text-foreground">No Active Positions</p>
             <p className="text-xs">
-              There are currently no open positions on Binance Futures.
+              {activeExchange === "TOKOCRYPTO"
+                ? "There are currently no open spot coin positions on Tokocrypto."
+                : "There are currently no open positions on Binance Futures."}
             </p>
           </div>
         ) : (
@@ -440,12 +504,13 @@ export default function ActivePosition({
             <div className="sm:hidden space-y-3">
               {livePositions.map((pos) => {
                 const isLong = pos.side === "LONG";
+                const isSpot = activeExchange === "TOKOCRYPTO" || pos.marginType === "SPOT";
                 const isProfit = pos.liveUnRealizedProfit >= 0;
                 const isClosing = isClosingSymbol === pos.symbol;
 
                 return (
                   <div
-                    key={pos.symbol}
+                    key={pos.id || pos.symbol}
                     className="p-3.5 rounded-lg border bg-muted/20 space-y-3"
                   >
                     <div className="flex items-start justify-between">
@@ -467,16 +532,27 @@ export default function ActivePosition({
                             ) : (
                               <TrendingDownIcon className="mr-1 h-3 w-3" />
                             )}
-                            {pos.side} {pos.leverage}x
+                            {isSpot ? "BUY (SPOT)" : `${pos.side} ${pos.leverage}x`}
                           </Badge>
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
-                          >
-                            {pos.marginType === "CROSSED"
-                              ? "CROSS"
-                              : "ISOLATED"}
-                          </Badge>
+                          {isSpot ? (
+                            pos.isDryRun && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-amber-500 border-amber-500/40 bg-amber-500/10"
+                              >
+                                SIMULASI
+                              </Badge>
+                            )
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
+                            >
+                              {pos.marginType === "CROSSED"
+                                ? "CROSS"
+                                : "ISOLATED"}
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
@@ -487,7 +563,7 @@ export default function ActivePosition({
                           }`}
                         >
                           {isProfit ? "+" : ""}
-                          {pos.liveUnRealizedProfit.toFixed(2)} USDT
+                          {pos.liveUnRealizedProfit.toFixed(2)} {activeExchange === "TOKOCRYPTO" ? quoteAsset : "USDT"}
                         </div>
                         <div
                           className={`text-[11px] font-semibold ${
@@ -503,7 +579,7 @@ export default function ActivePosition({
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-background/50 p-2.5 rounded border border-border/50">
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans">
-                          Size (Notional)
+                          Size & Value
                         </span>
                         <span className="font-semibold">
                           {pos.positionAmt.toLocaleString()}
@@ -514,13 +590,19 @@ export default function ActivePosition({
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans">
-                          Liq. Price
+                          {isSpot ? "Target TP / SL" : "Liq. Price"}
                         </span>
-                        <span className="text-amber-500 font-medium">
-                          {pos.liquidationPrice > 0
-                            ? formatPrice(pos.liquidationPrice)
-                            : "Safe (Cross)"}
-                        </span>
+                        {isSpot ? (
+                          <span className="text-emerald-500 font-medium text-[11px]">
+                            TP: {formatPrice(pos.tpPrice || pos.entryPrice * 1.05)}
+                          </span>
+                        ) : (
+                          <span className="text-amber-500 font-medium">
+                            {pos.liquidationPrice > 0
+                              ? formatPrice(pos.liquidationPrice)
+                              : "Safe (Cross)"}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans">
@@ -530,7 +612,7 @@ export default function ActivePosition({
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans">
-                          Mark Price
+                          Mark / Live
                         </span>
                         <span className="text-muted-foreground">
                           {formatPrice(pos.liveMarkPrice)}
@@ -543,17 +625,17 @@ export default function ActivePosition({
                       size="sm"
                       disabled={isClosing}
                       className="w-full h-8 text-xs cursor-pointer"
-                      onClick={() => setSymbolToClose(pos.symbol)}
+                      onClick={() => setItemToClose(pos)}
                     >
                       {isClosing ? (
                         <>
                           <Loader2 className="size-3.5 animate-spin mr-1.5" />
-                          Closing Position...
+                          Processing...
                         </>
                       ) : (
                         <>
                           <Trash2Icon className="h-3.5 w-3.5 mr-1.5" />
-                          Close Position
+                          {isSpot ? "Sell Now" : "Close Position"}
                         </>
                       )}
                     </Button>
@@ -577,7 +659,7 @@ export default function ActivePosition({
                       Entry & Mark
                     </TableHead>
                     <TableHead className="w-[130px] px-4 py-3 font-semibold text-xs">
-                      Liq. Price
+                      {activeExchange === "TOKOCRYPTO" ? "Target TP / SL" : "Liq. Price"}
                     </TableHead>
                     <TableHead className="w-[140px] px-4 py-3 font-semibold text-xs">
                       Unrealized PnL (ROI)
@@ -590,11 +672,12 @@ export default function ActivePosition({
                 <TableBody>
                   {livePositions.map((pos) => {
                     const isLong = pos.side === "LONG";
+                    const isSpot = activeExchange === "TOKOCRYPTO" || pos.marginType === "SPOT";
                     const isProfit = pos.liveUnRealizedProfit >= 0;
                     const isClosing = isClosingSymbol === pos.symbol;
 
                     return (
-                      <TableRow key={pos.symbol} className="hover:bg-muted/30">
+                      <TableRow key={pos.id || pos.symbol} className="hover:bg-muted/30">
                         <TableCell className="px-4 py-3">
                           <div className="flex flex-col gap-1">
                             <span className="font-bold text-sm tracking-tight">
@@ -614,16 +697,27 @@ export default function ActivePosition({
                                 ) : (
                                   <TrendingDownIcon className="mr-1 h-3 w-3" />
                                 )}
-                                {pos.side} {pos.leverage}x
+                                {isSpot ? "BUY (SPOT)" : `${pos.side} ${pos.leverage}x`}
                               </Badge>
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
-                              >
-                                {pos.marginType === "CROSSED"
-                                  ? "CROSS"
-                                  : "ISOLATED"}
-                              </Badge>
+                              {isSpot ? (
+                                pos.isDryRun && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-amber-500 border-amber-500/40 bg-amber-500/10"
+                                  >
+                                    SIMULASI
+                                  </Badge>
+                                )
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
+                                >
+                                  {pos.marginType === "CROSSED"
+                                    ? "CROSS"
+                                    : "ISOLATED"}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -646,13 +740,24 @@ export default function ActivePosition({
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3">
-                          <div className="flex flex-col font-mono text-xs">
-                            <span className="text-amber-500 font-medium">
-                              {pos.liquidationPrice > 0
-                                ? formatPrice(pos.liquidationPrice)
-                                : "Safe (Cross)"}
-                            </span>
-                          </div>
+                          {isSpot ? (
+                            <div className="flex flex-col font-mono text-xs">
+                              <span className="text-emerald-500 font-medium">
+                                TP: {formatPrice(pos.tpPrice || pos.entryPrice * 1.05)}
+                              </span>
+                              <span className="text-red-400 text-[11px]">
+                                SL: {formatPrice(pos.slPrice || pos.entryPrice * 0.975)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col font-mono text-xs">
+                              <span className="text-amber-500 font-medium">
+                                {pos.liquidationPrice > 0
+                                  ? formatPrice(pos.liquidationPrice)
+                                  : "Safe (Cross)"}
+                              </span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <div className="flex flex-col font-mono">
@@ -662,7 +767,7 @@ export default function ActivePosition({
                               }`}
                             >
                               {isProfit ? "+" : ""}
-                              {pos.liveUnRealizedProfit.toFixed(2)} USDT
+                              {pos.liveUnRealizedProfit.toFixed(2)} {activeExchange === "TOKOCRYPTO" ? quoteAsset : "USDT"}
                             </span>
                             <span
                               className={`text-[11px] font-semibold ${
@@ -680,14 +785,14 @@ export default function ActivePosition({
                             size="sm"
                             disabled={isClosing}
                             className="h-7 text-xs px-2.5 cursor-pointer"
-                            onClick={() => setSymbolToClose(pos.symbol)}
+                            onClick={() => setItemToClose(pos)}
                           >
                             {isClosing ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
                               <>
                                 <Trash2Icon className="h-3.5 w-3.5 mr-1" />
-                                Close
+                                {isSpot ? "Sell Now" : "Close"}
                               </>
                             )}
                           </Button>
@@ -702,24 +807,38 @@ export default function ActivePosition({
         )}
       </div>
 
-      {/* Confirmation Popup Modal for Closing Position */}
+      {/* Confirmation Popup Modal for Closing / Selling Single Position */}
       <Dialog
-        open={Boolean(symbolToClose)}
+        open={Boolean(itemToClose)}
         onOpenChange={(open) => {
-          if (!open && !isClosingSymbol) setSymbolToClose(null);
+          if (!open && !isClosingSymbol) setItemToClose(null);
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
-              Close Position Confirmation
+              {activeExchange === "TOKOCRYPTO"
+                ? "Sell Spot Position Confirmation"
+                : "Close Position Confirmation"}
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
-              Are you sure you want to market close your open{" "}
-              <span className="font-mono font-bold text-foreground">
-                {symbolToClose}
-              </span>{" "}
-              position on Binance Futures? This action will execute immediately.
+              {activeExchange === "TOKOCRYPTO" ? (
+                <span>
+                  Are you sure you want to sell your open spot holding of{" "}
+                  <span className="font-mono font-bold text-foreground">
+                    {itemToClose?.symbol}
+                  </span>{" "}
+                  back to {quoteAsset}? This action will execute immediately on Tokocrypto.
+                </span>
+              ) : (
+                <span>
+                  Are you sure you want to market close your open{" "}
+                  <span className="font-mono font-bold text-foreground">
+                    {itemToClose?.symbol}
+                  </span>{" "}
+                  position on Binance Futures? This action will execute immediately.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
@@ -728,7 +847,7 @@ export default function ActivePosition({
               variant="outline"
               size="sm"
               disabled={Boolean(isClosingSymbol)}
-              onClick={() => setSymbolToClose(null)}
+              onClick={() => setItemToClose(null)}
               className="text-xs cursor-pointer"
             >
               Cancel
@@ -744,12 +863,12 @@ export default function ActivePosition({
               {isClosingSymbol ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Closing Position...
+                  {activeExchange === "TOKOCRYPTO" ? "Selling..." : "Closing Position..."}
                 </>
               ) : (
                 <>
                   <Trash2Icon className="size-3.5" />
-                  Confirm Close
+                  {activeExchange === "TOKOCRYPTO" ? "Confirm Sell" : "Confirm Close"}
                 </>
               )}
             </Button>
@@ -767,13 +886,22 @@ export default function ActivePosition({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold text-red-600 dark:text-red-500">
-              Close ALL Positions Confirmation
+              {activeExchange === "TOKOCRYPTO"
+                ? "Sell ALL Spot Positions Confirmation"
+                : "Close ALL Positions Confirmation"}
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
-              Are you sure you want to market close{" "}
-              <strong>ALL {positions.length} open positions</strong> on Binance
-              Futures? This action will execute immediately and cannot be
-              undone.
+              {activeExchange === "TOKOCRYPTO" ? (
+                <span>
+                  Are you sure you want to market sell{" "}
+                  <strong>ALL {positions.length} open spot positions</strong> back to {quoteAsset}? This action will execute immediately and cannot be undone.
+                </span>
+              ) : (
+                <span>
+                  Are you sure you want to market close{" "}
+                  <strong>ALL {positions.length} open positions</strong> on Binance Futures? This action will execute immediately and cannot be undone.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
@@ -798,12 +926,12 @@ export default function ActivePosition({
               {isClosingAll ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Closing All...
+                  Processing...
                 </>
               ) : (
                 <>
                   <Trash2Icon className="size-3.5" />
-                  Yes, Close All
+                  {activeExchange === "TOKOCRYPTO" ? "Yes, Sell All Coins" : "Yes, Close All"}
                 </>
               )}
             </Button>

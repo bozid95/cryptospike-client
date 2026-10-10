@@ -9,7 +9,10 @@ export function createTokocryptoSignature(
   queryString: string,
   apiSecret: string,
 ): string {
-  return crypto.createHmac("sha256", apiSecret).update(queryString).digest("hex");
+  return crypto
+    .createHmac("sha256", apiSecret)
+    .update(queryString)
+    .digest("hex");
 }
 
 /**

@@ -12,7 +12,10 @@ export function normalizeTokocryptoSymbol(
   if (!symbol) return `BTC_${targetQuote}`;
 
   // Bersihkan karakter pemisah: slash, dash, spasi
-  let clean = symbol.trim().toUpperCase().replace(/[\/\-\s]/g, "");
+  let clean = symbol
+    .trim()
+    .toUpperCase()
+    .replace(/[\/\-\s]/g, "");
 
   // Hapus awalan 1000 untuk meme koin (seperti 1000PEPE -> PEPE)
   if (clean.startsWith("1000")) {
@@ -76,7 +79,10 @@ export async function getTokocryptoSymbolRules(
           maxQty: parseFloat(match.maxQty || match.maxTradeQty || "1000000"),
           stepSize: parseFloat(match.stepSize || match.qtyStep || "0.0001"),
           minNotional: parseFloat(
-            match.minNotional || match.minNominal || match.minTradeAmount || "5.0",
+            match.minNotional ||
+              match.minNominal ||
+              match.minTradeAmount ||
+              "5.0",
           ),
           tickSize: parseFloat(match.tickSize || match.priceStep || "0.01"),
           pricePrecision: match.pricePrecision ?? 2,
@@ -119,7 +125,9 @@ export async function getTokocryptoTicker(
     );
     if (res.ok) {
       const json = (await res.json()) as any;
-      const price = parseFloat(json?.data?.price || json?.data?.lastPrice || "0");
+      const price = parseFloat(
+        json?.data?.price || json?.data?.lastPrice || "0",
+      );
       if (price > 0) {
         return { symbol: normSymbol, lastPrice: price };
       }

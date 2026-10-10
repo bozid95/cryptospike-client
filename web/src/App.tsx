@@ -43,6 +43,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [activePositionsCount, setActivePositionsCount] = useState<number>(0);
+  const [activeExchange, setActiveExchange] = useState<string>("BINANCE");
   const [status, setStatus] = useState({
     bot_connected: false,
     server_url: "",
@@ -85,7 +86,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Polling jumlah posisi aktif Binance secara periodik
+  // Polling jumlah posisi aktif & bursa aktif secara periodik
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -94,6 +95,9 @@ export default function App() {
         const res = await authFetch("/api/positions");
         if (res.ok) {
           const data = await res.json();
+          if (data.exchange) {
+            setActiveExchange(data.exchange.toUpperCase());
+          }
           if (data.success && Array.isArray(data.positions)) {
             setActivePositionsCount(data.positions.length);
           }
@@ -129,7 +133,9 @@ export default function App() {
   const getTabTitle = () => {
     switch (activeTab) {
       case "positions":
-        return "Active Positions (Binance)";
+        return activeExchange === "TOKOCRYPTO"
+          ? "Active Positions (Tokocrypto Spot)"
+          : "Active Positions (Binance Futures)";
       case "logs":
         return "Application Activity Logs";
       case "config":
