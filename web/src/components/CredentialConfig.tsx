@@ -139,11 +139,40 @@ const TOP_100_CMC: string[] = Array.from(
     "TRACUSDT",
     "CVXUSDT",
     "KMNOUSDT",
-    "SANDUSDT",
-    "BATUSDT",
     "ZAMAUSDT",
     "MANAUSDT",
   ]),
+);
+
+const MEMECOINS: string[] = [
+  "DOGEUSDT",
+  "1000SHIBUSDT",
+  "1000PEPEUSDT",
+  "WIFUSDT",
+  "1000BONKUSDT",
+  "1000FLOKIUSDT",
+  "PUMPUSDT",
+  "PENGUUSDT",
+  "POPCATUSDT",
+  "TURBOUSDT",
+  "BRETTUSDT",
+  "NEIROUSDT",
+  "BOMEUSDT",
+  "MEMEUSDT",
+  "1000SATSUSDT",
+  "1000RATSUSDT",
+  "1000CATUSDT",
+  "1000LUNCUSDT",
+  "MYROUSDT",
+  "PEOPLEUSDT",
+];
+
+const TOP_50_NO_MEME: string[] = TOP_50_CMC.filter(
+  (coin) => !MEMECOINS.includes(coin),
+);
+
+const TOP_100_NO_MEME: string[] = TOP_100_CMC.filter(
+  (coin) => !MEMECOINS.includes(coin),
 );
 
 export default function CredentialConfig() {
@@ -829,6 +858,33 @@ export default function CredentialConfig() {
                       onClick={() => handleSetPreset(TOP_100_CMC)}
                     >
                       Top 100 CMC
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                      onClick={() => handleSetPreset(TOP_50_NO_MEME)}
+                    >
+                      Top 50 (No Memes)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10"
+                      onClick={() => handleSetPreset(TOP_100_NO_MEME)}
+                    >
+                      Top 100 (No Memes)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+                      onClick={() => handleSetPreset(MEMECOINS)}
+                    >
+                      Memecoins
                     </Button>
                     <Button
                       type="button"

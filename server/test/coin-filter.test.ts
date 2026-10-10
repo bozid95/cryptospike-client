@@ -199,6 +199,29 @@ export const TOP_100_CMC: string[] = Array.from(
   ]),
 );
 
+export const MEMECOINS: string[] = [
+  "DOGEUSDT",
+  "1000SHIBUSDT",
+  "1000PEPEUSDT",
+  "WIFUSDT",
+  "1000BONKUSDT",
+  "1000FLOKIUSDT",
+  "PUMPUSDT",
+  "PENGUUSDT",
+  "POPCATUSDT",
+  "TURBOUSDT",
+  "BRETTUSDT",
+  "NEIROUSDT",
+  "BOMEUSDT",
+  "MEMEUSDT",
+  "1000SATSUSDT",
+  "1000RATSUSDT",
+  "1000CATUSDT",
+  "1000LUNCUSDT",
+  "MYROUSDT",
+  "PEOPLEUSDT",
+];
+
 describe("Coin Filter Feature Unit Tests", () => {
   describe("1. Mode ALL (No Filter)", () => {
     it("harus mengizinkan BTCUSDT saat mode ALL", () => {
@@ -350,6 +373,34 @@ describe("Coin Filter Feature Unit Tests", () => {
           `Top 100 harus mencakup ${coin} dari Top 50`,
         );
       }
+    });
+
+    it("harus memblokir semua koin meme saat preset MEMECOINS dijadikan blacklist", () => {
+      const memeBlacklist = MEMECOINS.join(",");
+      assert.equal(
+        evaluateCoinFilter("DOGEUSDT", "BLACKLIST", memeBlacklist).allowed,
+        false,
+      );
+      assert.equal(
+        evaluateCoinFilter("1000PEPEUSDT", "BLACKLIST", memeBlacklist).allowed,
+        false,
+      );
+      assert.equal(
+        evaluateCoinFilter("PEPEUSDT", "BLACKLIST", memeBlacklist).allowed,
+        false,
+      );
+      assert.equal(
+        evaluateCoinFilter("WIFUSDT", "BLACKLIST", memeBlacklist).allowed,
+        false,
+      );
+      assert.equal(
+        evaluateCoinFilter("BTCUSDT", "BLACKLIST", memeBlacklist).allowed,
+        true,
+      );
+      assert.equal(
+        evaluateCoinFilter("ETHUSDT", "BLACKLIST", memeBlacklist).allowed,
+        true,
+      );
     });
   });
 
