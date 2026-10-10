@@ -97,8 +97,8 @@ export async function getTokocryptoSymbolRules(
   // Fallback konservatif jika API symbols gagal
   const fallbackRules: TokocryptoSymbolRules = {
     symbol: formattedSymbol,
-    baseAsset: formattedSymbol.split("_")[0],
-    quoteAsset: formattedSymbol.split("_")[1],
+    baseAsset: formattedSymbol.split("_")[0] || formattedSymbol,
+    quoteAsset: formattedSymbol.split("_")[1] || "USDT",
     minQty: 0.0001,
     maxQty: 1000000,
     stepSize: 0.0001,

@@ -67,9 +67,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         where: { status: "OPEN" },
       });
       assert.equal(trades.length, 1);
-      assert.equal(trades[0].symbol, "BTC_USDT");
-      assert.equal(trades[0].entryPrice, 65000);
-      assert.equal(trades[0].status, "OPEN");
+      assert.equal(trades[0]!.symbol, "BTC_USDT");
+      assert.equal(trades[0]!.entryPrice, 65000);
+      assert.equal(trades[0]!.status, "OPEN");
     });
 
     it("Mode BINANCE Only: tidak boleh membuat record di SpotTrade (Tokocrypto dilewati)", async () => {
@@ -133,9 +133,9 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         where: { status: "OPEN" },
       });
       assert.equal(trades.length, 1);
-      assert.equal(trades[0].symbol, "SOL_USDT");
-      assert.equal(trades[0].tpPrice, 150 * 1.05); // +5%
-      assert.equal(trades[0].slPrice, 150 * 0.975); // -2.5%
+      assert.equal(trades[0]!.symbol, "SOL_USDT");
+      assert.equal(trades[0]!.tpPrice, 150 * 1.05); // +5%
+      assert.equal(trades[0]!.slPrice, 150 * 0.975); // -2.5%
     });
   });
 
@@ -251,7 +251,7 @@ describe("Comprehensive Open Position Test Suite (All Scenarios & Edge Cases)", 
         where: { status: "OPEN" },
       });
       assert.equal(trades.length, 1);
-      assert.equal(trades[0].symbol, "AVAX_USDT");
+      assert.equal(trades[0]!.symbol, "AVAX_USDT");
     });
   });
 

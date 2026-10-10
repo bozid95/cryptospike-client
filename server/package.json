@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
+    "build": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts"
   },
   "keywords": [],
