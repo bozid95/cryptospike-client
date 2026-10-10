@@ -516,8 +516,17 @@ export default function CredentialConfig({
   const handleAddCoin = (symbol: string) => {
     let clean = symbol.trim().toUpperCase();
     if (!clean) return;
-    if (!clean.endsWith("USDT")) {
-      clean = `${clean}USDT`;
+    if (activeExchangeForm === "TOKOCRYPTO") {
+      const quote = tokocryptoQuoteAsset;
+      if (!clean.includes("_")) {
+        clean = clean.endsWith(quote)
+          ? `${clean.slice(0, -quote.length)}_${quote}`
+          : `${clean}_${quote}`;
+      }
+    } else {
+      if (!clean.endsWith("USDT")) {
+        clean = `${clean}USDT`;
+      }
     }
     if (!coinList.includes(clean)) {
       const updated = [...coinList, clean].join(",");
@@ -539,108 +548,78 @@ export default function CredentialConfig({
     <div className="space-y-6 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Bot Config & Credentials
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            {activeExchangeForm === "TOKOCRYPTO" ? (
+              <>
+                <Coins className="size-6 text-amber-500" />
+                Tokocrypto Spot Configuration
+              </>
+            ) : (
+              <>
+                <Layers className="size-6 text-primary" />
+                Binance Futures Configuration
+              </>
+            )}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Bot license, exchange API keys, and local execution risk management.
+            {activeExchangeForm === "TOKOCRYPTO"
+              ? "OpenAPI v1 credentials, quote asset, simulation mode, and spot filters for Tokocrypto."
+              : "API keys, license token, leverage, margin settings, and trading filters for Binance Futures."}
           </p>
         </div>
 
-        {/* Exchange Market Selector */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-muted/60 rounded-lg border w-fit">
-          <Button
-            type="button"
-            size="sm"
-            variant={targetExchange === "BINANCE" ? "default" : "ghost"}
-            onClick={() => {
-              setTargetExchange("BINANCE");
-              setActiveExchangeForm("BINANCE");
-              setTestResult(null);
-            }}
-            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+        {forcedExchange ? (
+          <Badge
+            variant="outline"
+            className={`text-xs px-3 py-1.5 gap-1.5 font-medium w-fit ${
+              activeExchangeForm === "TOKOCRYPTO"
+                ? "border-amber-500/30 bg-amber-500/5 text-amber-600"
+                : "border-primary/30 bg-primary/5 text-primary"
+            }`}
           >
-            <Layers className="size-3.5" />
-            Binance Futures
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={targetExchange === "TOKOCRYPTO" ? "default" : "ghost"}
-            onClick={() => {
-              setTargetExchange("TOKOCRYPTO");
-              setActiveExchangeForm("TOKOCRYPTO");
-              setTestResult(null);
-            }}
-            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
-          >
-            <Coins className="size-3.5 text-amber-500" />
-            Tokocrypto Spot
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={targetExchange === "BOTH" ? "default" : "ghost"}
-            onClick={() => {
-              setTargetExchange("BOTH");
-              setTestResult(null);
-            }}
-            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
-          >
-            <span className="flex items-center gap-1">
-              <Layers className="size-3" />
-              <span className="text-[10px] text-muted-foreground">&</span>
-              <Coins className="size-3 text-amber-500" />
-            </span>
-            Dual Mode (Both)
-          </Button>
-        </div>
-      </div>
-
-      {/* Banner & Form Tab Switcher jika Dual Mode */}
-      {targetExchange === "BOTH" && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-primary/30 bg-primary/5 text-xs">
-          <div className="flex items-center gap-2">
-            <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-            <div>
-              <span className="font-semibold text-foreground">
-                Dual-Exchange Mode Aktif:
-              </span>{" "}
-              <span className="text-muted-foreground">
-                Sinyal dieksekusi di Binance Futures (LONG & SHORT) dan Tokocrypto Spot (LONG Only) secara bersamaan.
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 bg-background p-1 rounded-md border shrink-0">
+            {activeExchangeForm === "TOKOCRYPTO" ? (
+              <>
+                <Coins className="size-3.5 text-amber-500" />
+                Tokocrypto Spot
+              </>
+            ) : (
+              <>
+                <Layers className="size-3.5" />
+                Binance Futures
+              </>
+            )}
+          </Badge>
+        ) : (
+          <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-lg border w-fit">
             <Button
               type="button"
               size="sm"
-              variant={activeExchangeForm === "BINANCE" ? "secondary" : "ghost"}
+              variant={activeExchangeForm === "BINANCE" ? "default" : "ghost"}
               onClick={() => {
                 setActiveExchangeForm("BINANCE");
                 setTestResult(null);
               }}
-              className="h-7 text-xs font-medium gap-1 cursor-pointer"
+              className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
             >
-              <Layers className="size-3" />
-              Form Binance
+              <Layers className="size-3.5" />
+              Binance Futures
             </Button>
             <Button
               type="button"
               size="sm"
-              variant={activeExchangeForm === "TOKOCRYPTO" ? "secondary" : "ghost"}
+              variant={activeExchangeForm === "TOKOCRYPTO" ? "default" : "ghost"}
               onClick={() => {
                 setActiveExchangeForm("TOKOCRYPTO");
                 setTestResult(null);
               }}
-              className="h-7 text-xs font-medium gap-1 cursor-pointer"
+              className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
             >
-              <Coins className="size-3 text-amber-500" />
-              Form Tokocrypto
+              <Coins className="size-3.5 text-amber-500" />
+              Tokocrypto Spot
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
@@ -972,29 +951,26 @@ export default function CredentialConfig({
                 <CheckIcon className="size-4 text-primary" />
                 Risk & Execution Management
               </CardTitle>
-              {targetExchange === "TOKOCRYPTO" && (
+              {activeExchangeForm === "TOKOCRYPTO" ? (
                 <Badge
                   variant="outline"
                   className="text-[10px] text-amber-600 border-amber-500/30"
                 >
                   Spot Execution
                 </Badge>
-              )}
-              {targetExchange === "BOTH" && (
+              ) : (
                 <Badge
                   variant="outline"
                   className="text-[10px] text-primary border-primary/30"
                 >
-                  Dual Execution
+                  Futures Execution
                 </Badge>
               )}
             </div>
             <CardDescription className="text-xs">
-              {targetExchange === "BOTH"
-                ? "Execution parameters for Binance Futures (with leverage) and Tokocrypto Spot (cash 1x with auto TP/SL)."
-                : targetExchange === "TOKOCRYPTO"
-                  ? "Spot trading execution parameters with auto TP (+5%) & SL (-2.5%)."
-                  : "Execution parameters when a signal is received on Binance Futures."}
+              {activeExchangeForm === "TOKOCRYPTO"
+                ? "Spot trading execution parameters with auto TP (+5%) & SL (-2.5%)."
+                : "Execution parameters when a signal is received on Binance Futures."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-xs flex-1">
@@ -1008,11 +984,9 @@ export default function CredentialConfig({
                   Auto-Trade
                 </Label>
                 <p className="text-[10px] text-muted-foreground">
-                  {targetExchange === "BOTH"
-                    ? "Automatic execution on both Binance Futures & Tokocrypto Spot"
-                    : targetExchange === "TOKOCRYPTO"
-                      ? "Automatic execution of LONG / BUY spot orders"
-                      : "Automatic execution of Binance Futures signals"}
+                  {activeExchangeForm === "TOKOCRYPTO"
+                    ? "Automatic execution of LONG / BUY spot orders"
+                    : "Automatic execution of Binance Futures signals"}
                 </p>
               </div>
               <Switch
@@ -1023,7 +997,7 @@ export default function CredentialConfig({
             </div>
 
             {/* Dry-Run Simulation Switch (Tokocrypto Spot) */}
-            {(targetExchange === "TOKOCRYPTO" || targetExchange === "BOTH") && (
+            {activeExchangeForm === "TOKOCRYPTO" && (
               <div className="flex items-center justify-between p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
@@ -1054,11 +1028,11 @@ export default function CredentialConfig({
             )}
 
             {/* Margin Type & Leverage (Only relevant for Binance Futures) */}
-            {(targetExchange === "BINANCE" || targetExchange === "BOTH") ? (
+            {activeExchangeForm === "BINANCE" ? (
               <>
                 <div className="space-y-1.5 mt-2">
                   <Label htmlFor="margin-type" className="text-xs font-medium">
-                    Margin Type {targetExchange === "BOTH" && "(Binance Futures)"}
+                    Margin Type
                   </Label>
                   <select
                     id="margin-type"
@@ -1079,7 +1053,7 @@ export default function CredentialConfig({
 
                 <div className="space-y-1.5 mt-2">
                   <Label htmlFor="leverage" className="text-xs font-medium">
-                    Default Leverage (x) {targetExchange === "BOTH" && "(Binance Futures)"}
+                    Default Leverage (x)
                   </Label>
                   <Input
                     id="leverage"
@@ -1091,17 +1065,6 @@ export default function CredentialConfig({
                     className="h-8 text-xs"
                   />
                 </div>
-
-                {targetExchange === "BOTH" && (
-                  <div className="p-2.5 rounded-lg border bg-muted/30 text-[11px] text-muted-foreground space-y-1 mt-2">
-                    <span className="font-semibold text-foreground block">
-                      Tokocrypto Spot: 1x Cash-Only
-                    </span>
-                    <p>
-                      Posisi Spot Tokocrypto berjalan tanpa leverage dengan monitoring otomatis TP <strong>+5%</strong> dan SL <strong>-2.5%</strong>.
-                    </p>
-                  </div>
-                )}
               </>
             ) : (
               <div className="p-2.5 rounded-lg border bg-muted/30 text-[11px] text-muted-foreground space-y-1">
@@ -1120,11 +1083,9 @@ export default function CredentialConfig({
             {/* Risk Per Trade % */}
             <div className="space-y-1.5">
               <Label htmlFor="risk-pct" className="text-xs font-medium">
-                {targetExchange === "BOTH"
-                  ? "Allocation / Risk Per Trade (%)"
-                  : targetExchange === "TOKOCRYPTO"
-                    ? `Allocation Per Trade (% ${tokocryptoQuoteAsset} Balance)`
-                    : "Risk Per Trade (% Wallet)"}
+                {activeExchangeForm === "TOKOCRYPTO"
+                  ? `Allocation Per Trade (% ${tokocryptoQuoteAsset} Balance)`
+                  : "Risk Per Trade (% Wallet)"}
               </Label>
               <Input
                 id="risk-pct"
@@ -1151,7 +1112,7 @@ export default function CredentialConfig({
                       ).toLocaleString(undefined, {
                         maximumFractionDigits: 2,
                       })}{" "}
-                      {testResult.quoteAsset || "USDT"}
+                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")}
                     </strong>{" "}
                     per single trade.
                   </p>
@@ -1167,7 +1128,7 @@ export default function CredentialConfig({
                       ).toLocaleString(undefined, {
                         maximumFractionDigits: 2,
                       })}{" "}
-                      {testResult.quoteAsset || "USDT"} ({totalRiskPct}%)
+                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")} ({totalRiskPct}%)
                     </strong>{" "}
                     of your available balance.
                   </p>
@@ -1456,35 +1417,24 @@ export default function CredentialConfig({
 
           <div className="space-y-3 py-2 text-sm">
             <div className="flex justify-between border-b pb-2">
-              <span className="text-muted-foreground">Market Exchange:</span>
+              <span className="text-muted-foreground">Configuration Target:</span>
               <span className="font-semibold text-primary">
+                {activeExchangeForm === "TOKOCRYPTO"
+                  ? "Tokocrypto (Spot Market)"
+                  : "Binance (Futures Market)"}
+              </span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-muted-foreground">Active Bot Routing:</span>
+              <span className="font-semibold">
                 {targetExchange === "BOTH"
                   ? "Dual Mode (Binance Futures & Tokocrypto Spot)"
                   : targetExchange === "TOKOCRYPTO"
-                    ? "Tokocrypto (Spot)"
-                    : "Binance (Futures)"}
+                    ? "Tokocrypto Spot Only"
+                    : "Binance Futures Only"}
               </span>
             </div>
-            {targetExchange === "BOTH" ? (
-              <>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-muted-foreground">
-                    Binance Env / Toko Mode:
-                  </span>
-                  <span className="font-semibold">
-                    {environment} / {dryRun ? "Paper" : "Live"}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-muted-foreground">
-                    Futures Leverage / Spot:
-                  </span>
-                  <span className="font-semibold">
-                    {leverage}x ({marginType}) / 1x (+5% TP, -2.5% SL)
-                  </span>
-                </div>
-              </>
-            ) : targetExchange === "TOKOCRYPTO" ? (
+            {activeExchangeForm === "TOKOCRYPTO" ? (
               <>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-muted-foreground">Quote Asset:</span>
@@ -1498,12 +1448,26 @@ export default function CredentialConfig({
                     {dryRun ? "Paper Trading (Dry-Run)" : "Live Spot Order"}
                   </span>
                 </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Target TP / SL:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    +5% TP / -2.5% SL
+                  </span>
+                </div>
               </>
             ) : (
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-muted-foreground">Environment:</span>
-                <span className="font-semibold">{environment}</span>
-              </div>
+              <>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Environment:</span>
+                  <span className="font-semibold">{environment}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Leverage & Margin:</span>
+                  <span className="font-semibold">
+                    {leverage}x ({marginType})
+                  </span>
+                </div>
+              </>
             )}
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Auto-Trade:</span>
@@ -1513,22 +1477,6 @@ export default function CredentialConfig({
                 {autoExecute ? "ON" : "OFF"}
               </span>
             </div>
-            {targetExchange === "BINANCE" && (
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-muted-foreground">Leverage:</span>
-                <span className="font-semibold">
-                  {leverage}x ({marginType})
-                </span>
-              </div>
-            )}
-            {targetExchange === "TOKOCRYPTO" && (
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-muted-foreground">Target TP / SL:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  +5% TP / -2.5% SL
-                </span>
-              </div>
-            )}
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Max Open Positions:</span>
               <span className="font-semibold">{maxOpenPositions}</span>
@@ -1544,7 +1492,7 @@ export default function CredentialConfig({
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
-                  {targetExchange === "TOKOCRYPTO"
+                  {activeExchangeForm === "TOKOCRYPTO"
                     ? "Max Total Allocation:"
                     : "Total Max Risk:"}
                 </span>
@@ -1563,7 +1511,7 @@ export default function CredentialConfig({
                       {testResult.balance.toLocaleString(undefined, {
                         maximumFractionDigits: 2,
                       })}{" "}
-                      {testResult.quoteAsset || "USDT"}
+                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")}
                     </strong>
                     , allocation per trade is approximately{" "}
                     <strong>
@@ -1574,7 +1522,7 @@ export default function CredentialConfig({
                       ).toLocaleString(undefined, {
                         maximumFractionDigits: 2,
                       })}{" "}
-                      {testResult.quoteAsset || "USDT"}
+                      {testResult.quoteAsset || (activeExchangeForm === "TOKOCRYPTO" ? tokocryptoQuoteAsset : "USDT")}
                     </strong>
                     .
                   </p>

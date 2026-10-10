@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { authFetch } from "@/lib/api";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -114,6 +115,46 @@ export function DashboardSummary({
     0,
   );
 
+  const [isUpdatingMode, setIsUpdatingMode] = useState(false);
+
+  const handleUpdateTargetExchange = async (
+    newExchange: "BINANCE" | "TOKOCRYPTO" | "BOTH",
+  ) => {
+    if (isUpdatingMode || !config) return;
+    try {
+      setIsUpdatingMode(true);
+      const res = await authFetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetExchange: newExchange }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConfig((prev: any) => ({ ...prev, targetExchange: newExchange }));
+        const label =
+          newExchange === "BOTH"
+            ? "Dual Mode (Binance Futures & Tokocrypto Spot)"
+            : newExchange === "TOKOCRYPTO"
+              ? "Tokocrypto Spot Saja"
+              : "Binance Futures Saja";
+        toast.success("Mode Trading Bot Diperbarui", {
+          description: `Target eksekusi aktif: ${label}`,
+        });
+        await fetchAllSummary();
+      } else {
+        toast.error("Gagal Memperbarui Mode Bot", {
+          description: data.message || "Terjadi kesalahan saat menyimpan mode.",
+        });
+      }
+    } catch (err: any) {
+      toast.error("Gagal Memperbarui Mode Bot", {
+        description: err.message || "Gagal menghubungi server lokal.",
+      });
+    } finally {
+      setIsUpdatingMode(false);
+    }
+  };
+
   return (
     <div className="space-y-6 w-full">
       {/* 1. HEADER & SYSTEM STATUS */}
@@ -170,7 +211,88 @@ export function DashboardSummary({
         </div>
       </div>
 
-      {/* 2. KARTU METRIK UTAMA (4 METRICS) */}
+      {/* 2. KONTROL MODE BURSA AKTIF (1-CLICK CONTROLLER) */}
+      <Card className="border-primary/20 bg-primary/5 shadow-sm">
+        <CardContent className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
+              <BotIcon className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-foreground">
+                  Trading Execution Target:
+                </span>
+                <Badge
+                  variant="outline"
+                  className={`text-[11px] font-bold px-2 py-0.5 ${
+                    isDual
+                      ? "border-primary/40 bg-primary/15 text-primary"
+                      : isTokocrypto
+                        ? "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                        : "border-blue-500/40 bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                  }`}
+                >
+                  {isDual
+                    ? "Dual Mode (Binance Futures & Tokocrypto Spot)"
+                    : isTokocrypto
+                      ? "Tokocrypto Spot Saja"
+                      : "Binance Futures Saja"}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {isDual
+                  ? "Sinyal dieksekusi simultan di Binance Futures (LONG & SHORT) dan Tokocrypto Spot (LONG Only)."
+                  : isTokocrypto
+                    ? "Sinyal dieksekusi khusus di Tokocrypto Spot dengan 1x Cash dan auto TP (+5%) / SL (-2.5%)."
+                    : "Sinyal dieksekusi khusus di Binance Futures dengan leverage & margin terisolasi."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 bg-background rounded-lg border shadow-xs shrink-0 self-start md:self-auto">
+            <Button
+              type="button"
+              size="sm"
+              variant={targetExchange === "BINANCE" ? "default" : "ghost"}
+              onClick={() => handleUpdateTargetExchange("BINANCE")}
+              disabled={isUpdatingMode}
+              className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Layers className="size-3.5" />
+              Binance Saja
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={targetExchange === "TOKOCRYPTO" ? "default" : "ghost"}
+              onClick={() => handleUpdateTargetExchange("TOKOCRYPTO")}
+              disabled={isUpdatingMode}
+              className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Coins className="size-3.5 text-amber-500" />
+              Tokocrypto Saja
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={targetExchange === "BOTH" ? "default" : "ghost"}
+              onClick={() => handleUpdateTargetExchange("BOTH")}
+              disabled={isUpdatingMode}
+              className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <span className="flex items-center gap-0.5">
+                <Layers className="size-3" />
+                <span className="text-[10px] text-muted-foreground">&</span>
+                <Coins className="size-3 text-amber-500" />
+              </span>
+              Dual Mode
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. KARTU METRIK UTAMA (4 METRICS) */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Active Routing Target */}
         <Card className="shadow-sm border-primary/20 bg-primary/5">
@@ -201,19 +323,44 @@ export function DashboardSummary({
               </span>
             </div>
             <div className="pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  onNavigate(
-                    isTokocrypto ? "tokocrypto-config" : "binance-config",
-                  )
-                }
-                className="w-full h-7 text-[11px] gap-1 cursor-pointer bg-background"
-              >
-                <SlidersIcon className="size-3" />
-                Configure Target
-              </Button>
+              {isDual ? (
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onNavigate("binance-config")}
+                    className="flex-1 h-7 text-[10px] gap-1 cursor-pointer bg-background"
+                  >
+                    <Layers className="size-3" />
+                    Binance Config
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onNavigate("tokocrypto-config")}
+                    className="flex-1 h-7 text-[10px] gap-1 cursor-pointer bg-background"
+                  >
+                    <Coins className="size-3 text-amber-500" />
+                    Toko Config
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    onNavigate(
+                      isTokocrypto ? "tokocrypto-config" : "binance-config",
+                    )
+                  }
+                  className="w-full h-7 text-[11px] gap-1 cursor-pointer bg-background"
+                >
+                  <SlidersIcon className="size-3" />
+                  {isTokocrypto
+                    ? "Configure Tokocrypto"
+                    : "Configure Binance"}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

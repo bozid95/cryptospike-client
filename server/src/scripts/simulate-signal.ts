@@ -8,7 +8,9 @@ async function runSimulation() {
 
   try {
     // 1. Inisialisasi & Konfigurasi Mode BOTH di Database Lokal
-    console.log("[1/4] Menyiapkan Konfigurasi Bot ke Mode BOTH (Dual-Exchange)...");
+    console.log(
+      "[1/4] Menyiapkan Konfigurasi Bot ke Mode BOTH (Dual-Exchange)...",
+    );
     await prisma.appConfig.upsert({
       where: { id: 1 },
       update: {
@@ -42,8 +44,12 @@ async function runSimulation() {
     );
 
     // 2. KASUS UJI 1: Sinyal LONG Valid (BTCUSDT $65,000)
-    console.log("[2/4] Eksekusi Kasus 1: Sinyal LONG Valid (BTCUSDT $65,000)...");
-    console.log("      Ekspektasi Dual Mode: Sinyal dieksekusi di Tokocrypto Spot DAN Binance Futures!");
+    console.log(
+      "[2/4] Eksekusi Kasus 1: Sinyal LONG Valid (BTCUSDT $65,000)...",
+    );
+    console.log(
+      "      Ekspektasi Dual Mode: Sinyal dieksekusi di Tokocrypto Spot DAN Binance Futures!",
+    );
     const signalBtc = {
       id: "sig-test-btc-01",
       symbol: "BTCUSDT",
@@ -66,18 +72,28 @@ async function runSimulation() {
       console.log("      --> HASIL KASUS 1 (Tokocrypto Spot): [BERHASIL]");
       console.log(`          Simbol: ${btcTrade.symbol}`);
       console.log(`          Order ID: ${btcTrade.buyOrderId}`);
-      console.log(`          Harga Beli (Entry): $${btcTrade.entryPrice.toLocaleString()}`);
+      console.log(
+        `          Harga Beli (Entry): $${btcTrade.entryPrice.toLocaleString()}`,
+      );
       console.log(`          Kuantitas: ${btcTrade.quantity} BTC`);
-      console.log(`          Target TP1 (+5%): $${btcTrade.tpPrice.toLocaleString()}`);
-      console.log(`          Target SL (-2.5%): $${btcTrade.slPrice.toLocaleString()}`);
+      console.log(
+        `          Target TP1 (+5%): $${btcTrade.tpPrice.toLocaleString()}`,
+      );
+      console.log(
+        `          Target SL (-2.5%): $${btcTrade.slPrice.toLocaleString()}`,
+      );
       console.log(`          Status: ${btcTrade.status}\n`);
     } else {
-      console.log("      --> HASIL KASUS 1: [GAGAL] Posisi BTC_USDT tidak ditemukan di database.\n");
+      console.log(
+        "      --> HASIL KASUS 1: [GAGAL] Posisi BTC_USDT tidak ditemukan di database.\n",
+      );
     }
 
     // 3. KASUS UJI 2: Sinyal SHORT (ETHUSDT $3,500)
     console.log("[3/4] Eksekusi Kasus 2: Sinyal SHORT (ETHUSDT $3,500)...");
-    console.log("      Ekspektasi Dual Mode: Tokocrypto Spot otomatis skip (Spot Guard), Binance Futures memproses SHORT!");
+    console.log(
+      "      Ekspektasi Dual Mode: Tokocrypto Spot otomatis skip (Spot Guard), Binance Futures memproses SHORT!",
+    );
     const signalEthShort = {
       id: "sig-test-eth-02",
       symbol: "ETHUSDT",
@@ -97,14 +113,22 @@ async function runSimulation() {
 
     if (!ethTrade) {
       console.log("      --> HASIL KASUS 2: [BERHASIL - TERPROTEKSI]");
-      console.log("          Tokocrypto Spot: Aman, sinyal SHORT otomatis dilewati.");
-      console.log("          Binance Futures: Sinyal SHORT diproses untuk pasar Futures.\n");
+      console.log(
+        "          Tokocrypto Spot: Aman, sinyal SHORT otomatis dilewati.",
+      );
+      console.log(
+        "          Binance Futures: Sinyal SHORT diproses untuk pasar Futures.\n",
+      );
     } else {
-      console.log("      --> HASIL KASUS 2: [GAGAL] Posisi SHORT tidak boleh dieksekusi di Tokocrypto Spot!\n");
+      console.log(
+        "      --> HASIL KASUS 2: [GAGAL] Posisi SHORT tidak boleh dieksekusi di Tokocrypto Spot!\n",
+      );
     }
 
     // 4. KASUS UJI 3: Sinyal LONG Koin Kedua (SOLUSDT $150)
-    console.log("[4/4] Eksekusi Kasus 3: Sinyal LONG Koin Kedua (SOLUSDT $150)...");
+    console.log(
+      "[4/4] Eksekusi Kasus 3: Sinyal LONG Koin Kedua (SOLUSDT $150)...",
+    );
     const signalSol = {
       id: "sig-test-sol-03",
       symbol: "SOLUSDT",
@@ -132,7 +156,9 @@ async function runSimulation() {
       console.log(`          Target SL (-2.5%): $${solTrade.slPrice}`);
       console.log(`          Status: ${solTrade.status}\n`);
     } else {
-      console.log("      --> HASIL KASUS 3: [GAGAL] Posisi SOL_USDT tidak ditemukan di database.\n");
+      console.log(
+        "      --> HASIL KASUS 3: [GAGAL] Posisi SOL_USDT tidak ditemukan di database.\n",
+      );
     }
 
     // 5. TAMPILKAN TABEL REKAPITULASI POSISI AKTIF
@@ -142,7 +168,9 @@ async function runSimulation() {
     });
 
     console.log("=======================================================");
-    console.log(`  REKAPITULASI POSISI SPOT TOKOCRYPTO AKTIF DI DATABASE (${allOpenTrades.length}/3)`);
+    console.log(
+      `  REKAPITULASI POSISI SPOT TOKOCRYPTO AKTIF DI DATABASE (${allOpenTrades.length}/3)`,
+    );
     console.log("=======================================================");
     console.table(
       allOpenTrades.map((t) => ({
