@@ -1,189 +1,170 @@
-# ⚡ CryptoSpike Client
+# CryptoSpike Client
 
-**CryptoSpike Client** adalah aplikasi bot eksekusi perdagangan otomatis (*autonomous execution client*) berkecepatan tinggi (*zero-delay*) untuk **Binance USDT-M Futures**. Aplikasi ini terhubung langsung ke jaringan sinyal **CryptoSpike Gateway** melalui koneksi WebSocket *real-time*.
+CryptoSpike Client adalah aplikasi bot otomatis untuk mengeksekusi sinyal trading di Binance Futures (USDT-M). Aplikasi ini terhubung langsung ke server sinyal CryptoSpike menggunakan koneksi WebSocket, sehingga eksekusi order bisa berjalan sangat cepat begitu ada sinyal baru yang masuk.
 
-Dirancang dengan prinsip **100% Client-Side Privacy**, seluruh kredensial API Key Binance dan preferensi manajemen risiko Anda disimpan dan dienkripsi secara lokal di mesin Anda sendiri menggunakan SQLite, tanpa pernah dikirim ke server pihak ketiga.
-
----
-
-## 🚀 Fitur Utama
-
-- **⚡ Zero-Delay Signal Execution**: Menerima broadcast sinyal dan menembakkan order Market Entry ke Binance Futures dalam hitungan milidetik melalui WebSocket berkecepatan tinggi.
-- **🔒 100% Private & Aman**: Kredensial API Key dan Secret Binance Anda tersimpan secara lokal di mesin/server Anda sendiri.
-- **🎯 Multi-Target TP & SL Otomatis**:
-  - Penempatan otomatis **TP1 (50%)**, **TP2 (30%)**, dan **TP3 (20%)** Limit Order.
-  - Penempatan otomatis **Stop Loss (Conditional Algo Order)** langsung di bursa Binance untuk melindungi modal Anda.
-- **🛡️ Manajemen Risiko Dinamis**:
-  - Pengaturan Leverage fleksibel (1x - 125x) dan mode Margin (ISOLATED / CROSS).
-  - Pembatasan risiko per trade (`Risk Per Trade %`).
-  - Pembatasan jumlah posisi terbuka simultan (`Max Open Positions`).
-  - Preview estimasi nominal risiko riil (USD) dan skenario terburuk (*Worst-Case Scenario*) sebelum menyimpan.
-- **🪙 Coin Filter (Trading Scope)**:
-  - **All Market**: Menerima dan mengeksekusi semua koin yang dipindai oleh CryptoSpike.
-  - **Whitelist Only**: Hanya mengeksekusi sinyal koin yang Anda izinkan (misal: hanya BTCUSDT dan ADAUSDT).
-  - **Blacklist**: Mengecualikan koin-koin tertentu yang ingin Anda hindari.
-  - **Preset Instan**: Tombol cepat **Bluechips**, **Top L1**, **Top 50 CMC**, dan **Top 100 CMC**.
-- **📊 Web Dashboard Modern**: Dilengkapi monitoring posisi aktif langsung dari Binance, riwayat order, dan stream log aktivitas *real-time*.
+Semua data penting, seperti API Key dan API Secret Binance Anda, disimpan langsung di komputer atau server Anda sendiri menggunakan database lokal SQLite. Kredensial Anda tidak pernah dikirim ke server pusat atau pihak mana pun, sehingga akun Anda tetap aman di bawah kendali penuh Anda sendiri.
 
 ---
 
-## 📋 Prasyarat Sistem
+## Kemampuan dan Fitur Utama
 
-Sebelum menginstal, pastikan server atau mesin Anda telah terpasang:
-- **Docker** dan **Docker Compose** *(Sangat Direkomendasikan)*
-- ATAU **Node.js** v20.x atau lebih baru dan **npm** v10+ (jika menjalankan tanpa Docker)
-
----
-
-## 🛠️ Panduan Instalasi
-
-### Metode 1: Menggunakan Docker Compose (Direkomendasikan)
-
-Metode ini adalah cara termudah dan paling stabil untuk deploy di VPS (Ubuntu/Debian) atau platform seperti Dokploy, Coolify, dan Portainer.
-
-#### 1. Clone Repositori
-```bash
-git clone https://github.com/bozid95/cryptospike-client.git
-cd cryptospike-client
-```
-
-#### 2. Siapkan File Konfigurasi Environment
-Salin template konfigurasi `.env.example`:
-```bash
-cp .env.example .env
-```
-Isi konfigurasi pada file `.env` jika diperlukan:
-```env
-PORT=3080
-SERVER_URL=https://signal.forlearning.my.id
-CLIENT_TOKEN=
-```
-
-#### 3. Konfigurasi Port Host (Jika Diperlukan)
-Jika Anda **tidak** menggunakan Reverse Proxy seperti Dokploy/Traefik dan ingin mengakses web langsung melalui port tertentu (misal port 3080), buka `docker-compose.yml` dan aktifkan binding port:
-```yaml
-services:
-  client:
-    build: .
-    container_name: cryptospike-client
-    restart: unless-stopped
-    ports:
-      - "3080:80"
-    volumes:
-      - cryptospike_data:/app/server/data
-```
-
-#### 4. Build dan Jalankan Container
-```bash
-docker compose up --build -d
-```
-
-Periksa status container:
-```bash
-docker compose ps
-docker compose logs -f
-```
-
-Buka browser Anda dan akses:
-```
-http://IP_SERVER_ANDA:3080
-# atau domain yang Anda hubungkan (jika menggunakan Dokploy/Reverse Proxy)
-```
+- **Eksekusi Sinyal Cepat**: Menerima sinyal dari server secara instan dan langsung membuka posisi di Binance Futures tanpa jeda.
+- **Data Tersimpan Lokal**: API Key dan Secret Binance Anda tersimpan aman di database lokal Anda sendiri.
+- **Take Profit dan Stop Loss Otomatis**:
+  - Otomatis memasang target Take Profit bertahap: TP1 (50%), TP2 (30%), dan TP3 (20%).
+  - Otomatis memasang Stop Loss di bursa Binance untuk membatasi risiko kerugian.
+- **Pengaturan Risiko Sesuai Keinginan**:
+  - Bisa mengatur leverage bebas (1x sampai 125x) dan tipe margin (Isolated atau Cross).
+  - Bisa menentukan persentase modal yang siap dirisikokan pada setiap transaksi.
+  - Membatasi jumlah maksimal posisi yang boleh terbuka secara bersamaan.
+  - Menampilkan pratinjau estimasi nominal dolar (USD) yang berisiko sebelum Anda menyimpan setelan.
+- **Filter Pilihan Koin**:
+  - **All Market**: Mengeksekusi semua koin yang masuk dari sinyal.
+  - **Whitelist**: Hanya mengeksekusi koin-koin tertentu yang Anda pilih (misalnya hanya BTC dan ADA).
+  - **Blacklist**: Mengeksekusi semua koin kecuali koin-koin yang Anda masukkan ke daftar hitam.
+  - **Tombol Pilihan Cepat**: Tersedia tombol instan untuk memilih koin Bluechip, Layer 1, Top 50 CMC, atau Top 100 CMC.
+- **Tampilan Web yang Mudah Digunakan**: Dilengkapi dashboard untuk melihat posisi yang sedang berjalan, riwayat trading, dan catatan log aktivitas bot secara langsung.
 
 ---
 
-### Metode 2: Instalasi Manual (Development / Local Node.js)
+## Kebutuhan Sistem
 
-Jika Anda ingin menjalankan atau mengembangkan aplikasi di komputer lokal tanpa Docker:
-
-#### 1. Setup Backend Server
-```bash
-cd server
-npm install
-
-# Inisialisasi Database SQLite Lokal
-npx prisma db push
-npx prisma generate
-
-# Jalankan Backend Server (Port 3030)
-npm start
-```
-
-#### 2. Setup Frontend Web
-Buka terminal baru:
-```bash
-cd web
-npm install
-
-# Jalankan Frontend Development Server (Port 5173)
-npm run dev
-```
-
-Buka browser di `http://localhost:5173`.
+Sebelum memulai instalasi, pastikan perangkat atau server Anda sudah terpasang:
+- **Docker dan Docker Compose** (cara yang paling disarankan dan paling mudah).
+- Atau **Node.js** versi 20 ke atas (jika ingin menjalankan manual tanpa Docker).
 
 ---
 
-## 🚦 Panduan Konfigurasi Awal (Quick Start)
+## Cara Instalasi
 
-Setelah web dashboard berhasil dibuka:
+### Cara 1: Menggunakan Docker Compose (Paling Disarankan)
 
-1. **Buat Akun Admin**:
-   - Pada kunjungan pertama, buat username dan password untuk akun Admin lokal Anda.
-2. **Pasang Lisensi (Client Token)**:
-   - Masuk ke tab **Bot Config & Credentials**.
-   - Masukkan **Client Token** CryptoSpike yang Anda miliki.
-3. **Konfigurasi Kredensial Binance**:
-   - Pilih environment: **Testnet** (untuk simulasi) atau **Live** (untuk akun riil).
-   - Masukkan **Binance API Key** dan **API Secret**. Pastikan API Key di akun Binance Anda memiliki izin **Enable Futures**.
-   - Klik tombol **Test Connection** untuk memverifikasi koneksi dan saldo dompet Anda.
-4. **Atur Manajemen Risiko & Coin Filter**:
-   - Tentukan Leverage (misal `10x`), Margin Type (`ISOLATED`), dan `Risk Per Trade %` (misal `2%`).
-   - Pada kartu **Coin Filter**, pilih mode filter:
-     - Gunakan preset **Top 50 CMC** atau **Top 100 CMC** jika Anda hanya ingin trading pada koin-koin berkapitalisasi besar.
-     - Atau ketik simbol koin khusus (contoh: `BTCUSDT, ADAUSDT`).
-5. **Aktifkan Auto-Trade & Simpan**:
-   - Aktifkan toggle **Auto-Trade**.
-   - Klik **Save Configuration**, periksa rincian pada popup konfirmasi, dan klik **Confirm & Save**.
-   - Bot sekarang aktif dan siap mengeksekusi sinyal secara otomatis!
+Cara ini paling praktis jika Anda menggunakan server VPS (seperti Ubuntu atau Debian) maupun panel hosting seperti Dokploy.
+
+1. **Unduh repositori ini:**
+   ```bash
+   git clone https://github.com/bozid95/cryptospike-client.git
+   cd cryptospike-client
+   ```
+
+2. **Siapkan file konfigurasi environment:**
+   Salin file contoh pengaturan:
+   ```bash
+   cp .env.example .env
+   ```
+   Buka file `.env` jika Anda ingin mengubah pengaturan bawaan:
+   ```env
+   PORT=3080
+   SERVER_URL=https://signal.forlearning.my.id
+   CLIENT_TOKEN=
+   ```
+
+3. **Atur port web (jika tidak menggunakan reverse proxy):**
+   Jika Anda menjalankan bot ini langsung di server biasa tanpa Dokploy atau Traefik, buka file `docker-compose.yml` dan pastikan bagian port diarahkan ke port yang Anda inginkan (misalnya port 3080):
+   ```yaml
+   services:
+     client:
+       build: .
+       container_name: cryptospike-client
+       restart: unless-stopped
+       ports:
+         - "3080:80"
+       volumes:
+         - cryptospike_data:/app/server/data
+   ```
+
+4. **Jalankan aplikasi:**
+   ```bash
+   docker compose up --build -d
+   ```
+
+5. **Buka di browser:**
+   Akses dashboard melalui alamat:
+   ```
+   http://IP-SERVER-ANDA:3080
+   ```
+   (Atau gunakan nama domain Anda jika Anda memakai Dokploy).
 
 ---
 
-## 🧪 Menjalankan Unit Test
+### Cara 2: Menjalankan Manual di Komputer Lokal (Tanpa Docker)
 
-Untuk menguji integritas logika Coin Filter dan validitas preset Top 50 & Top 100 CMC:
+Jika Anda ingin mencoba langsung di komputer Windows atau Mac menggunakan Node.js:
+
+1. **Jalankan bagian server (backend):**
+   ```bash
+   cd server
+   npm install
+   npx prisma db push
+   npx prisma generate
+   npm start
+   ```
+
+2. **Jalankan bagian tampilan (frontend):**
+   Buka jendela terminal baru:
+   ```bash
+   cd web
+   npm install
+   npm run dev
+   ```
+
+3. **Buka di browser:**
+   Kunjungi alamat `http://localhost:5173`.
+
+---
+
+## Panduan Penggunaan Pertama Kali
+
+Setelah dashboard web terbuka di browser Anda:
+
+1. **Daftarkan Akun Admin**:
+   Saat pertama kali dibuka, buat username dan password baru untuk mengunci dashboard bot Anda.
+2. **Masukkan Token Lisensi**:
+   Buka menu **Bot Config & Credentials**, lalu tempelkan Client Token CryptoSpike yang Anda miliki.
+3. **Masukkan Kunci API Binance**:
+   - Pilih jaringan: **Testnet** (untuk uji coba dengan saldo virtual) atau **Live** (untuk akun asli).
+   - Masukkan Binance API Key dan API Secret Anda. Pastikan pada setelan API Binance Anda, izin **Enable Futures** sudah dicentang.
+   - Klik tombol **Test Connection** untuk mengecek apakah kunci API valid dan saldo terbaca.
+4. **Atur Risiko dan Pilihan Koin**:
+   - Tentukan leverage, tipe margin, dan risiko per trade yang Anda inginkan.
+   - Pada bagian **Coin Filter**, pilih apakah Anda ingin mengeksekusi semua koin atau hanya koin tertentu. Anda bisa menekan tombol cepat seperti **Top 50 CMC** atau **Top 100 CMC**.
+5. **Nyalakan Auto-Trade dan Simpan**:
+   - Nyalakan tombol **Auto-Trade**.
+   - Klik **Save Configuration**, periksa ringkasannya di jendela konfirmasi, lalu klik **Confirm & Save**.
+   - Bot sekarang sudah berjalan dan akan membuka posisi otomatis saat ada sinyal masuk.
+
+---
+
+## Cara Menjalankan Tes Otomatis (Unit Test)
+
+Jika Anda ingin memastikan logika penyaringan koin berjalan dengan benar di sistem Anda:
 
 ```bash
 cd server
 npm test
 ```
 
-Hasil pengujian otomatis akan menampilkan laporan:
-```
-# tests 17 | pass 17 | fail 0
-```
-
 ---
 
-## 🔄 Pembaruan / Update Bot
+## Cara Memperbarui Bot (Update)
 
-Jika ada update terbaru dari repositori, jalankan:
+Jika ada pembaruan kode dari repositori ini, Anda cukup menjalankan perintah berikut di folder proyek:
 
 ```bash
-cd cryptospike-client
 git pull
 docker compose up --build -d
 ```
 
-Database dan pengaturan Anda tetap aman karena tersimpan di persistent volume `cryptospike_data`.
+Seluruh setelan dan akun Anda tetap aman tersimpan di volume database lokal.
 
 ---
 
-## ⚠️ Disclaimer
+## Catatan Risiko
 
-Aplikasi ini adalah perangkat lunak otomasi trading independen. Perdagangan aset kripto dan instrumen derivatif (Futures) mengandung tingkat risiko yang tinggi dan dapat mengakibatkan kerugian modal. Pastikan Anda selalu menggunakan dana dingin (*risk capital*), menguji coba strategi di mode **Testnet** terlebih dahulu, dan menerapkan manajemen risiko yang bijak. Pengembang tidak bertanggung jawab atas kerugian finansial yang timbul dari keputusan perdagangan Anda.
+Trading aset kripto di pasar Futures memiliki risiko yang tinggi. Bot ini hanya alat bantu untuk mengeksekusi order secara otomatis. Selalu gunakan dana yang siap Anda tanggung jika terjadi kerugian, uji coba terlebih dahulu menggunakan akun Testnet, dan gunakan manajemen risiko yang bijak. Segala keuntungan dan kerugian trading sepenuhnya merupakan tanggung jawab Anda sendiri.
 
 ---
 
-## 📄 Lisensi
+## Lisensi
 
-Didistribusikan di bawah lisensi **MIT License**. Lihat file [LICENSE](file:///c:/My%20Project/CryptoSpike-Client/LICENSE) untuk informasi lebih lanjut.
+Proyek ini menggunakan lisensi MIT.
