@@ -1,5 +1,8 @@
 import crypto from "crypto";
 import { addAppLog } from "./logger";
+import { evaluateCoinFilter } from "./coin-filter";
+
+export { evaluateCoinFilter };
 
 export interface SymbolFilters {
   tickSize: number;
@@ -573,79 +576,19 @@ export async function executeSignalOrder(
   }
 
   // 2. Cek Filter Koin (Trading Scope: WHITELIST / BLACKLIST)
-  const filterMode = (config.coinFilterMode || "ALL").toUpperCase();
-  if (filterMode !== "ALL") {
-    // Normalisasi simbol sinyal yang masuk
-    const rawSymbol = (
-      signal?.symbol ||
-      signal?.pair ||
-      signal?.coin ||
-      signal?.data?.symbol ||
-      symbol ||
-      ""
-    )
-      .toString()
-      .trim();
+  const filterEval = evaluateCoinFilter(
+    (signal?.symbol || signal?.pair || signal?.coin || signal?.data?.symbol || symbol || "").toString(),
+    config.coinFilterMode || "ALL",
+    config.targetCoins || "",
+  );
 
-    const cleanSignal = rawSymbol.replace(/[\/\-_\s]/g, "").toUpperCase();
-    const signalBase = cleanSignal.endsWith("USDT")
-      ? cleanSignal.slice(0, -4)
-      : cleanSignal;
-    const signalWithUsdt = cleanSignal.endsWith("USDT")
-      ? cleanSignal
-      : `${cleanSignal}USDT`;
+  if (!filterEval.allowed) {
+    addAppLog("WARN", "CoinFilter", filterEval.reason);
+    return;
+  }
 
-    const rawTarget = config.targetCoins || "";
-    const coinList = rawTarget
-      .split(/[,;\s]+/)
-      .map((c) =>
-        c
-          .trim()
-          .replace(/[\/\-_\s]/g, "")
-          .toUpperCase(),
-      )
-      .filter(Boolean);
-
-    const strip1000 = (s: string) => (s.startsWith("1000") ? s.slice(4) : s);
-    const signalPure = strip1000(signalBase);
-
-    const isMatch = coinList.some((target) => {
-      const targetBase = target.endsWith("USDT") ? target.slice(0, -4) : target;
-      const targetWithUsdt = target.endsWith("USDT") ? target : `${target}USDT`;
-      const targetPure = strip1000(targetBase);
-
-      return (
-        cleanSignal === target ||
-        cleanSignal === targetWithUsdt ||
-        signalBase === targetBase ||
-        signalWithUsdt === targetWithUsdt ||
-        signalPure === targetPure
-      );
-    });
-
-    if (filterMode === "WHITELIST" && !isMatch) {
-      addAppLog(
-        "WARN",
-        "CoinFilter",
-        `[WHITELIST BLOCKED] Sinyal ${cleanSignal} dilewati karena TIDAK ADA di Whitelist Anda (${coinList.join(", ") || "Kosong"}).`,
-      );
-      return;
-    }
-
-    if (filterMode === "BLACKLIST" && isMatch) {
-      addAppLog(
-        "WARN",
-        "CoinFilter",
-        `[BLACKLIST BLOCKED] Sinyal ${cleanSignal} dilewati karena ADA dalam Blacklist Anda (${coinList.join(", ")}).`,
-      );
-      return;
-    }
-
-    addAppLog(
-      "INFO",
-      "CoinFilter",
-      `[COIN ALLOWED] Sinyal ${cleanSignal} lolos aturan filter [${filterMode}].`,
-    );
+  if ((config.coinFilterMode || "ALL").toUpperCase() !== "ALL") {
+    addAppLog("INFO", "CoinFilter", filterEval.reason);
   }
 
   // 2. Cek Kredensial API
