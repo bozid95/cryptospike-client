@@ -63,8 +63,14 @@ export function calculateSpotOrderQuantity(params: {
   isValid: boolean;
   reason?: string;
 } {
-  const { balance, riskPct, currentPrice, stepSize, minNotional, maxAllocationUsd } =
-    params;
+  const {
+    balance,
+    riskPct,
+    currentPrice,
+    stepSize,
+    minNotional,
+    maxAllocationUsd,
+  } = params;
 
   if (balance <= 0) {
     return {
@@ -147,10 +153,8 @@ export async function placeTokocryptoOrder(
   const cleanSecret = apiSecret.trim();
 
   const symbol = normalizeTokocryptoSymbol(params.symbol);
-  const side =
-    params.side === 1 || params.side === "SELL" ? 1 : 0; // 0 = BUY, 1 = SELL
-  const type =
-    params.type === 1 || params.type === "LIMIT" ? 1 : 2; // 1 = LIMIT, 2 = MARKET
+  const side = params.side === 1 || params.side === "SELL" ? 1 : 0; // 0 = BUY, 1 = SELL
+  const type = params.type === 1 || params.type === "LIMIT" ? 1 : 2; // 1 = LIMIT, 2 = MARKET
 
   const payload: Record<string, any> = {
     symbol,
@@ -164,7 +168,11 @@ export async function placeTokocryptoOrder(
   if (params.clientId) payload.clientId = params.clientId;
 
   const serverTime = await getTokocryptoServerTime(baseUrl, customFetch);
-  const queryString = buildTokocryptoSignedQuery(payload, cleanSecret, serverTime);
+  const queryString = buildTokocryptoSignedQuery(
+    payload,
+    cleanSecret,
+    serverTime,
+  );
 
   const res = await customFetch(`${baseUrl}/open/v1/orders?${queryString}`, {
     method: "POST",
@@ -392,4 +400,3 @@ export async function executeTokocryptoSignalOrder(
     };
   }
 }
-

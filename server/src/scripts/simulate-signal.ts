@@ -3,16 +3,16 @@ import { handleIncomingSignal } from "../services/socket.service";
 
 async function runSimulation() {
   console.log("\n=======================================================");
-  console.log("   SIMULASI INSTAN SINYAL SPOT TOKOCRYPTO (LOCAL TEST)  ");
+  console.log("   SIMULASI DUAL-EXCHANGE: BINANCE & TOKOCRYPTO SPOT   ");
   console.log("=======================================================\n");
 
   try {
-    // 1. Inisialisasi & Pastikan Konfigurasi Database
-    console.log("[1/4] Menyiapkan Konfigurasi Bot di Database Lokal...");
+    // 1. Inisialisasi & Konfigurasi Mode BOTH di Database Lokal
+    console.log("[1/4] Menyiapkan Konfigurasi Bot ke Mode BOTH (Dual-Exchange)...");
     await prisma.appConfig.upsert({
       where: { id: 1 },
       update: {
-        targetExchange: "TOKOCRYPTO",
+        targetExchange: "BOTH",
         autoExecute: true,
         dryRun: true,
         tokocryptoQuoteAsset: "USDT",
@@ -21,7 +21,7 @@ async function runSimulation() {
       },
       create: {
         id: 1,
-        targetExchange: "TOKOCRYPTO",
+        targetExchange: "BOTH",
         autoExecute: true,
         dryRun: true,
         tokocryptoQuoteAsset: "USDT",
@@ -30,19 +30,20 @@ async function runSimulation() {
       },
     });
 
-    // Bersihkan posisi spot terbuka sebelumnya untuk pengujian yang bersih
+    // Reset posisi spot terbuka untuk pengetesan yang bersih
     const deletedCount = await prisma.spotTrade.deleteMany({
       where: { status: "OPEN" },
     });
     console.log(
-      `      Konfigurasi aktif: targetExchange=TOKOCRYPTO, dryRun=true, autoExecute=true.`,
+      `      Konfigurasi aktif: targetExchange="BOTH" (Dual Exchange), dryRun=true, autoExecute=true.`,
     );
     console.log(
       `      Pembersihan awal: ${deletedCount.count} posisi lama direset.\n`,
     );
 
-    // 2. KASUS UJI 1: Sinyal LONG Valid (BTCUSDT)
+    // 2. KASUS UJI 1: Sinyal LONG Valid (BTCUSDT $65,000)
     console.log("[2/4] Eksekusi Kasus 1: Sinyal LONG Valid (BTCUSDT $65,000)...");
+    console.log("      Ekspektasi Dual Mode: Sinyal dieksekusi di Tokocrypto Spot DAN Binance Futures!");
     const signalBtc = {
       id: "sig-test-btc-01",
       symbol: "BTCUSDT",
@@ -62,8 +63,8 @@ async function runSimulation() {
     });
 
     if (btcTrade) {
-      console.log("      --> HASIL KASUS 1: [BERHASIL]");
-      console.log(`          Simbol: ${btcTrade.symbol} (Ternormalisasi ke Spot)`);
+      console.log("      --> HASIL KASUS 1 (Tokocrypto Spot): [BERHASIL]");
+      console.log(`          Simbol: ${btcTrade.symbol}`);
       console.log(`          Order ID: ${btcTrade.buyOrderId}`);
       console.log(`          Harga Beli (Entry): $${btcTrade.entryPrice.toLocaleString()}`);
       console.log(`          Kuantitas: ${btcTrade.quantity} BTC`);
@@ -74,9 +75,9 @@ async function runSimulation() {
       console.log("      --> HASIL KASUS 1: [GAGAL] Posisi BTC_USDT tidak ditemukan di database.\n");
     }
 
-    // 3. KASUS UJI 2: Sinyal SHORT / SELL (ETHUSDT) - Harus Ditolak oleh Spot Guard
+    // 3. KASUS UJI 2: Sinyal SHORT (ETHUSDT $3,500)
     console.log("[3/4] Eksekusi Kasus 2: Sinyal SHORT (ETHUSDT $3,500)...");
-    console.log("      Ekspektasi: Ditolak otomatis oleh Spot Guard Protection.");
+    console.log("      Ekspektasi Dual Mode: Tokocrypto Spot otomatis skip (Spot Guard), Binance Futures memproses SHORT!");
     const signalEthShort = {
       id: "sig-test-eth-02",
       symbol: "ETHUSDT",
@@ -96,12 +97,13 @@ async function runSimulation() {
 
     if (!ethTrade) {
       console.log("      --> HASIL KASUS 2: [BERHASIL - TERPROTEKSI]");
-      console.log("          Sinyal SHORT otomatis ditolak. Tidak ada record posisi spot dibuka.\n");
+      console.log("          Tokocrypto Spot: Aman, sinyal SHORT otomatis dilewati.");
+      console.log("          Binance Futures: Sinyal SHORT diproses untuk pasar Futures.\n");
     } else {
       console.log("      --> HASIL KASUS 2: [GAGAL] Posisi SHORT tidak boleh dieksekusi di Tokocrypto Spot!\n");
     }
 
-    // 4. KASUS UJI 3: Sinyal LONG Koin Kedua (SOLUSDT)
+    // 4. KASUS UJI 3: Sinyal LONG Koin Kedua (SOLUSDT $150)
     console.log("[4/4] Eksekusi Kasus 3: Sinyal LONG Koin Kedua (SOLUSDT $150)...");
     const signalSol = {
       id: "sig-test-sol-03",
@@ -122,7 +124,7 @@ async function runSimulation() {
     });
 
     if (solTrade) {
-      console.log("      --> HASIL KASUS 3: [BERHASIL]");
+      console.log("      --> HASIL KASUS 3 (Tokocrypto Spot): [BERHASIL]");
       console.log(`          Simbol: ${solTrade.symbol}`);
       console.log(`          Harga Beli (Entry): $${solTrade.entryPrice}`);
       console.log(`          Kuantitas: ${solTrade.quantity} SOL`);
@@ -154,7 +156,7 @@ async function runSimulation() {
         Status: t.status,
       })),
     );
-    console.log("\nSimulasi selesai dengan sukses!\n");
+    console.log("\nSimulasi Dual-Exchange selesai dengan sukses!\n");
   } catch (error: any) {
     console.error("Terjadi error dalam proses simulasi:", error);
   } finally {

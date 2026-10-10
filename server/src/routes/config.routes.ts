@@ -71,8 +71,11 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     } = req.body;
 
     const updateData: Record<string, any> = {};
-    if (targetExchange !== undefined)
-      updateData.targetExchange = targetExchange;
+    if (targetExchange !== undefined) {
+      const ex = String(targetExchange).trim().toUpperCase();
+      updateData.targetExchange =
+        ex === "TOKOCRYPTO" || ex === "BOTH" ? ex : "BINANCE";
+    }
     if (clientToken !== undefined)
       updateData.clientToken = clientToken ? clientToken.trim() : null;
     if (binanceApiKey !== undefined)

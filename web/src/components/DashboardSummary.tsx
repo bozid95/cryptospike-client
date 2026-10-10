@@ -101,6 +101,7 @@ export function DashboardSummary({
 
   const targetExchange = (config?.targetExchange || "BINANCE").toUpperCase();
   const isTokocrypto = targetExchange === "TOKOCRYPTO";
+  const isDual = targetExchange === "BOTH";
   const autoTrade = Boolean(config?.autoExecute);
   const isDryRun = Boolean(config?.dryRun);
 
@@ -181,16 +182,22 @@ export function DashboardSummary({
           </CardHeader>
           <CardContent className="space-y-1.5">
             <div className="text-xl font-bold tracking-tight">
-              {isTokocrypto ? "Tokocrypto Spot" : "Binance Futures"}
+              {isDual
+                ? "Dual Mode (Both)"
+                : isTokocrypto
+                  ? "Tokocrypto Spot"
+                  : "Binance Futures"}
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>Mode:</span>
               <span className="font-semibold text-foreground">
-                {isTokocrypto
-                  ? isDryRun
-                    ? "Dry-Run (Paper)"
-                    : "Live Spot"
-                  : config?.environment || "TESTNET"}
+                {isDual
+                  ? `Binance & Toko (${isDryRun ? "Dry-Run" : "Live"})`
+                  : isTokocrypto
+                    ? isDryRun
+                      ? "Dry-Run (Paper)"
+                      : "Live Spot"
+                    : config?.environment || "TESTNET"}
               </span>
             </div>
             <div className="pt-2">
