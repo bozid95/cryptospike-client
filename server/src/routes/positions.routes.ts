@@ -11,12 +11,16 @@ export const positionsRouter = Router();
 // 1. Ambil Akun & Posisi Terbuka (Multi-Exchange: Binance Futures atau Tokocrypto Spot)
 positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
-    const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
+    const [appConfig, binanceConfig, tokocryptoConfig] = await Promise.all([
+      prisma.appConfig.findUnique({ where: { id: 1 } }),
+      prisma.binanceConfig.findUnique({ where: { id: 1 } }),
+      prisma.tokocryptoConfig.findUnique({ where: { id: 1 } }),
+    ]);
     const requestedExchange = (req.query.exchange as string)?.toUpperCase();
     const targetExchange =
       requestedExchange === "BINANCE" || requestedExchange === "TOKOCRYPTO"
         ? requestedExchange
-        : (config?.targetExchange || "BINANCE").toUpperCase();
+        : (appConfig?.targetExchange || "BINANCE").toUpperCase();
 
     // JALUR 1: TOKOCRYPTO SPOT
     if (targetExchange === "TOKOCRYPTO") {
@@ -26,14 +30,14 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       });
 
       let totalWalletBalance = 0;
-      const quoteAsset = config?.tokocryptoQuoteAsset || "USDT";
+      const quoteAsset = tokocryptoConfig?.quoteAsset || "USDT";
 
       // Coba ambil saldo kas langsung dari Tokocrypto jika API key tersedia
-      if (config?.tokocryptoApiKey && config?.tokocryptoApiSecret) {
+      if (tokocryptoConfig?.apiKey && tokocryptoConfig?.apiSecret) {
         try {
           const bal = await getTokocryptoBalance(
-            config.tokocryptoApiKey.trim(),
-            config.tokocryptoApiSecret.trim(),
+            tokocryptoConfig.apiKey.trim(),
+            tokocryptoConfig.apiSecret.trim(),
             quoteAsset,
           );
           totalWalletBalance = bal.free;
@@ -99,7 +103,7 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
     }
 
     // JALUR 2: BINANCE FUTURES (Default)
-    if (!config?.binanceApiKey || !config?.binanceApiSecret) {
+    if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
       return res.json({
         success: true,
         exchange: "BINANCE",
@@ -109,9 +113,9 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
     }
 
     const { account, positions } = await getAccountAndPositions(
-      config.binanceApiKey.trim(),
-      config.binanceApiSecret.trim(),
-      config.environment || "TESTNET",
+      binanceConfig.apiKey.trim(),
+      binanceConfig.apiSecret.trim(),
+      binanceConfig.environment || "TESTNET",
     );
 
     res.json({
@@ -119,7 +123,7 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       exchange: "BINANCE",
       account,
       positions,
-      environment: config.environment || "TESTNET",
+      environment: binanceConfig.environment || "TESTNET",
     });
   } catch (err: any) {
     res.status(500).json({
@@ -138,11 +142,14 @@ positionsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const { symbol, tradeId, exchange } = req.body;
-      const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
+      const [appConfig, binanceConfig] = await Promise.all([
+        prisma.appConfig.findUnique({ where: { id: 1 } }),
+        prisma.binanceConfig.findUnique({ where: { id: 1 } }),
+      ]);
       const requestedExchange = (exchange as string)?.toUpperCase();
       const targetExchange =
         requestedExchange ||
-        (config?.targetExchange || "BINANCE").toUpperCase();
+        (appConfig?.targetExchange || "BINANCE").toUpperCase();
 
       // JALUR 1: Close Posisi Spot Tokocrypto
       if (targetExchange === "TOKOCRYPTO" || tradeId) {
@@ -181,7 +188,7 @@ positionsRouter.post(
           .json({ success: false, message: "Symbol wajib diisi." });
       }
 
-      if (!config?.binanceApiKey || !config?.binanceApiSecret) {
+      if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
         return res.status(400).json({
           success: false,
           message: "API Key Binance belum dikonfigurasi.",
@@ -193,10 +200,10 @@ positionsRouter.post(
         "ManualAction",
         `Menutup posisi manual Binance untuk ${symbol}...`,
       );
-      const isTestnet = config.environment === "TESTNET";
+      const isTestnet = binanceConfig.environment === "TESTNET";
       const result = await closePositionDirect(
-        config.binanceApiKey.trim(),
-        config.binanceApiSecret.trim(),
+        binanceConfig.apiKey.trim(),
+        binanceConfig.apiSecret.trim(),
         symbol.trim(),
         isTestnet,
       );
@@ -247,13 +254,16 @@ positionsRouter.post(
   requireAuth,
   async (req: Request, res: Response) => {
     try {
-      const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
+      const [appConfig, binanceConfig] = await Promise.all([
+        prisma.appConfig.findUnique({ where: { id: 1 } }),
+        prisma.binanceConfig.findUnique({ where: { id: 1 } }),
+      ]);
       const requestedExchange = (
         req.body?.exchange || (req.query.exchange as string)
       )?.toUpperCase();
       const targetExchange =
         requestedExchange ||
-        (config?.targetExchange || "BINANCE").toUpperCase();
+        (appConfig?.targetExchange || "BINANCE").toUpperCase();
 
       // JALUR 1: Close All Tokocrypto Spot
       if (targetExchange === "TOKOCRYPTO") {
@@ -283,21 +293,21 @@ positionsRouter.post(
       }
 
       // JALUR 2: Close All Binance Futures
-      if (!config?.binanceApiKey || !config?.binanceApiSecret) {
+      if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
         return res.status(400).json({
           success: false,
           message: "API Key Binance belum dikonfigurasi.",
         });
       }
 
-      const isTestnet = config.environment === "TESTNET";
-      const apiKey = config.binanceApiKey.trim();
-      const apiSecret = config.binanceApiSecret.trim();
+      const isTestnet = binanceConfig.environment === "TESTNET";
+      const apiKey = binanceConfig.apiKey.trim();
+      const apiSecret = binanceConfig.apiSecret.trim();
 
       const { positions } = await getAccountAndPositions(
         apiKey,
         apiSecret,
-        config.environment || "TESTNET",
+        binanceConfig.environment || "TESTNET",
       );
 
       if (positions.length === 0) {

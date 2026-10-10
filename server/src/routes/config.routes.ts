@@ -10,58 +10,59 @@ export const configRouter = Router();
 // 1. Ambil Konfigurasi dari Database SQLite Lokal
 configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
-    const config = await prisma.appConfig.findUnique({
-      where: { id: 1 },
-    });
+    const [appConfig, binanceConfig, tokocryptoConfig] = await Promise.all([
+      prisma.appConfig.findUnique({ where: { id: 1 } }),
+      prisma.binanceConfig.findUnique({ where: { id: 1 } }),
+      prisma.tokocryptoConfig.findUnique({ where: { id: 1 } }),
+    ]);
 
-    // Explicitly cast to boolean to fix SQLite 1/0 returning as numbers to frontend
-    if (config) {
-      config.autoExecute =
-        (config.autoExecute as unknown) === 1 || config.autoExecute === true;
-      config.dryRun =
-        (config.dryRun as unknown) === 1 || config.dryRun === true;
-      config.binanceAutoExecute =
-        (config.binanceAutoExecute as unknown) === 1 ||
-        config.binanceAutoExecute === true;
-      config.tokocryptoAutoExecute =
-        (config.tokocryptoAutoExecute as unknown) === 1 ||
-        config.tokocryptoAutoExecute === true;
-      config.tokocryptoDryRun =
-        (config.tokocryptoDryRun as unknown) === 1 ||
-        config.tokocryptoDryRun === true;
-    }
+    const targetExchange = (appConfig?.targetExchange || "BINANCE").toUpperCase();
+    const clientToken = appConfig?.clientToken || "";
+
+    const binanceAuto = Boolean(binanceConfig?.autoExecute);
+    const tokocryptoAuto = Boolean(tokocryptoConfig?.autoExecute);
+    const tokocryptoDry = Boolean(tokocryptoConfig?.dryRun);
+
+    const mergedData = {
+      targetExchange,
+      clientToken,
+      // Binance Dedicated Fields
+      binanceApiKey: binanceConfig?.apiKey || "",
+      binanceApiSecret: binanceConfig?.apiSecret || "",
+      environment: binanceConfig?.environment || "TESTNET",
+      binanceAutoExecute: binanceAuto,
+      leverage: binanceConfig?.leverage || 10,
+      marginType: binanceConfig?.marginType || "ISOLATED",
+      binanceRiskPerTradePct: binanceConfig?.riskPerTradePct ?? 2.0,
+      binanceMaxOpenPositions: binanceConfig?.maxOpenPositions ?? 3,
+      binanceCoinFilterMode: binanceConfig?.coinFilterMode || "ALL",
+      binanceTargetCoins: binanceConfig?.targetCoins || "",
+      // Tokocrypto Dedicated Fields
+      tokocryptoApiKey: tokocryptoConfig?.apiKey || "",
+      tokocryptoApiSecret: tokocryptoConfig?.apiSecret || "",
+      tokocryptoQuoteAsset: tokocryptoConfig?.quoteAsset || "USDT",
+      tokocryptoAutoExecute: tokocryptoAuto,
+      tokocryptoDryRun: tokocryptoDry,
+      tokocryptoRiskPerTradePct: tokocryptoConfig?.riskPerTradePct ?? 10.0,
+      tokocryptoMaxOpenPositions: tokocryptoConfig?.maxOpenPositions ?? 5,
+      tokocryptoCoinFilterMode: tokocryptoConfig?.coinFilterMode || "ALL",
+      tokocryptoTargetCoins: tokocryptoConfig?.targetCoins || "",
+      // Legacy Fallbacks
+      autoExecute: binanceAuto,
+      dryRun: tokocryptoDry,
+      riskPerTradePct: binanceConfig?.riskPerTradePct ?? 2.0,
+      maxOpenPositions: binanceConfig?.maxOpenPositions ?? 3,
+      coinFilterMode: binanceConfig?.coinFilterMode || "ALL",
+      targetCoins: binanceConfig?.targetCoins || "",
+      // Clean Nested Models
+      app: appConfig,
+      binance: binanceConfig,
+      tokocrypto: tokocryptoConfig,
+    };
 
     res.json({
       success: true,
-      data: config || {
-        targetExchange: "BINANCE",
-        clientToken: "",
-        binanceApiKey: "",
-        binanceApiSecret: "",
-        environment: "TESTNET",
-        binanceAutoExecute: false,
-        leverage: 10,
-        marginType: "ISOLATED",
-        binanceRiskPerTradePct: 2.0,
-        binanceMaxOpenPositions: 3,
-        binanceCoinFilterMode: "ALL",
-        binanceTargetCoins: "",
-        tokocryptoApiKey: "",
-        tokocryptoApiSecret: "",
-        tokocryptoQuoteAsset: "USDT",
-        tokocryptoAutoExecute: false,
-        tokocryptoDryRun: false,
-        tokocryptoRiskPerTradePct: 10.0,
-        tokocryptoMaxOpenPositions: 5,
-        tokocryptoCoinFilterMode: "ALL",
-        tokocryptoTargetCoins: "",
-        autoExecute: false,
-        dryRun: false,
-        riskPerTradePct: 2.0,
-        maxOpenPositions: 3,
-        coinFilterMode: "ALL",
-        targetCoins: "",
-      },
+      data: mergedData,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -104,168 +105,186 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       targetCoins,
     } = req.body;
 
-    const updateData: Record<string, any> = {};
+    // 1. Simpan ke AppConfig (Global Lisensi & Routing)
+    const appUpdate: any = {};
     if (targetExchange !== undefined) {
       const ex = String(targetExchange).trim().toUpperCase();
-      updateData.targetExchange =
+      appUpdate.targetExchange =
         ex === "TOKOCRYPTO" || ex === "BOTH" ? ex : "BINANCE";
     }
-    if (clientToken !== undefined)
-      updateData.clientToken = clientToken ? clientToken.trim() : null;
+    if (clientToken !== undefined) {
+      appUpdate.clientToken = clientToken ? clientToken.trim() : null;
+    }
 
-    // --- Binance Fields ---
+    const savedApp = await prisma.appConfig.upsert({
+      where: { id: 1 },
+      update: appUpdate,
+      create: {
+        id: 1,
+        targetExchange: appUpdate.targetExchange || "BINANCE",
+        clientToken: appUpdate.clientToken || null,
+      },
+    });
+
+    // 2. Simpan ke BinanceConfig
+    const binanceUpdate: any = {};
     if (binanceApiKey !== undefined)
-      updateData.binanceApiKey = binanceApiKey ? binanceApiKey.trim() : null;
+      binanceUpdate.apiKey = binanceApiKey ? binanceApiKey.trim() : null;
     if (binanceApiSecret !== undefined)
-      updateData.binanceApiSecret = binanceApiSecret
-        ? binanceApiSecret.trim()
-        : null;
-    if (environment !== undefined) updateData.environment = environment;
-    if (marginType !== undefined) updateData.marginType = marginType;
-    if (leverage !== undefined) updateData.leverage = Number(leverage);
+      binanceUpdate.apiSecret = binanceApiSecret ? binanceApiSecret.trim() : null;
+    if (environment !== undefined) binanceUpdate.environment = environment;
+    if (marginType !== undefined) binanceUpdate.marginType = marginType;
+    if (leverage !== undefined) binanceUpdate.leverage = Number(leverage);
 
     if (binanceAutoExecute !== undefined) {
-      updateData.binanceAutoExecute = binanceAutoExecute;
-      updateData.autoExecute = binanceAutoExecute;
+      binanceUpdate.autoExecute = Boolean(binanceAutoExecute);
     } else if (autoExecute !== undefined) {
-      updateData.binanceAutoExecute = autoExecute;
-      updateData.autoExecute = autoExecute;
+      binanceUpdate.autoExecute = Boolean(autoExecute);
     }
 
     if (binanceRiskPerTradePct !== undefined) {
-      updateData.binanceRiskPerTradePct = Number(binanceRiskPerTradePct);
-      updateData.riskPerTradePct = Number(binanceRiskPerTradePct);
+      binanceUpdate.riskPerTradePct = Number(binanceRiskPerTradePct);
     } else if (riskPerTradePct !== undefined) {
-      updateData.binanceRiskPerTradePct = Number(riskPerTradePct);
-      updateData.riskPerTradePct = Number(riskPerTradePct);
+      binanceUpdate.riskPerTradePct = Number(riskPerTradePct);
     }
 
     if (binanceMaxOpenPositions !== undefined) {
-      updateData.binanceMaxOpenPositions = Number(binanceMaxOpenPositions);
-      updateData.maxOpenPositions = Number(binanceMaxOpenPositions);
+      binanceUpdate.maxOpenPositions = Number(binanceMaxOpenPositions);
     } else if (maxOpenPositions !== undefined) {
-      updateData.binanceMaxOpenPositions = Number(maxOpenPositions);
-      updateData.maxOpenPositions = Number(maxOpenPositions);
+      binanceUpdate.maxOpenPositions = Number(maxOpenPositions);
     }
 
     if (binanceCoinFilterMode !== undefined) {
-      updateData.binanceCoinFilterMode = binanceCoinFilterMode;
-      updateData.coinFilterMode = binanceCoinFilterMode;
+      binanceUpdate.coinFilterMode = binanceCoinFilterMode;
     } else if (coinFilterMode !== undefined) {
-      updateData.binanceCoinFilterMode = coinFilterMode;
-      updateData.coinFilterMode = coinFilterMode;
+      binanceUpdate.coinFilterMode = coinFilterMode;
     }
 
     if (binanceTargetCoins !== undefined) {
-      updateData.binanceTargetCoins =
+      binanceUpdate.targetCoins =
         typeof binanceTargetCoins === "string" ? binanceTargetCoins.trim() : "";
-      updateData.targetCoins = updateData.binanceTargetCoins;
     } else if (targetCoins !== undefined) {
-      updateData.binanceTargetCoins =
+      binanceUpdate.targetCoins =
         typeof targetCoins === "string" ? targetCoins.trim() : "";
-      updateData.targetCoins = updateData.binanceTargetCoins;
     }
 
-    // --- Tokocrypto Fields ---
+    const savedBinance = await prisma.binanceConfig.upsert({
+      where: { id: 1 },
+      update: binanceUpdate,
+      create: {
+        id: 1,
+        apiKey: binanceUpdate.apiKey || null,
+        apiSecret: binanceUpdate.apiSecret || null,
+        environment: binanceUpdate.environment || "TESTNET",
+        autoExecute: binanceUpdate.autoExecute ?? false,
+        marginType: binanceUpdate.marginType || "ISOLATED",
+        leverage: binanceUpdate.leverage ?? 10,
+        riskPerTradePct: binanceUpdate.riskPerTradePct ?? 2.0,
+        maxOpenPositions: binanceUpdate.maxOpenPositions ?? 3,
+        coinFilterMode: binanceUpdate.coinFilterMode || "ALL",
+        targetCoins: binanceUpdate.targetCoins || "",
+      },
+    });
+
+    // 3. Simpan ke TokocryptoConfig
+    const tokoUpdate: any = {};
     if (tokocryptoApiKey !== undefined)
-      updateData.tokocryptoApiKey = tokocryptoApiKey
-        ? tokocryptoApiKey.trim()
-        : null;
+      tokoUpdate.apiKey = tokocryptoApiKey ? tokocryptoApiKey.trim() : null;
     if (tokocryptoApiSecret !== undefined)
-      updateData.tokocryptoApiSecret = tokocryptoApiSecret
+      tokoUpdate.apiSecret = tokocryptoApiSecret
         ? tokocryptoApiSecret.trim()
         : null;
     if (tokocryptoQuoteAsset !== undefined)
-      updateData.tokocryptoQuoteAsset = tokocryptoQuoteAsset || "USDT";
+      tokoUpdate.quoteAsset = tokocryptoQuoteAsset || "USDT";
 
     if (tokocryptoAutoExecute !== undefined) {
-      updateData.tokocryptoAutoExecute = tokocryptoAutoExecute;
+      tokoUpdate.autoExecute = Boolean(tokocryptoAutoExecute);
     }
     if (tokocryptoDryRun !== undefined) {
-      updateData.tokocryptoDryRun = tokocryptoDryRun;
-      updateData.dryRun = tokocryptoDryRun;
+      tokoUpdate.dryRun = Boolean(tokocryptoDryRun);
     } else if (dryRun !== undefined) {
-      updateData.tokocryptoDryRun = dryRun;
-      updateData.dryRun = dryRun;
+      tokoUpdate.dryRun = Boolean(dryRun);
     }
+
     if (tokocryptoRiskPerTradePct !== undefined) {
-      updateData.tokocryptoRiskPerTradePct = Number(tokocryptoRiskPerTradePct);
+      tokoUpdate.riskPerTradePct = Number(tokocryptoRiskPerTradePct);
     }
     if (tokocryptoMaxOpenPositions !== undefined) {
-      updateData.tokocryptoMaxOpenPositions = Number(
-        tokocryptoMaxOpenPositions,
-      );
+      tokoUpdate.maxOpenPositions = Number(tokocryptoMaxOpenPositions);
     }
     if (tokocryptoCoinFilterMode !== undefined) {
-      updateData.tokocryptoCoinFilterMode = tokocryptoCoinFilterMode;
+      tokoUpdate.coinFilterMode = tokocryptoCoinFilterMode;
     }
     if (tokocryptoTargetCoins !== undefined) {
-      updateData.tokocryptoTargetCoins =
+      tokoUpdate.targetCoins =
         typeof tokocryptoTargetCoins === "string"
           ? tokocryptoTargetCoins.trim()
           : "";
     }
 
-    const saved = await prisma.appConfig.upsert({
+    const savedToko = await prisma.tokocryptoConfig.upsert({
       where: { id: 1 },
-      update: updateData,
+      update: tokoUpdate,
       create: {
         id: 1,
-        targetExchange: targetExchange || "BINANCE",
-        clientToken: clientToken ? clientToken.trim() : null,
-        binanceApiKey: binanceApiKey ? binanceApiKey.trim() : null,
-        binanceApiSecret: binanceApiSecret ? binanceApiSecret.trim() : null,
-        environment: environment || "TESTNET",
-        binanceAutoExecute: binanceAutoExecute ?? autoExecute ?? false,
-        leverage: leverage ? Number(leverage) : 10,
-        marginType: marginType || "ISOLATED",
-        binanceRiskPerTradePct: binanceRiskPerTradePct
-          ? Number(binanceRiskPerTradePct)
-          : 2.0,
-        binanceMaxOpenPositions: binanceMaxOpenPositions
-          ? Number(binanceMaxOpenPositions)
-          : 3,
-        binanceCoinFilterMode: binanceCoinFilterMode || coinFilterMode || "ALL",
-        binanceTargetCoins:
-          typeof binanceTargetCoins === "string"
-            ? binanceTargetCoins.trim()
-            : "",
-        tokocryptoApiKey: tokocryptoApiKey ? tokocryptoApiKey.trim() : null,
-        tokocryptoApiSecret: tokocryptoApiSecret
-          ? tokocryptoApiSecret.trim()
-          : null,
-        tokocryptoQuoteAsset: tokocryptoQuoteAsset || "USDT",
-        tokocryptoAutoExecute: tokocryptoAutoExecute ?? false,
-        tokocryptoDryRun: tokocryptoDryRun ?? dryRun ?? false,
-        tokocryptoRiskPerTradePct: tokocryptoRiskPerTradePct
-          ? Number(tokocryptoRiskPerTradePct)
-          : 10.0,
-        tokocryptoMaxOpenPositions: tokocryptoMaxOpenPositions
-          ? Number(tokocryptoMaxOpenPositions)
-          : 5,
-        tokocryptoCoinFilterMode: tokocryptoCoinFilterMode || "ALL",
-        tokocryptoTargetCoins:
-          typeof tokocryptoTargetCoins === "string"
-            ? tokocryptoTargetCoins.trim()
-            : "",
-        autoExecute: autoExecute ?? false,
-        dryRun: dryRun ?? false,
-        riskPerTradePct: riskPerTradePct ? Number(riskPerTradePct) : 2.0,
-        maxOpenPositions: maxOpenPositions ? Number(maxOpenPositions) : 3,
-        coinFilterMode: coinFilterMode || "ALL",
-        targetCoins: typeof targetCoins === "string" ? targetCoins.trim() : "",
+        apiKey: tokoUpdate.apiKey || null,
+        apiSecret: tokoUpdate.apiSecret || null,
+        quoteAsset: tokoUpdate.quoteAsset || "USDT",
+        autoExecute: tokoUpdate.autoExecute ?? false,
+        dryRun: tokoUpdate.dryRun ?? false,
+        riskPerTradePct: tokoUpdate.riskPerTradePct ?? 10.0,
+        maxOpenPositions: tokoUpdate.maxOpenPositions ?? 5,
+        coinFilterMode: tokoUpdate.coinFilterMode || "ALL",
+        targetCoins: tokoUpdate.targetCoins || "",
       },
     });
 
     // Otomatis Reconnect WebSocket jika ada token di konfigurasi
-    if (saved.clientToken) {
-      connectToNestJS(saved.clientToken);
+    if (savedApp.clientToken) {
+      connectToNestJS(savedApp.clientToken);
     }
+
+    const mergedSaved = {
+      targetExchange: savedApp.targetExchange,
+      clientToken: savedApp.clientToken || "",
+      // Binance
+      binanceApiKey: savedBinance.apiKey || "",
+      binanceApiSecret: savedBinance.apiSecret || "",
+      environment: savedBinance.environment || "TESTNET",
+      binanceAutoExecute: Boolean(savedBinance.autoExecute),
+      leverage: savedBinance.leverage || 10,
+      marginType: savedBinance.marginType || "ISOLATED",
+      binanceRiskPerTradePct: savedBinance.riskPerTradePct ?? 2.0,
+      binanceMaxOpenPositions: savedBinance.maxOpenPositions ?? 3,
+      binanceCoinFilterMode: savedBinance.coinFilterMode || "ALL",
+      binanceTargetCoins: savedBinance.targetCoins || "",
+      // Tokocrypto
+      tokocryptoApiKey: savedToko.apiKey || "",
+      tokocryptoApiSecret: savedToko.apiSecret || "",
+      tokocryptoQuoteAsset: savedToko.quoteAsset || "USDT",
+      tokocryptoAutoExecute: Boolean(savedToko.autoExecute),
+      tokocryptoDryRun: Boolean(savedToko.dryRun),
+      tokocryptoRiskPerTradePct: savedToko.riskPerTradePct ?? 10.0,
+      tokocryptoMaxOpenPositions: savedToko.maxOpenPositions ?? 5,
+      tokocryptoCoinFilterMode: savedToko.coinFilterMode || "ALL",
+      tokocryptoTargetCoins: savedToko.targetCoins || "",
+      // Legacy fallbacks
+      autoExecute: Boolean(savedBinance.autoExecute),
+      dryRun: Boolean(savedToko.dryRun),
+      riskPerTradePct: savedBinance.riskPerTradePct ?? 2.0,
+      maxOpenPositions: savedBinance.maxOpenPositions ?? 3,
+      coinFilterMode: savedBinance.coinFilterMode || "ALL",
+      targetCoins: savedBinance.targetCoins || "",
+      // Nested models
+      app: savedApp,
+      binance: savedBinance,
+      tokocrypto: savedToko,
+    };
 
     res.json({
       success: true,
       message: "Konfigurasi berhasil disimpan dan bot diperbarui!",
-      data: saved,
+      data: mergedSaved,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

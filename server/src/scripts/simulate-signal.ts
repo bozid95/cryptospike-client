@@ -13,20 +13,28 @@ async function runSimulation() {
     );
     await prisma.appConfig.upsert({
       where: { id: 1 },
+      update: { targetExchange: "BOTH" },
+      create: { id: 1, targetExchange: "BOTH" },
+    });
+    await prisma.binanceConfig.upsert({
+      where: { id: 1 },
+      update: { autoExecute: true, maxOpenPositions: 3, coinFilterMode: "ALL" },
+      create: { id: 1, autoExecute: true, maxOpenPositions: 3, coinFilterMode: "ALL" },
+    });
+    await prisma.tokocryptoConfig.upsert({
+      where: { id: 1 },
       update: {
-        targetExchange: "BOTH",
         autoExecute: true,
         dryRun: true,
-        tokocryptoQuoteAsset: "USDT",
+        quoteAsset: "USDT",
         maxOpenPositions: 3,
         coinFilterMode: "ALL",
       },
       create: {
         id: 1,
-        targetExchange: "BOTH",
         autoExecute: true,
         dryRun: true,
-        tokocryptoQuoteAsset: "USDT",
+        quoteAsset: "USDT",
         maxOpenPositions: 3,
         coinFilterMode: "ALL",
       },

@@ -100,8 +100,12 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
 
 export async function handleIncomingSignal(data: any): Promise<void> {
   try {
-    const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-    if (!config) {
+    const [appConfig, binanceConfig, tokocryptoConfig] = await Promise.all([
+      prisma.appConfig.findUnique({ where: { id: 1 } }),
+      prisma.binanceConfig.findUnique({ where: { id: 1 } }),
+      prisma.tokocryptoConfig.findUnique({ where: { id: 1 } }),
+    ]);
+    if (!appConfig) {
       addAppLog(
         "WARN",
         "SignalEngine",
@@ -110,21 +114,20 @@ export async function handleIncomingSignal(data: any): Promise<void> {
       return;
     }
 
-    const targetExchange = (config.targetExchange || "BINANCE").toUpperCase();
+    const targetExchange = (appConfig.targetExchange || "BINANCE").toUpperCase();
     const shouldExecuteTokocrypto =
       targetExchange === "TOKOCRYPTO" || targetExchange === "BOTH";
     const shouldExecuteBinance =
       targetExchange === "BINANCE" || targetExchange === "BOTH";
 
     // 1. Eksekusi Tokocrypto Spot jika target TOKOCRYPTO atau BOTH
-    if (shouldExecuteTokocrypto) {
+    if (shouldExecuteTokocrypto && tokocryptoConfig) {
       try {
         const openSpotCount = await prisma.spotTrade.count({
           where: { status: "OPEN" },
         });
 
-        const maxPos =
-          config.tokocryptoMaxOpenPositions ?? config.maxOpenPositions ?? 5;
+        const maxPos = tokocryptoConfig.maxOpenPositions ?? 5;
         if (openSpotCount >= maxPos) {
           addAppLog(
             "WARN",
@@ -133,22 +136,16 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           );
         } else {
           const result = await executeTokocryptoSignalOrder(data, {
-            autoExecute:
-              config.tokocryptoAutoExecute ?? config.autoExecute ?? false,
-            dryRun: config.tokocryptoDryRun ?? config.dryRun ?? false,
-            tokocryptoApiKey: config.tokocryptoApiKey,
-            tokocryptoApiSecret: config.tokocryptoApiSecret,
+            autoExecute: Boolean(tokocryptoConfig.autoExecute),
+            dryRun: Boolean(tokocryptoConfig.dryRun),
+            tokocryptoApiKey: tokocryptoConfig.apiKey,
+            tokocryptoApiSecret: tokocryptoConfig.apiSecret,
             tokocryptoQuoteAsset:
-              (config.tokocryptoQuoteAsset as "USDT" | "BIDR") || "USDT",
-            riskPerTradePct:
-              config.tokocryptoRiskPerTradePct ??
-              config.riskPerTradePct ??
-              10.0,
+              (tokocryptoConfig.quoteAsset as "USDT" | "BIDR") || "USDT",
+            riskPerTradePct: tokocryptoConfig.riskPerTradePct ?? 10.0,
             maxOpenPositions: maxPos,
-            coinFilterMode:
-              config.tokocryptoCoinFilterMode ?? config.coinFilterMode ?? "ALL",
-            targetCoins:
-              config.tokocryptoTargetCoins ?? config.targetCoins ?? "",
+            coinFilterMode: tokocryptoConfig.coinFilterMode || "ALL",
+            targetCoins: tokocryptoConfig.targetCoins || "",
           });
 
           // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
@@ -178,22 +175,19 @@ export async function handleIncomingSignal(data: any): Promise<void> {
     }
 
     // 2. Eksekusi Binance Futures jika target BINANCE atau BOTH
-    if (shouldExecuteBinance) {
+    if (shouldExecuteBinance && binanceConfig) {
       try {
         await executeSignalOrder(data, {
-          autoExecute: config.binanceAutoExecute ?? config.autoExecute ?? false,
-          binanceApiKey: config.binanceApiKey,
-          binanceApiSecret: config.binanceApiSecret,
-          environment: config.environment || "TESTNET",
-          marginType: config.marginType || "ISOLATED",
-          leverage: config.leverage || 10,
-          riskPerTradePct:
-            config.binanceRiskPerTradePct ?? config.riskPerTradePct ?? 2.0,
-          maxOpenPositions:
-            config.binanceMaxOpenPositions ?? config.maxOpenPositions ?? 3,
-          coinFilterMode:
-            config.binanceCoinFilterMode ?? config.coinFilterMode ?? "ALL",
-          targetCoins: config.binanceTargetCoins ?? config.targetCoins ?? "",
+          autoExecute: Boolean(binanceConfig.autoExecute),
+          binanceApiKey: binanceConfig.apiKey,
+          binanceApiSecret: binanceConfig.apiSecret,
+          environment: binanceConfig.environment || "TESTNET",
+          marginType: binanceConfig.marginType || "ISOLATED",
+          leverage: binanceConfig.leverage || 10,
+          riskPerTradePct: binanceConfig.riskPerTradePct ?? 2.0,
+          maxOpenPositions: binanceConfig.maxOpenPositions ?? 3,
+          coinFilterMode: binanceConfig.coinFilterMode || "ALL",
+          targetCoins: binanceConfig.targetCoins || "",
         });
       } catch (binanceErr: any) {
         addAppLog(
