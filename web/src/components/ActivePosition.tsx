@@ -475,9 +475,7 @@ export default function ActivePosition({
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
               <span>
-                {activeExchange === "TOKOCRYPTO"
-                  ? "Monitor:"
-                  : "Active:"}
+                {activeExchange === "TOKOCRYPTO" ? "Monitor:" : "Active:"}
               </span>
               <span className="font-mono font-medium text-foreground">
                 {activeExchange === "TOKOCRYPTO"
@@ -498,7 +496,10 @@ export default function ActivePosition({
               <h3 className="font-semibold text-base sm:text-lg leading-none tracking-tight">
                 Active Positions
               </h3>
-              <Badge variant="outline" className="text-[10px] sm:text-[11px] font-mono">
+              <Badge
+                variant="outline"
+                className="text-[10px] sm:text-[11px] font-mono"
+              >
                 {activeExchange === "TOKOCRYPTO"
                   ? "Tokocrypto Spot"
                   : "Binance Futures"}{" "}
@@ -577,12 +578,8 @@ export default function ActivePosition({
                 return (
                   <div
                     key={pos.id || pos.symbol}
-                    className="p-3.5 rounded-lg border bg-muted/20 space-y-3"
                     className="p-3 sm:p-3.5 rounded-lg border bg-muted/20 space-y-2.5"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-bold text-sm tracking-tight">
                     {/* Header Row: Symbol & PnL */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1 min-w-0">
@@ -592,7 +589,6 @@ export default function ActivePosition({
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge
                             variant={isLong ? "default" : "destructive"}
-                            className={`text-[10px] px-1.5 py-0 h-4 font-semibold ${
                             className={`text-[9px] sm:text-[10px] px-1.5 py-0 h-4 font-semibold ${
                               isLong
                                 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
@@ -600,14 +596,11 @@ export default function ActivePosition({
                             }`}
                           >
                             {isLong ? (
-                              <TrendingUpIcon className="mr-1 h-3 w-3" />
                               <TrendingUpIcon className="mr-0.5 h-2.5 w-2.5" />
                             ) : (
-                              <TrendingDownIcon className="mr-1 h-3 w-3" />
                               <TrendingDownIcon className="mr-0.5 h-2.5 w-2.5" />
                             )}
                             {isSpot
-                              ? "BUY (SPOT)"
                               ? "SPOT BUY"
                               : `${pos.side} ${pos.leverage}x`}
                           </Badge>
@@ -633,7 +626,6 @@ export default function ActivePosition({
                         </div>
                       </div>
 
-                      <div className="text-right font-mono">
                       <div className="text-right font-mono shrink-0">
                         <div
                           className={`text-sm font-bold leading-tight ${
@@ -647,7 +639,6 @@ export default function ActivePosition({
                             : "USDT"}
                         </div>
                         <div
-                          className={`text-[11px] font-semibold ${
                           className={`text-[10px] sm:text-[11px] font-semibold ${
                             isProfit ? "text-emerald-600" : "text-red-500"
                           }`}
@@ -658,69 +649,58 @@ export default function ActivePosition({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-background/50 p-2.5 rounded border border-border/50">
-                      <div>
                     {/* 2x2 Grid: Clear values with labels */}
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-background/50 p-2.5 rounded-lg border border-border/50">
                       <div className="space-y-0.5">
                         <span className="text-[10px] text-muted-foreground block font-sans">
                           Size & Value
                         </span>
-                        <span className="font-semibold">
                         <span className="font-semibold block truncate">
                           {pos.positionAmt.toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-muted-foreground ml-1">
                         <span className="text-[10px] text-muted-foreground block font-sans">
                           (~${pos.notionalValue.toFixed(2)})
                         </span>
                       </div>
-                      <div>
                       <div className="space-y-0.5">
                         <span className="text-[10px] text-muted-foreground block font-sans">
                           {isSpot ? "Target TP / SL" : "Liq. Price"}
                         </span>
                         {isSpot ? (
-                          <span className="text-emerald-500 font-medium text-[11px]">
-                            TP:{" "}
-                            {formatPrice(pos.tpPrice || pos.entryPrice * 1.05)}
-                          </span>
                           <div className="text-[10px] sm:text-[11px] font-mono leading-tight space-y-0.5">
                             <span className="text-emerald-500 block truncate">
-                              TP: ${formatPrice(pos.tpPrice || pos.entryPrice * 1.05)}
+                              TP: $
+                              {formatPrice(
+                                pos.tpPrice || pos.entryPrice * 1.05,
+                              )}
                             </span>
                             <span className="text-red-500 block truncate">
-                              SL: ${formatPrice(pos.slPrice || pos.entryPrice * 0.975)}
+                              SL: $
+                              {formatPrice(
+                                pos.slPrice || pos.entryPrice * 0.975,
+                              )}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-amber-500 font-medium">
                           <span className="text-amber-500 font-semibold block text-xs truncate">
                             {pos.liquidationPrice > 0
-                              ? formatPrice(pos.liquidationPrice)
                               ? `$${formatPrice(pos.liquidationPrice)}`
                               : "Safe (Cross)"}
                           </span>
                         )}
                       </div>
-                      <div>
                       <div className="space-y-0.5 pt-1 border-t border-border/30">
                         <span className="text-[10px] text-muted-foreground block font-sans">
                           Entry Price
                         </span>
-                        <span>{formatPrice(pos.entryPrice)}</span>
                         <span className="font-semibold block truncate">
                           ${formatPrice(pos.entryPrice)}
                         </span>
                       </div>
-                      <div>
                       <div className="space-y-0.5 pt-1 border-t border-border/30">
                         <span className="text-[10px] text-muted-foreground block font-sans">
-                          Mark / Live
                           Mark Price
                         </span>
-                        <span className="text-muted-foreground">
-                          {formatPrice(pos.liveMarkPrice)}
                         <span className="text-muted-foreground block truncate">
                           ${formatPrice(pos.liveMarkPrice)}
                         </span>
@@ -731,7 +711,6 @@ export default function ActivePosition({
                       variant="destructive"
                       size="sm"
                       disabled={isClosing}
-                      className="w-full h-8 text-xs cursor-pointer"
                       className="w-full h-8 text-xs cursor-pointer font-semibold"
                       onClick={() => setItemToClose(pos)}
                     >

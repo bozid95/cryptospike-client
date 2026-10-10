@@ -316,7 +316,9 @@ export function DashboardSummary({
             >
               <span className="flex items-center gap-0.5">
                 <Layers className="size-2.5 sm:size-3" />
-                <span className="text-[9px] sm:text-[10px] text-muted-foreground">&</span>
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground">
+                  &
+                </span>
                 <Coins className="size-2.5 sm:size-3 text-amber-500" />
               </span>
               Dual Mode
@@ -326,18 +328,8 @@ export function DashboardSummary({
       </Card>
 
       {/* 3. KARTU METRIK UTAMA (4 METRICS) */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Active Routing Target */}
-        <Card className="shadow-sm border-primary/20 bg-primary/5">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-semibold text-primary">
-              Active Signal Target
-            </CardTitle>
-            <BotIcon className="size-4 text-primary" />
-          </CardHeader>
-          <CardContent className="space-y-1.5">
-            <div className="text-xl font-bold tracking-tight">
         <Card className="shadow-sm border-primary/20 bg-primary/5 flex flex-col justify-between p-3 sm:p-4">
           <div>
             <div className="flex items-center justify-between pb-1.5">
@@ -348,67 +340,23 @@ export function DashboardSummary({
             </div>
             <div className="text-base sm:text-xl font-bold tracking-tight truncate">
               {isDual
-                ? "Dual Mode (Both)"
                 ? "Dual Mode"
                 : isTokocrypto
                   ? "Tokocrypto Spot"
                   : "Binance Futures"}
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Mode:</span>
             <div className="text-[11px] sm:text-xs text-muted-foreground pt-1 truncate">
               <span>Mode: </span>
               <span className="font-semibold text-foreground">
                 {isDual
-                  ? `Binance & Toko (${isDryRun ? "Dry-Run" : "Live"})`
                   ? `Dual (${isDryRun ? "Dry-Run" : "Live"})`
                   : isTokocrypto
                     ? isDryRun
-                      ? "Dry-Run (Paper)"
                       ? "Dry-Run"
                       : "Live Spot"
                     : config?.environment || "TESTNET"}
               </span>
             </div>
-            <div className="pt-2">
-              {isDual ? (
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onNavigate("binance-config")}
-                    className="flex-1 h-7 text-[10px] gap-1 cursor-pointer bg-background"
-                  >
-                    <Layers className="size-3" />
-                    Binance Config
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onNavigate("tokocrypto-config")}
-                    className="flex-1 h-7 text-[10px] gap-1 cursor-pointer bg-background"
-                  >
-                    <Coins className="size-3 text-amber-500" />
-                    Toko Config
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    onNavigate(
-                      isTokocrypto ? "tokocrypto-config" : "binance-config",
-                    )
-                  }
-                  className="w-full h-7 text-[11px] gap-1 cursor-pointer bg-background"
-                >
-                  <SlidersIcon className="size-3" />
-                  {isTokocrypto ? "Configure Tokocrypto" : "Configure Binance"}
-                </Button>
-              )}
-            </div>
-          </CardContent>
           </div>
           <div className="pt-2">
             <Button
@@ -428,18 +376,6 @@ export function DashboardSummary({
         </Card>
 
         {/* Card 2: Binance Futures Overview */}
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <Layers className="size-3.5 text-primary" />
-              Binance Futures
-            </CardTitle>
-            <Badge variant="outline" className="text-[10px] font-mono">
-              {binanceData.positions.length} Open
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-xl font-bold font-mono tracking-tight">
         <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
           <div>
             <div className="flex items-center justify-between pb-1.5">
@@ -447,7 +383,10 @@ export function DashboardSummary({
                 <Layers className="size-3 text-primary shrink-0" />
                 <span className="truncate">Binance</span>
               </span>
-              <Badge variant="outline" className="text-[9px] sm:text-[10px] font-mono px-1 py-0 h-4 shrink-0">
+              <Badge
+                variant="outline"
+                className="text-[9px] sm:text-[10px] font-mono px-1 py-0 h-4 shrink-0"
+              >
                 {binanceData.positions.length} Pos
               </Badge>
             </div>
@@ -456,12 +395,9 @@ export function DashboardSummary({
                 ? `$${(binanceData.account.totalWalletBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "$0.00"}
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Unrealized PnL:</span>
             <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground pt-1">
               <span>PnL:</span>
               <span
-                className={`font-mono font-medium ${
                 className={`font-mono font-medium truncate ${
                   binancePnl >= 0 ? "text-emerald-500" : "text-red-500"
                 }`}
@@ -469,18 +405,6 @@ export function DashboardSummary({
                 {binancePnl >= 0 ? "+" : ""}${binancePnl.toFixed(2)}
               </span>
             </div>
-            <div className="pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("binance-positions")}
-                className="w-full h-7 text-[11px] gap-1 cursor-pointer justify-between px-2 text-primary hover:text-primary"
-              >
-                <span>View Positions</span>
-                <ArrowRight className="size-3" />
-              </Button>
-            </div>
-          </CardContent>
           </div>
           <div className="pt-2">
             <Button
@@ -496,18 +420,6 @@ export function DashboardSummary({
         </Card>
 
         {/* Card 3: Tokocrypto Spot Overview */}
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <Coins className="size-3.5 text-amber-500" />
-              Tokocrypto Spot
-            </CardTitle>
-            <Badge variant="outline" className="text-[10px] font-mono">
-              {tokocryptoData.positions.length} Coins
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-xl font-bold font-mono tracking-tight">
         <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
           <div>
             <div className="flex items-center justify-between pb-1.5">
@@ -515,7 +427,10 @@ export function DashboardSummary({
                 <Coins className="size-3 text-amber-500 shrink-0" />
                 <span className="truncate">Tokocrypto</span>
               </span>
-              <Badge variant="outline" className="text-[9px] sm:text-[10px] font-mono px-1 py-0 h-4 shrink-0">
+              <Badge
+                variant="outline"
+                className="text-[9px] sm:text-[10px] font-mono px-1 py-0 h-4 shrink-0"
+              >
                 {tokocryptoData.positions.length} Coins
               </Badge>
             </div>
@@ -524,11 +439,9 @@ export function DashboardSummary({
                 ? `${tokocryptoData.account.quoteAsset === "BIDR" ? "Rp " : "$"}${(tokocryptoData.account.totalWalletBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "$0.00"}
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground pt-1">
               <span>Spot PnL:</span>
               <span
-                className={`font-mono font-medium ${
                 className={`font-mono font-medium truncate ${
                   tokocryptoPnl >= 0 ? "text-emerald-500" : "text-red-500"
                 }`}
@@ -538,18 +451,6 @@ export function DashboardSummary({
                 {tokocryptoPnl.toFixed(2)}
               </span>
             </div>
-            <div className="pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("tokocrypto-positions")}
-                className="w-full h-7 text-[11px] gap-1 cursor-pointer justify-between px-2 text-primary hover:text-primary"
-              >
-                <span>View Spot Coins</span>
-                <ArrowRight className="size-3" />
-              </Button>
-            </div>
-          </CardContent>
           </div>
           <div className="pt-2">
             <Button
@@ -565,15 +466,6 @@ export function DashboardSummary({
         </Card>
 
         {/* Card 4: Signal Receiver & License */}
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
-              Client License & Filter
-            </CardTitle>
-            <ShieldCheck className="size-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-sm font-semibold truncate flex items-center gap-1.5">
         <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
           <div>
             <div className="flex items-center justify-between pb-1.5">
@@ -585,47 +477,26 @@ export function DashboardSummary({
             <div className="text-sm sm:text-base font-semibold truncate flex items-center gap-1">
               {config?.clientToken ? (
                 <>
-                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                  <span className="truncate">License Active</span>
                   <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
                   <span className="truncate">Active</span>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="size-4 text-amber-500 shrink-0" />
-                  <span>No License Token</span>
                   <AlertCircle className="size-3.5 text-amber-500 shrink-0" />
                   <span className="text-amber-500 truncate">No Token</span>
                 </>
               )}
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-              <span>Coin Scope:</span>
-              <span className="font-semibold text-foreground">
             <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground pt-1">
               <span>Filter:</span>
               <span className="font-semibold text-foreground truncate max-w-[80px] sm:max-w-none text-right">
                 {isDual
-                  ? `Binance: ${config?.binanceCoinFilterMode || config?.coinFilterMode || "ALL"} • Toko: ${config?.tokocryptoCoinFilterMode || "ALL"}`
                   ? `${config?.binanceCoinFilterMode || "ALL"}/${config?.tokocryptoCoinFilterMode || "ALL"}`
                   : isTokocrypto
                     ? `${config?.tokocryptoCoinFilterMode || "ALL"}`
-                    : `${config?.binanceCoinFilterMode || config?.coinFilterMode || "ALL"}`}
                     : `${config?.binanceCoinFilterMode || "ALL"}`}
               </span>
             </div>
-            <div className="pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("logs")}
-                className="w-full h-7 text-[11px] gap-1 cursor-pointer justify-between px-2 text-primary hover:text-primary"
-              >
-                <span>View System Logs</span>
-                <ArrowRight className="size-3" />
-              </Button>
-            </div>
-          </CardContent>
           </div>
           <div className="pt-2">
             <Button
@@ -645,11 +516,6 @@ export function DashboardSummary({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Binance Futures Snapshot */}
         <Card className="shadow-sm flex flex-col justify-between">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Layers className="size-4 text-primary" />
-                Binance Futures Snapshot
           <CardHeader className="pb-3 p-3.5 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm sm:text-base flex items-center gap-1.5 sm:gap-2 truncate">
@@ -660,10 +526,8 @@ export function DashboardSummary({
                 variant="outline"
                 size="sm"
                 onClick={() => onNavigate("binance-positions")}
-                className="h-7 text-xs gap-1 cursor-pointer"
                 className="h-7 text-[11px] sm:text-xs gap-1 cursor-pointer shrink-0"
               >
-                Manage Positions
                 <span>View All</span>
                 <ArrowRight className="size-3" />
               </Button>
@@ -672,10 +536,8 @@ export function DashboardSummary({
               Live open contracts with leverage and liquidation risk.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1">
           <CardContent className="flex-1 p-3.5 sm:p-6 pt-0 sm:pt-0">
             {binanceData.positions.length === 0 ? (
-              <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground text-xs p-4 text-center">
               <div className="h-28 sm:h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground text-xs p-4 text-center">
                 <p className="font-medium text-foreground">
                   No Active Futures Positions
@@ -691,14 +553,13 @@ export function DashboardSummary({
                   return (
                     <div
                       key={pos.symbol}
-                      className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20 text-xs"
                       className="p-2 sm:p-2.5 rounded-lg border bg-muted/20 text-xs space-y-1.5"
                     >
-                      <div className="space-y-0.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold">{pos.symbol}</span>
-                          <span className="font-bold text-xs sm:text-sm">{pos.symbol}</span>
+                          <span className="font-bold text-xs sm:text-sm">
+                            {pos.symbol}
+                          </span>
                           <Badge
                             variant="outline"
                             className="text-[9px] px-1 py-0 h-3.5"
@@ -706,10 +567,6 @@ export function DashboardSummary({
                             {pos.side} {pos.leverage}x
                           </Badge>
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          Entry: ${pos.entryPrice} • Liq: $
-                          {pos.liquidationPrice}
-                        </p>
                         <div className="text-right font-mono text-xs">
                           <span
                             className={`font-bold ${isProfit ? "text-emerald-500" : "text-red-500"}`}
@@ -722,16 +579,6 @@ export function DashboardSummary({
                           </span>
                         </div>
                       </div>
-                      <div className="text-right font-mono">
-                        <span
-                          className={`font-bold ${isProfit ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                          {isProfit ? "+" : ""}$
-                          {(pos.unRealizedProfit || 0).toFixed(2)}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground">
-                          {(pos.roiPct || 0).toFixed(2)}%
-                        </p>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/30">
                         <span>Entry: ${pos.entryPrice}</span>
                         <span>Liq: ${pos.liquidationPrice}</span>
@@ -751,11 +598,6 @@ export function DashboardSummary({
 
         {/* Tokocrypto Spot Snapshot */}
         <Card className="shadow-sm flex flex-col justify-between">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Coins className="size-4 text-amber-500" />
-                Tokocrypto Spot Snapshot
           <CardHeader className="pb-3 p-3.5 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm sm:text-base flex items-center gap-1.5 sm:gap-2 truncate">
@@ -766,10 +608,8 @@ export function DashboardSummary({
                 variant="outline"
                 size="sm"
                 onClick={() => onNavigate("tokocrypto-positions")}
-                className="h-7 text-xs gap-1 cursor-pointer"
                 className="h-7 text-[11px] sm:text-xs gap-1 cursor-pointer shrink-0"
               >
-                Manage Spot Coins
                 <span>View All</span>
                 <ArrowRight className="size-3" />
               </Button>
@@ -778,10 +618,8 @@ export function DashboardSummary({
               Live spot coin holdings monitored with auto TP (+5%) & SL (-2.5%).
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1">
           <CardContent className="flex-1 p-3.5 sm:p-6 pt-0 sm:pt-0">
             {tokocryptoData.positions.length === 0 ? (
-              <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground text-xs p-4 text-center">
               <div className="h-28 sm:h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground text-xs p-4 text-center">
                 <p className="font-medium text-foreground">
                   No Active Spot Coins
@@ -797,14 +635,13 @@ export function DashboardSummary({
                   return (
                     <div
                       key={pos.id || pos.symbol}
-                      className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20 text-xs"
                       className="p-2 sm:p-2.5 rounded-lg border bg-muted/20 text-xs space-y-1.5"
                     >
-                      <div className="space-y-0.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold">{pos.symbol}</span>
-                          <span className="font-bold text-xs sm:text-sm">{pos.symbol}</span>
+                          <span className="font-bold text-xs sm:text-sm">
+                            {pos.symbol}
+                          </span>
                           <Badge
                             variant="outline"
                             className="text-[9px] px-1 py-0 h-3.5 border-amber-500/30 text-amber-600"
@@ -820,9 +657,6 @@ export function DashboardSummary({
                             </Badge>
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          TP: ${pos.tpPrice} • SL: ${pos.slPrice}
-                        </p>
                         <div className="text-right font-mono text-xs">
                           <span
                             className={`font-bold ${isProfit ? "text-emerald-500" : "text-red-500"}`}
@@ -835,18 +669,10 @@ export function DashboardSummary({
                           </span>
                         </div>
                       </div>
-                      <div className="text-right font-mono">
-                        <span
-                          className={`font-bold ${isProfit ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                          {isProfit ? "+" : ""}$
-                          {(pos.unRealizedProfit || 0).toFixed(2)}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground">
-                          {(pos.roiPct || 0).toFixed(2)}%
-                        </p>
                       <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-border/30">
-                        <span className="text-emerald-600 dark:text-emerald-400">TP: ${pos.tpPrice}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          TP: ${pos.tpPrice}
+                        </span>
                         <span className="text-red-500">SL: ${pos.slPrice}</span>
                       </div>
                     </div>

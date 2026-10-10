@@ -732,7 +732,6 @@ export default function CredentialConfig({
         {/* Card 1: Kredensial Exchange Aktif */}
         {activeExchangeForm === "BINANCE" ? (
           <Card className="shadow-sm flex flex-col justify-between">
-            <CardHeader className="pb-3">
             <CardHeader className="p-3.5 sm:p-6 pb-2 sm:pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -751,7 +750,6 @@ export default function CredentialConfig({
                 database.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5 flex-1">
             <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 sm:space-y-5 flex-1">
               {/* Client Token */}
               <div className="space-y-2">
@@ -913,7 +911,6 @@ export default function CredentialConfig({
           </Card>
         ) : (
           <Card className="shadow-sm flex flex-col justify-between">
-            <CardHeader className="pb-3">
             <CardHeader className="p-3.5 sm:p-6 pb-2 sm:pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -931,7 +928,6 @@ export default function CredentialConfig({
                 Tokocrypto OpenAPI v1 credentials using HMAC-SHA256 signature.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 flex-1">
             <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 flex-1">
               {/* Client Token */}
               <div className="space-y-2">
@@ -1055,7 +1051,6 @@ export default function CredentialConfig({
 
         {/* Card 2: Pengaturan Risiko & Eksekusi Bot */}
         <Card className="shadow-sm flex flex-col justify-between">
-          <CardHeader className="pb-3">
           <CardHeader className="p-3.5 sm:p-6 pb-2 sm:pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1084,7 +1079,6 @@ export default function CredentialConfig({
                 : "Execution parameters when a signal is received on Binance Futures."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-xs flex-1">
           <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 text-xs flex-1">
             {/* Auto Execute Switch */}
             <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
@@ -1211,14 +1205,11 @@ export default function CredentialConfig({
               />
               {testResult?.balance ? (
                 activeExchangeForm === "TOKOCRYPTO" ? (
-                  <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 p-2.5 rounded-md leading-relaxed mt-2 space-y-1.5">
-                    <p>
-                      <strong>Spot Allocation Preview:</strong> Bot is
-                      authorized to allocate a maximum of{" "}
-                      <strong>
                   <div className="text-[10px] sm:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 p-2.5 rounded-md mt-2 space-y-1.5">
                     <div className="flex items-center justify-between font-medium pb-1 border-b border-amber-500/20">
-                      <span className="text-muted-foreground">Available Cash:</span>
+                      <span className="text-muted-foreground">
+                        Available Cash:
+                      </span>
                       <span className="font-mono font-semibold">
                         {testResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -1239,15 +1230,6 @@ export default function CredentialConfig({
                           maximumFractionDigits: 2,
                         })}{" "}
                         {testResult.quoteAsset || tokocryptoQuoteAsset}
-                      </strong>{" "}
-                      per single spot order (1x Cash).
-                    </p>
-                    <p className="opacity-90">
-                      <strong>Max Cash Allocation:</strong> If all{" "}
-                      <strong>{maxOpenPositions}</strong> allowed coin positions
-                      are open simultaneously, total estimated capital allocated
-                      is{" "}
-                      <strong>
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1264,22 +1246,13 @@ export default function CredentialConfig({
                         })}{" "}
                         {testResult.quoteAsset || tokocryptoQuoteAsset} (
                         {totalRiskPct}%)
-                      </strong>{" "}
-                      of your available cash balance.
-                    </p>
-                        {testResult.quoteAsset || tokocryptoQuoteAsset} ({totalRiskPct}%)
                       </span>
                     </div>
                   </div>
                 ) : (
                   <div
-                    className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} leading-relaxed mt-2 space-y-1.5`}
                     className={`text-[10px] sm:text-xs ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} mt-2 space-y-1.5`}
                   >
-                    <p>
-                      <strong>Risk Preview [{riskInfo.label}]:</strong> You are
-                      authorizing the bot to allocate a maximum of{" "}
-                      <strong>
                     <div className="flex items-center justify-between font-medium pb-1 border-b border-current/10">
                       <span className="text-muted-foreground">Risk Level:</span>
                       <span className="font-semibold">{riskInfo.label}</span>
@@ -1297,14 +1270,6 @@ export default function CredentialConfig({
                           maximumFractionDigits: 2,
                         })}{" "}
                         {testResult.quoteAsset || "USDT"}
-                      </strong>{" "}
-                      per single trade.
-                    </p>
-                    <p className="opacity-90">
-                      <strong>Worst-Case Scenario:</strong> If all{" "}
-                      <strong>{maxOpenPositions}</strong> allowed positions hit
-                      Stop Loss simultaneously, your total exposure is up to{" "}
-                      <strong>
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1320,18 +1285,14 @@ export default function CredentialConfig({
                           maximumFractionDigits: 2,
                         })}{" "}
                         {testResult.quoteAsset || "USDT"} ({totalRiskPct}%)
-                      </strong>{" "}
-                      of your available balance.
-                    </p>
                       </span>
                     </div>
                   </div>
                 )
               ) : (
                 <p className="text-[10px] text-muted-foreground italic mt-1">
-                  * Please run 'Test Connection' first to see the estimated
-                  allocation amount per trade.
-                  * Please run 'Test Connection' first to see estimated allocation amount.
+                  * Please run 'Test Connection' first to see estimated
+                  allocation amount.
                 </p>
               )}
             </div>
@@ -1445,98 +1406,6 @@ export default function CredentialConfig({
               </div>
 
               {/* Preset quick buttons */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] text-muted-foreground font-medium mr-1">
-                  Quick Presets:
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer"
-                  onClick={() =>
-                    handleSetPreset([
-                      "BTCUSDT",
-                      "ETHUSDT",
-                      "SOLUSDT",
-                      "BNBUSDT",
-                      "XRPUSDT",
-                    ])
-                  }
-                >
-                  Bluechips
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer"
-                  onClick={() =>
-                    handleSetPreset([
-                      "ADAUSDT",
-                      "AVAXUSDT",
-                      "NEARUSDT",
-                      "SUIUSDT",
-                      "DOTUSDT",
-                    ])
-                  }
-                >
-                  Top L1
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-                  onClick={() => handleSetPreset(TOP_50_CMC)}
-                >
-                  Top 50 CMC
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
-                  onClick={() => handleSetPreset(TOP_100_CMC)}
-                >
-                  Top 100 CMC
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-                  onClick={() => handleSetPreset(TOP_50_NO_MEME)}
-                >
-                  Top 50 (No Memes)
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10"
-                  onClick={() => handleSetPreset(TOP_100_NO_MEME)}
-                >
-                  Top 100 (No Memes)
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
-                  onClick={() => handleSetPreset(MEMECOINS)}
-                >
-                  Memecoins
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-[10px] px-1.5 py-0 text-muted-foreground hover:text-destructive cursor-pointer"
-                  onClick={() => setTargetCoins("")}
-                >
-                  Clear
-                </Button>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground font-medium">
