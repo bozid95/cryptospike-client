@@ -292,7 +292,7 @@ export default function CredentialConfig({
           }
         }
       } catch (err: any) {
-        console.error("Gagal memuat konfigurasi dari backend:", err);
+        console.error("Failed to load configuration from backend:", err);
       }
     };
 
@@ -1091,10 +1091,9 @@ export default function CredentialConfig({
                   Market: Spot 1x Cash-Only
                 </span>
                 <p>
-                  Pasar Spot Tokocrypto tidak menggunakan leverage maupun sistem
-                  margin likuidasi. Setiap posisi beli akan dipantau otomatis
-                  oleh background worker dengan target <strong>TP +5%</strong>{" "}
-                  dan <strong>SL -2.5%</strong>.
+                  Tokocrypto Spot operates without leverage or margin liquidation risks.
+                  Each buy position is monitored automatically with targets of <strong>TP +5%</strong>{" "}
+                  and <strong>SL -2.5%</strong>.
                 </p>
               </div>
             )}
@@ -1120,7 +1119,8 @@ export default function CredentialConfig({
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 p-2.5 rounded-md leading-relaxed mt-2 space-y-1.5">
                     <p>
-                      <strong>Spot Allocation Preview:</strong> Bot dialokasikan menggunakan modal kas maksimal{" "}
+                      <strong>Spot Allocation Preview:</strong> Bot is authorized
+                      to allocate a maximum of{" "}
                       <strong>
                         ~
                         {(
@@ -1134,8 +1134,9 @@ export default function CredentialConfig({
                       per single spot order (1x Cash).
                     </p>
                     <p className="opacity-90">
-                      <strong>Maksimal Alokasi Kas:</strong> Jika terdapat{" "}
-                      <strong>{maxOpenPositions}</strong> koin posisi terbuka secara bersamaan, estimasi total modal teralokasi adalah{" "}
+                      <strong>Max Cash Allocation:</strong> If all{" "}
+                      <strong>{maxOpenPositions}</strong> allowed coin positions are open
+                      simultaneously, total estimated capital allocated is{" "}
                       <strong>
                         ~
                         {(
@@ -1144,9 +1145,10 @@ export default function CredentialConfig({
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset} ({totalRiskPct}%)
+                        {testResult.quoteAsset || tokocryptoQuoteAsset} (
+                        {totalRiskPct}%)
                       </strong>{" "}
-                      dari saldo kas tersedia.
+                      of your available cash balance.
                     </p>
                   </div>
                 ) : (
@@ -1571,14 +1573,14 @@ export default function CredentialConfig({
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
                     <p>
-                      <strong>Alokasi Kas Tokocrypto:</strong> Dari saldo{" "}
+                      <strong>Tokocrypto Cash Allocation:</strong> Out of your balance of{" "}
                       <strong>
                         {testResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
                         {testResult.quoteAsset || tokocryptoQuoteAsset}
                       </strong>
-                      , estimasi alokasi per order beli spot adalah{" "}
+                      , estimated allocation per spot buy order is{" "}
                       <strong>
                         ~
                         {(
@@ -1597,8 +1599,8 @@ export default function CredentialConfig({
                     className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed space-y-2`}
                   >
                     <p>
-                      <strong>Balance Preview [{riskInfo.label}]:</strong> Out of
-                      your available balance of{" "}
+                      <strong>Balance Preview [{riskInfo.label}]:</strong> Out
+                      of your available balance of{" "}
                       <strong>
                         {testResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,

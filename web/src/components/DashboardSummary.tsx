@@ -88,7 +88,7 @@ export function DashboardSummary({
         }
       }
     } catch (err) {
-      console.error("Gagal mengambil ringkasan dashboard:", err);
+      console.error("Failed to fetch dashboard summary:", err);
     } finally {
       setIsLoading(false);
     }
@@ -135,20 +135,20 @@ export function DashboardSummary({
           newExchange === "BOTH"
             ? "Dual Mode (Binance Futures & Tokocrypto Spot)"
             : newExchange === "TOKOCRYPTO"
-              ? "Tokocrypto Spot Saja"
-              : "Binance Futures Saja";
-        toast.success("Mode Trading Bot Diperbarui", {
-          description: `Target eksekusi aktif: ${label}`,
+              ? "Tokocrypto Spot Only"
+              : "Binance Futures Only";
+        toast.success("Bot Trading Mode Updated", {
+          description: `Active execution target: ${label}`,
         });
         await fetchAllSummary();
       } else {
-        toast.error("Gagal Memperbarui Mode Bot", {
-          description: data.message || "Terjadi kesalahan saat menyimpan mode.",
+        toast.error("Failed to Update Bot Mode", {
+          description: data.message || "An error occurred while saving mode.",
         });
       }
     } catch (err: any) {
-      toast.error("Gagal Memperbarui Mode Bot", {
-        description: err.message || "Gagal menghubungi server lokal.",
+      toast.error("Failed to Update Bot Mode", {
+        description: err.message || "Failed to connect to local server.",
       });
     } finally {
       setIsUpdatingMode(false);
@@ -211,7 +211,7 @@ export function DashboardSummary({
         </div>
       </div>
 
-      {/* 2. KONTROL MODE BURSA AKTIF (1-CLICK CONTROLLER) */}
+      {/* 2. ACTIVE EXCHANGE MODE CONTROLLER (1-CLICK) */}
       <Card className="border-primary/20 bg-primary/5 shadow-sm">
         <CardContent className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -236,16 +236,16 @@ export function DashboardSummary({
                   {isDual
                     ? "Dual Mode (Binance Futures & Tokocrypto Spot)"
                     : isTokocrypto
-                      ? "Tokocrypto Spot Saja"
-                      : "Binance Futures Saja"}
+                      ? "Tokocrypto Spot Only"
+                      : "Binance Futures Only"}
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {isDual
-                  ? "Sinyal dieksekusi simultan di Binance Futures (LONG & SHORT) dan Tokocrypto Spot (LONG Only)."
+                  ? "Signals are executed simultaneously on Binance Futures (LONG & SHORT) and Tokocrypto Spot (LONG Only)."
                   : isTokocrypto
-                    ? "Sinyal dieksekusi khusus di Tokocrypto Spot dengan 1x Cash dan auto TP (+5%) / SL (-2.5%)."
-                    : "Sinyal dieksekusi khusus di Binance Futures dengan leverage & margin terisolasi."}
+                    ? "Signals are executed exclusively on Tokocrypto Spot with 1x Cash and auto TP (+5%) / SL (-2.5%)."
+                    : "Signals are executed exclusively on Binance Futures with leverage & isolated margin."}
               </p>
             </div>
           </div>
@@ -260,7 +260,7 @@ export function DashboardSummary({
               className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
             >
               <Layers className="size-3.5" />
-              Binance Saja
+              Binance Only
             </Button>
             <Button
               type="button"
@@ -271,7 +271,7 @@ export function DashboardSummary({
               className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
             >
               <Coins className="size-3.5 text-amber-500" />
-              Tokocrypto Saja
+              Tokocrypto Only
             </Button>
             <Button
               type="button"
