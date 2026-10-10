@@ -1,10 +1,7 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../lib/db";
 import { getAccountAndPositions, closePositionDirect } from "../lib/binance";
-import {
-  getTokocryptoBalance,
-  getTokocryptoTicker,
-} from "../lib/tokocrypto";
+import { getTokocryptoBalance, getTokocryptoTicker } from "../lib/tokocrypto";
 import { closeSpotTradeManually } from "../services/spot-monitor.service";
 import { addAppLog } from "../lib/logger";
 import { requireAuth } from "../middlewares/auth";
@@ -138,7 +135,9 @@ positionsRouter.post(
     try {
       const { symbol, tradeId } = req.body;
       const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-      const targetExchange = (config?.targetExchange || "BINANCE").toUpperCase();
+      const targetExchange = (
+        config?.targetExchange || "BINANCE"
+      ).toUpperCase();
 
       // JALUR 1: Close Posisi Spot Tokocrypto
       if (targetExchange === "TOKOCRYPTO" || tradeId) {
@@ -244,7 +243,9 @@ positionsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-      const targetExchange = (config?.targetExchange || "BINANCE").toUpperCase();
+      const targetExchange = (
+        config?.targetExchange || "BINANCE"
+      ).toUpperCase();
 
       // JALUR 1: Close All Tokocrypto Spot
       if (targetExchange === "TOKOCRYPTO") {

@@ -1,9 +1,6 @@
 import { prisma } from "../lib/db";
 import { addAppLog } from "../lib/logger";
-import {
-  getTokocryptoTicker,
-  placeTokocryptoOrder,
-} from "../lib/tokocrypto";
+import { getTokocryptoTicker, placeTokocryptoOrder } from "../lib/tokocrypto";
 
 let monitorInterval: NodeJS.Timeout | null = null;
 let isChecking = false;
@@ -154,8 +151,7 @@ export async function closeSpotTradeManually(tradeId: string): Promise<{
     }
 
     const pnlUsd = (currentPrice - trade.entryPrice) * trade.quantity;
-    const pnlPct =
-      ((currentPrice - trade.entryPrice) / trade.entryPrice) * 100;
+    const pnlPct = ((currentPrice - trade.entryPrice) / trade.entryPrice) * 100;
 
     await prisma.spotTrade.update({
       where: { id: trade.id },
