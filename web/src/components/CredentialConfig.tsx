@@ -249,12 +249,18 @@ export default function CredentialConfig({
   const [isSaving, setIsSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [testResult, setTestResult] = useState<{
+
+  type TestResultType = {
     success: boolean;
     message: string;
     balance?: number;
     quoteAsset?: string;
-  } | null>(null);
+  };
+
+  const [binanceTestResult, setBinanceTestResult] =
+    useState<TestResultType | null>(null);
+  const [tokocryptoTestResult, setTokocryptoTestResult] =
+    useState<TestResultType | null>(null);
 
   // Active form getters and setters
   const isTokoForm = activeExchangeForm === "TOKOCRYPTO";
@@ -291,6 +297,10 @@ export default function CredentialConfig({
 
   const dryRun = tokocryptoDryRun;
   const setDryRun = setTokocryptoDryRun;
+
+  const activeTestResult = isTokoForm
+    ? tokocryptoTestResult
+    : binanceTestResult;
 
   // 1. Muat konfigurasi dari database lokal SQLite
   useEffect(() => {
@@ -347,9 +357,9 @@ export default function CredentialConfig({
             // Tokocrypto Config
             setTokocryptoApiKey(d.tokocryptoApiKey || "");
             setTokocryptoApiSecret(d.tokocryptoApiSecret || "");
-            setTokocryptoQuoteAsset(
-              d.tokocryptoQuoteAsset === "BIDR" ? "BIDR" : "USDT",
-            );
+            const tokoQuote =
+              d.tokocryptoQuoteAsset === "BIDR" ? "BIDR" : "USDT";
+            setTokocryptoQuoteAsset(tokoQuote);
             setTokocryptoAutoExecute(
               d.tokocryptoAutoExecute === 1 || d.tokocryptoAutoExecute === true,
             );
@@ -363,6 +373,36 @@ export default function CredentialConfig({
             setTokocryptoMaxOpenPositions(d.tokocryptoMaxOpenPositions ?? 5);
             setTokocryptoCoinFilterMode(d.tokocryptoCoinFilterMode || "ALL");
             setTokocryptoTargetCoins(d.tokocryptoTargetCoins || "");
+
+            // Auto-fetch balances if credentials exist
+            try {
+              const [resB, resT] = await Promise.all([
+                authFetch("/api/positions?exchange=BINANCE"),
+                authFetch("/api/positions?exchange=TOKOCRYPTO"),
+              ]);
+              if (resB.ok) {
+                const jB = await resB.json();
+                if (jB.success && typeof jB.totalWalletBalance === "number") {
+                  setBinanceTestResult({
+                    success: true,
+                    message: "Current Binance Futures Balance",
+                    balance: jB.totalWalletBalance,
+                    quoteAsset: "USDT",
+                  });
+                }
+              }
+              if (resT.ok) {
+                const jT = await resT.json();
+                if (jT.success && typeof jT.totalWalletBalance === "number") {
+                  setTokocryptoTestResult({
+                    success: true,
+                    message: "Current Tokocrypto Spot Balance",
+                    balance: jT.totalWalletBalance,
+                    quoteAsset: tokoQuote,
+                  });
+                }
+              }
+            } catch {}
           }
         }
       } catch (err: any) {
@@ -385,7 +425,7 @@ export default function CredentialConfig({
 
       try {
         setTestingConnection(true);
-        setTestResult(null);
+        setTokocryptoTestResult(null);
 
         const res = await authFetch("/api/config/test-tokocrypto", {
           method: "POST",
@@ -398,10 +438,13 @@ export default function CredentialConfig({
         });
 
         const data = await res.json();
-        setTestResult({
-          success: data.success,
+        const rawBal =
+          typeof data.balance === "number" ? data.balance : data.balance?.free;
+        const bal = typeof rawBal === "number" ? rawBal : undefined;
+        setTokocryptoTestResult({
+          success: Boolean(data.success),
           message: data.message,
-          balance: data.balance?.free,
+          balance: bal,
           quoteAsset: tokocryptoQuoteAsset,
         });
 
@@ -439,7 +482,7 @@ export default function CredentialConfig({
 
     try {
       setTestingConnection(true);
-      setTestResult(null);
+      setBinanceTestResult(null);
 
       const res = await authFetch("/api/config/test-connection", {
         method: "POST",
@@ -452,8 +495,10 @@ export default function CredentialConfig({
       });
 
       const data = await res.json();
-      setTestResult({
+      const bal = typeof data.balance === "number" ? data.balance : undefined;
+      setBinanceTestResult({
         ...data,
+        balance: bal,
         quoteAsset: "USDT",
       });
 
@@ -592,8 +637,13 @@ export default function CredentialConfig({
     };
   };
 
-  const totalRiskPct = Number(riskPerTradePct) * Number(maxOpenPositions);
-  const riskInfo = getRiskLevel(totalRiskPct);
+  const binanceTotalRiskPct =
+    Number(binanceRiskPerTradePct) * Number(binanceMaxOpenPositions);
+  const binanceRiskInfo = getRiskLevel(binanceTotalRiskPct);
+
+  const tokoTotalCapital =
+    Number(tokocryptoRiskPerTradePct) * Number(tokocryptoMaxOpenPositions);
+
 
   const coinList = targetCoins
     .split(",")
@@ -701,7 +751,6 @@ export default function CredentialConfig({
               variant={activeExchangeForm === "BINANCE" ? "default" : "ghost"}
               onClick={() => {
                 setActiveExchangeForm("BINANCE");
-                setTestResult(null);
               }}
               className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
             >
@@ -716,7 +765,6 @@ export default function CredentialConfig({
               }
               onClick={() => {
                 setActiveExchangeForm("TOKOCRYPTO");
-                setTestResult(null);
               }}
               className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
             >
@@ -882,27 +930,27 @@ export default function CredentialConfig({
               </Tabs>
 
               {/* Feedback Hasil Test Connection */}
-              {testResult && (
+              {binanceTestResult && (
                 <div
                   className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
-                    testResult.success
+                    binanceTestResult.success
                       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
                       : "border-destructive/30 bg-destructive/10 text-destructive"
                   }`}
                 >
-                  {testResult.success ? (
+                  {binanceTestResult.success ? (
                     <ShieldCheck className="size-4 shrink-0 mt-0.5" />
                   ) : (
                     <ShieldAlert className="size-4 shrink-0 mt-0.5" />
                   )}
                   <div className="space-y-0.5">
                     <p className="font-semibold">
-                      {testResult.success
+                      {binanceTestResult.success
                         ? "Status Verified"
                         : "Verification Failed"}
                     </p>
                     <p className="text-[11px] leading-relaxed opacity-90">
-                      {testResult.message}
+                      {binanceTestResult.message}
                     </p>
                   </div>
                 </div>
@@ -1020,27 +1068,27 @@ export default function CredentialConfig({
               </div>
 
               {/* Feedback Hasil Test Connection Tokocrypto */}
-              {testResult && (
+              {tokocryptoTestResult && (
                 <div
                   className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
-                    testResult.success
+                    tokocryptoTestResult.success
                       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
                       : "border-destructive/30 bg-destructive/10 text-destructive"
                   }`}
                 >
-                  {testResult.success ? (
+                  {tokocryptoTestResult.success ? (
                     <ShieldCheck className="size-4 shrink-0 mt-0.5" />
                   ) : (
                     <ShieldAlert className="size-4 shrink-0 mt-0.5" />
                   )}
                   <div className="space-y-0.5">
                     <p className="font-semibold">
-                      {testResult.success
+                      {tokocryptoTestResult.success
                         ? "Tokocrypto Verified"
                         : "Verification Failed"}
                     </p>
                     <p className="text-[11px] leading-relaxed opacity-90">
-                      {testResult.message}
+                      {tokocryptoTestResult.message}
                     </p>
                   </div>
                 </div>
@@ -1230,7 +1278,7 @@ export default function CredentialConfig({
                   per order spot.
                 </p>
               )}
-              {testResult?.balance ? (
+              {typeof activeTestResult?.balance === "number" ? (
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-[10px] sm:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 p-2.5 rounded-md mt-2 space-y-1.5">
                     <div className="flex items-center justify-between font-medium pb-1 border-b border-amber-500/20">
@@ -1238,10 +1286,10 @@ export default function CredentialConfig({
                         Available Cash:
                       </span>
                       <span className="font-mono font-semibold">
-                        {testResult.balance.toLocaleString(undefined, {
+                        {activeTestResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                        {activeTestResult.quoteAsset || tokocryptoQuoteAsset}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1253,73 +1301,131 @@ export default function CredentialConfig({
                         {Number(riskPerTradePct).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                        {activeTestResult.quoteAsset || tokocryptoQuoteAsset}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        Max Capital ({maxOpenPositions} Coins):
+                        Max Capital Needed ({maxOpenPositions} Coins):
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        {tokoTotalCapital.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {activeTestResult.quoteAsset || tokocryptoQuoteAsset}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-amber-500/20">
+                      <span className="text-muted-foreground">
+                        Remaining Cash Reserve:
+                      </span>
+                      <span
+                        className={`font-mono font-bold ${
+                          activeTestResult.balance - tokoTotalCapital >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-destructive dark:text-red-400"
+                        }`}
+                      >
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {(
-                          Number(riskPerTradePct) * Number(maxOpenPositions)
+                          activeTestResult.balance - tokoTotalCapital
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                        {activeTestResult.quoteAsset || tokocryptoQuoteAsset}
                       </span>
                     </div>
-                    {Number(riskPerTradePct) * Number(maxOpenPositions) >
-                      testResult.balance && (
-                      <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium pt-1 border-t border-amber-500/20">
-                        * Total alokasi (
+                    {tokoTotalCapital > activeTestResult.balance && (
+                      <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
+                        * Peringatan: Total alokasi (
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
-                        {(
-                          Number(riskPerTradePct) * Number(maxOpenPositions)
-                        ).toLocaleString()}
-                        ) melebihi saldo kas saat ini.
+                        {tokoTotalCapital.toLocaleString()}) melebihi saldo kas
+                        saat ini (
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        {activeTestResult.balance.toLocaleString()}).
                       </p>
                     )}
                   </div>
                 ) : (
                   <div
-                    className={`text-[10px] sm:text-xs ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} mt-2 space-y-1.5`}
+                    className={`text-[10px] sm:text-xs ${binanceRiskInfo.color} ${binanceRiskInfo.bg} p-2.5 rounded-md border ${binanceRiskInfo.border} mt-2 space-y-1.5`}
                   >
                     <div className="flex items-center justify-between font-medium pb-1 border-b border-current/10">
-                      <span className="text-muted-foreground">Risk Level:</span>
-                      <span className="font-semibold">{riskInfo.label}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        Per Trade ({riskPerTradePct}%):
+                        Futures Risk Level:
                       </span>
-                      <span className="font-mono font-bold text-foreground">
-                        ~
-                        {(
-                          (testResult.balance * Number(riskPerTradePct)) /
-                          100
-                        ).toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        {testResult.quoteAsset || "USDT"}
+                      <span className="font-semibold">
+                        {binanceRiskInfo.label}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        Worst Case ({maxOpenPositions} Pos):
+                        Wallet Balance:
+                      </span>
+                      <span className="font-mono font-semibold text-foreground">
+                        {activeTestResult.balance.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {activeTestResult.quoteAsset || "USDT"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        Margin per Trade ({binanceRiskPerTradePct}%):
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         ~
                         {(
-                          (testResult.balance * totalRiskPct) /
+                          (activeTestResult.balance *
+                            Number(binanceRiskPerTradePct)) /
                           100
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || "USDT"} ({totalRiskPct}%)
+                        {activeTestResult.quoteAsset || "USDT"}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        Est. Contract Size ({leverage}x Lev):
+                      </span>
+                      <span className="font-mono font-bold text-foreground">
+                        ~
+                        {(
+                          ((activeTestResult.balance *
+                            Number(binanceRiskPerTradePct)) /
+                            100) *
+                          leverage
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {activeTestResult.quoteAsset || "USDT"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-current/10">
+                      <span className="text-muted-foreground">
+                        Worst Case ({binanceMaxOpenPositions} Pos):
+                      </span>
+                      <span className="font-mono font-bold text-foreground">
+                        ~
+                        {(
+                          (activeTestResult.balance * binanceTotalRiskPct) /
+                          100
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {activeTestResult.quoteAsset || "USDT"} (
+                        {binanceTotalRiskPct}%)
+                      </span>
+                    </div>
+                    {binanceTotalRiskPct > 100 && (
+                      <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
+                        * Peringatan: Total alokasi margin ({binanceTotalRiskPct}
+                        %) melebihi 100% saldo dompet. Kurangi Risk per Trade
+                        atau Max Open Positions.
+                      </p>
+                    )}
                   </div>
                 )
               ) : (
@@ -1701,15 +1807,15 @@ export default function CredentialConfig({
                   className={`font-bold ${
                     activeExchangeForm === "TOKOCRYPTO"
                       ? "text-amber-600"
-                      : riskInfo.color.split(" ")[0]
+                      : binanceRiskInfo.color.split(" ")[0]
                   }`}
                 >
                   {activeExchangeForm === "TOKOCRYPTO"
-                    ? `${tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}${(Number(riskPerTradePct) * Number(maxOpenPositions)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${tokocryptoQuoteAsset}`
-                    : `${totalRiskPct}%`}
+                    ? `${tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}${tokoTotalCapital.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${tokocryptoQuoteAsset}`
+                    : `${binanceTotalRiskPct}%`}
                 </span>
               </div>
-              {testResult?.balance ? (
+              {typeof activeTestResult?.balance === "number" ? (
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
                     <p>
@@ -1718,36 +1824,59 @@ export default function CredentialConfig({
                       <strong>
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {Number(riskPerTradePct).toLocaleString()}{" "}
-                        {testResult.quoteAsset || tokocryptoQuoteAsset}
+                        {activeTestResult.quoteAsset || tokocryptoQuoteAsset}
                       </strong>{" "}
                       (Fixed Cash).
+                    </p>
+                    <p className="text-[11px] opacity-90">
+                      Total required for {maxOpenPositions} positions:{" "}
+                      <strong>
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        {tokoTotalCapital.toLocaleString()}{" "}
+                        {activeTestResult.quoteAsset || tokocryptoQuoteAsset}
+                      </strong>{" "}
+                      (Available:{" "}
+                      {activeTestResult.balance.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      {activeTestResult.quoteAsset || tokocryptoQuoteAsset})
                     </p>
                   </div>
                 ) : (
                   <div
-                    className={`text-xs mt-2 p-2.5 rounded-md ${riskInfo.bg} border ${riskInfo.border} ${riskInfo.color} leading-relaxed space-y-2`}
+                    className={`text-xs mt-2 p-2.5 rounded-md ${binanceRiskInfo.bg} border ${binanceRiskInfo.border} ${binanceRiskInfo.color} leading-relaxed space-y-2`}
                   >
                     <p>
-                      <strong>Balance Preview [{riskInfo.label}]:</strong> Out
+                      <strong>Balance Preview [{binanceRiskInfo.label}]:</strong> Out
                       of your available balance of{" "}
                       <strong>
-                        {testResult.balance.toLocaleString(undefined, {
+                        {activeTestResult.balance.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || "USDT"}
+                        {activeTestResult.quoteAsset || "USDT"}
                       </strong>
-                      , allocation per trade is approximately{" "}
+                      , margin per trade is approximately{" "}
                       <strong>
                         ~
                         {(
-                          (testResult.balance * Number(riskPerTradePct)) /
+                          (activeTestResult.balance *
+                            Number(binanceRiskPerTradePct)) /
                           100
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}{" "}
-                        {testResult.quoteAsset || "USDT"}
-                      </strong>
-                      .
+                        {activeTestResult.quoteAsset || "USDT"}
+                      </strong>{" "}
+                      (Position Size ~
+                      {(
+                        ((activeTestResult.balance *
+                          Number(binanceRiskPerTradePct)) /
+                          100) *
+                        leverage
+                      ).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      USDT with {leverage}x leverage).
                     </p>
                   </div>
                 )
