@@ -1,5 +1,6 @@
 import { app } from "./app";
 import { connectToNestJS } from "./services/socket.service";
+import { startSpotMonitor } from "./services/spot-monitor.service";
 import { addAppLog } from "./lib/logger";
 
 const PORT = process.env.PORT || 3030;
@@ -13,6 +14,9 @@ app.listen(PORT, async () => {
 
   // Inisialisasi koneksi WebSocket sinyal dari database SQLite
   await connectToNestJS();
+
+  // Inisialisasi worker pemantau Take Profit / Stop Loss Spot Tokocrypto
+  startSpotMonitor();
 });
 
 export { app };

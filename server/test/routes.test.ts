@@ -132,6 +132,46 @@ describe("Express App Modular Routing Integration Tests", () => {
       const data = await res.json();
       assert.equal(data.success, false);
     });
+
+    it("POST /api/config/test-tokocrypto tanpa API key harus mengembalikan 400", async () => {
+      const res = await fetch(`${baseUrl}/api/config/test-tokocrypto`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${validToken}`,
+        },
+        body: JSON.stringify({ apiKey: "", apiSecret: "" }),
+      });
+
+      assert.equal(res.status, 400);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.ok(data.message.includes("Tokocrypto"));
+    });
+
+    it("POST /api/config harus berhasil menyimpan konfigurasi Tokocrypto", async () => {
+      const res = await fetch(`${baseUrl}/api/config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${validToken}`,
+        },
+        body: JSON.stringify({
+          targetExchange: "TOKOCRYPTO",
+          tokocryptoApiKey: "tokoKey123",
+          tokocryptoApiSecret: "tokoSecret456",
+          tokocryptoQuoteAsset: "USDT",
+          dryRun: true,
+        }),
+      });
+
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.success, true);
+      assert.equal(data.data.targetExchange, "TOKOCRYPTO");
+      assert.equal(data.data.tokocryptoApiKey, "tokoKey123");
+      assert.equal(data.data.dryRun, true);
+    });
   });
 
   describe("4. Positions Routes (/api/positions)", () => {
@@ -140,7 +180,30 @@ describe("Express App Modular Routing Integration Tests", () => {
       assert.equal(res.status, 401);
     });
 
-    it("POST /api/positions/close tanpa symbol harus mengembalikan 400", async () => {
+    it("GET /api/positions dengan mode TOKOCRYPTO harus mengembalikan exchange TOKOCRYPTO dan array positions", async () => {
+      const res = await fetch(`${baseUrl}/api/positions`, {
+        headers: { Authorization: `Bearer ${validToken}` },
+      });
+
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.success, true);
+      assert.equal(data.exchange, "TOKOCRYPTO");
+      assert.ok(Array.isArray(data.positions));
+    });
+
+    it("GET /api/positions/spot-history harus mengembalikan riwayat spot trades", async () => {
+      const res = await fetch(`${baseUrl}/api/positions/spot-history`, {
+        headers: { Authorization: `Bearer ${validToken}` },
+      });
+
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.success, true);
+      assert.ok(Array.isArray(data.history));
+    });
+
+    it("POST /api/positions/close tanpa symbol atau tradeId harus mengembalikan 400", async () => {
       const res = await fetch(`${baseUrl}/api/positions/close`, {
         method: "POST",
         headers: {
