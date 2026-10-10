@@ -428,21 +428,21 @@ export default function CredentialConfig() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Kolom Kiri / Utama: Kredensial Binance & Token */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <KeyIcon className="size-5 text-primary" />
-                Binance Futures Credentials
-              </CardTitle>
-              <CardDescription className="text-xs">
-                API keys are stored and encrypted locally in the SQLite
-                database.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+      {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* Card 1: Kredensial Binance & Token */}
+        <Card className="shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <KeyIcon className="size-4 text-primary" />
+              Binance Futures Credentials
+            </CardTitle>
+            <CardDescription className="text-xs">
+              API keys are stored and encrypted locally in the SQLite
+              database.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 flex-1">
               {/* Client Token */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -601,21 +601,19 @@ export default function CredentialConfig() {
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* Kolom Kanan: Pengaturan Risiko & Eksekusi Bot */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CheckIcon className="size-4 text-primary" />
-                Risk Management
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Execution parameters when a signal is received.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-xs">
+        {/* Card 2: Pengaturan Risiko & Eksekusi Bot */}
+        <Card className="shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckIcon className="size-4 text-primary" />
+              Risk Management
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Execution parameters when a signal is received.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-xs flex-1">
               {/* Auto Execute Switch */}
               <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
                 <div className="space-y-0.5">
@@ -746,21 +744,23 @@ export default function CredentialConfig() {
               </div>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Card Coin Filter */}
-          <Card className="shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FilterIcon className="size-4 text-primary" />
-                Coin Filter (Scope)
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Filter which coins your bot is allowed to execute.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3.5 text-xs">
-              {/* Mode Selector */}
-              <div className="space-y-1.5">
+        {/* Baris 2: Kartu Penuh untuk Filter Koin (Trading Scope) */}
+        <Card className="shadow-sm w-full">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FilterIcon className="size-4 text-primary" />
+              Coin Filter (Scope)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Filter which coins your bot is allowed to execute.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-xs">
+            {/* Mode Selector */}
+            <div className="space-y-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <Label htmlFor="filter-mode" className="text-xs font-medium">
                   Filter Mode
                 </Label>
@@ -772,7 +772,7 @@ export default function CredentialConfig() {
                       e.target.value as "ALL" | "WHITELIST" | "BLACKLIST",
                     )
                   }
-                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex h-8 w-full sm:w-72 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="ALL" className="text-black">
                     All Market (No Filter)
@@ -784,121 +784,29 @@ export default function CredentialConfig() {
                     Blacklist (Exclude Selected Coins)
                   </option>
                 </select>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  {coinFilterMode === "ALL" &&
-                    "Bot will execute signals for any coin received from CryptoSpike."}
-                  {coinFilterMode === "WHITELIST" &&
-                    "Bot will ONLY execute signals matching your selected coins below."}
-                  {coinFilterMode === "BLACKLIST" &&
-                    "Bot will execute all signals EXCEPT the coins in your blacklist below."}
-                </p>
               </div>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                {coinFilterMode === "ALL" &&
+                  "Bot will execute signals for any coin received from CryptoSpike."}
+                {coinFilterMode === "WHITELIST" &&
+                  "Bot will ONLY execute signals matching your selected coins below."}
+                {coinFilterMode === "BLACKLIST" &&
+                  "Bot will execute all signals EXCEPT the coins in your blacklist below."}
+              </p>
+            </div>
 
-              {coinFilterMode !== "ALL" && (
-                <div className="space-y-2.5 pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold">
-                      {coinFilterMode === "WHITELIST"
-                        ? "Allowed Coins"
-                        : "Blocked Coins"}{" "}
-                      ({coinList.length})
-                    </Label>
-                  </div>
-
-                  {/* Preset quick buttons */}
-                  <div className="flex flex-wrap gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer"
-                      onClick={() =>
-                        handleSetPreset([
-                          "BTCUSDT",
-                          "ETHUSDT",
-                          "SOLUSDT",
-                          "BNBUSDT",
-                          "XRPUSDT",
-                        ])
-                      }
-                    >
-                      Bluechips
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer"
-                      onClick={() =>
-                        handleSetPreset([
-                          "ADAUSDT",
-                          "AVAXUSDT",
-                          "NEARUSDT",
-                          "SUIUSDT",
-                          "DOTUSDT",
-                        ])
-                      }
-                    >
-                      Top L1
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-                      onClick={() => handleSetPreset(TOP_50_CMC)}
-                    >
-                      Top 50 CMC
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
-                      onClick={() => handleSetPreset(TOP_100_CMC)}
-                    >
-                      Top 100 CMC
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-                      onClick={() => handleSetPreset(TOP_50_NO_MEME)}
-                    >
-                      Top 50 (No Memes)
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10"
-                      onClick={() => handleSetPreset(TOP_100_NO_MEME)}
-                    >
-                      Top 100 (No Memes)
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
-                      onClick={() => handleSetPreset(MEMECOINS)}
-                    >
-                      Memecoins
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] px-1.5 py-0 text-muted-foreground hover:text-destructive cursor-pointer"
-                      onClick={() => setTargetCoins("")}
-                    >
-                      Clear
-                    </Button>
-                  </div>
+            {coinFilterMode !== "ALL" && (
+              <div className="space-y-3.5 pt-3 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <Label className="text-xs font-semibold">
+                    {coinFilterMode === "WHITELIST"
+                      ? "Allowed Coins"
+                      : "Blocked Coins"}{" "}
+                    ({coinList.length})
+                  </Label>
 
                   {/* Add coin input */}
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 w-full sm:w-72">
                     <Input
                       placeholder="e.g. BTC, ETH, ADAUSDT"
                       value={coinInput}
@@ -916,44 +824,138 @@ export default function CredentialConfig() {
                       size="sm"
                       variant="secondary"
                       onClick={() => handleAddCoin(coinInput)}
-                      className="h-8 px-2.5 text-xs cursor-pointer"
+                      className="h-8 px-2.5 text-xs cursor-pointer shrink-0"
                     >
                       <PlusIcon className="size-3.5" />
                     </Button>
                   </div>
-
-                  {/* Badges container */}
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 rounded-md border bg-muted/20">
-                    {coinList.length === 0 ? (
-                      <span className="text-[10px] text-muted-foreground italic">
-                        No coins specified. Type a symbol above or select a
-                        preset.
-                      </span>
-                    ) : (
-                      coinList.map((coin) => (
-                        <Badge
-                          key={coin}
-                          variant="secondary"
-                          className="text-[10px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
-                        >
-                          {coin}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCoin(coin)}
-                            className="hover:text-destructive transition-colors cursor-pointer"
-                          >
-                            <XIcon className="size-3" />
-                          </button>
-                        </Badge>
-                      ))
-                    )}
-                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+
+                {/* Preset quick buttons */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground font-medium mr-1">
+                    Quick Presets:
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer"
+                    onClick={() =>
+                      handleSetPreset([
+                        "BTCUSDT",
+                        "ETHUSDT",
+                        "SOLUSDT",
+                        "BNBUSDT",
+                        "XRPUSDT",
+                      ])
+                    }
+                  >
+                    Bluechips
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer"
+                    onClick={() =>
+                      handleSetPreset([
+                        "ADAUSDT",
+                        "AVAXUSDT",
+                        "NEARUSDT",
+                        "SUIUSDT",
+                        "DOTUSDT",
+                      ])
+                    }
+                  >
+                    Top L1
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                    onClick={() => handleSetPreset(TOP_50_CMC)}
+                  >
+                    Top 50 CMC
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
+                    onClick={() => handleSetPreset(TOP_100_CMC)}
+                  >
+                    Top 100 CMC
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                    onClick={() => handleSetPreset(TOP_50_NO_MEME)}
+                  >
+                    Top 50 (No Memes)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10"
+                    onClick={() => handleSetPreset(TOP_100_NO_MEME)}
+                  >
+                    Top 100 (No Memes)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+                    onClick={() => handleSetPreset(MEMECOINS)}
+                  >
+                    Memecoins
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px] px-1.5 py-0 text-muted-foreground hover:text-destructive cursor-pointer"
+                    onClick={() => setTargetCoins("")}
+                  >
+                    Clear
+                  </Button>
+                </div>
+
+                {/* Badges container */}
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-md border bg-muted/20">
+                  {coinList.length === 0 ? (
+                    <span className="text-[10px] text-muted-foreground italic">
+                      No coins specified. Type a symbol above or select a
+                      preset.
+                    </span>
+                  ) : (
+                    coinList.map((coin) => (
+                      <Badge
+                        key={coin}
+                        variant="secondary"
+                        className="text-[10px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
+                      >
+                        {coin}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCoin(coin)}
+                          className="hover:text-destructive transition-colors cursor-pointer"
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 mt-6 border-t border-border/50">
