@@ -438,169 +438,165 @@ export default function CredentialConfig() {
               Binance Futures Credentials
             </CardTitle>
             <CardDescription className="text-xs">
-              API keys are stored and encrypted locally in the SQLite
-              database.
+              API keys are stored and encrypted locally in the SQLite database.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 flex-1">
-              {/* Client Token */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="client-token"
-                    className="text-xs font-semibold"
+            {/* Client Token */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="client-token" className="text-xs font-semibold">
+                  Client Token (CryptoSpike License)
+                </Label>
+                {token && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] text-emerald-600 border-emerald-500/30"
                   >
-                    Client Token (CryptoSpike License)
-                  </Label>
-                  {token && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] text-emerald-600 border-emerald-500/30"
-                    >
-                      Token Installed
-                    </Badge>
-                  )}
-                </div>
-                <Input
-                  id="client-token"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
-                  className="font-mono text-xs"
-                />
+                    Token Installed
+                  </Badge>
+                )}
+              </div>
+              <Input
+                id="client-token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
+                className="font-mono text-xs"
+              />
+            </div>
+
+            <div className="border-t pt-4" />
+
+            {/* Environment Tabs */}
+            <Tabs
+              value={environment.toLowerCase()}
+              onValueChange={(val) =>
+                setEnvironment(val.toUpperCase() as "TESTNET" | "LIVE")
+              }
+              className="w-full"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <Label className="text-xs font-semibold text-muted-foreground">
+                  Select API Environment
+                </Label>
+                <TabsList className="grid w-full sm:w-[220px] grid-cols-2">
+                  <TabsTrigger value="testnet" className="text-xs gap-1.5">
+                    <FlaskConicalIcon className="size-3.5 text-amber-500" />
+                    Testnet
+                  </TabsTrigger>
+                  <TabsTrigger value="live" className="text-xs gap-1.5">
+                    <GlobeIcon className="size-3.5 text-emerald-500" />
+                    Live
+                  </TabsTrigger>
+                </TabsList>
               </div>
 
-              <div className="border-t pt-4" />
-
-              {/* Environment Tabs */}
-              <Tabs
-                value={environment.toLowerCase()}
-                onValueChange={(val) =>
-                  setEnvironment(val.toUpperCase() as "TESTNET" | "LIVE")
-                }
-                className="w-full"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                  <Label className="text-xs font-semibold text-muted-foreground">
-                    Select API Environment
+              {/* Tab Testnet */}
+              <TabsContent value="testnet" className="space-y-4 pt-1">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                    Binance Testnet API Key
                   </Label>
-                  <TabsList className="grid w-full sm:w-[220px] grid-cols-2">
-                    <TabsTrigger value="testnet" className="text-xs gap-1.5">
-                      <FlaskConicalIcon className="size-3.5 text-amber-500" />
-                      Testnet
-                    </TabsTrigger>
-                    <TabsTrigger value="live" className="text-xs gap-1.5">
-                      <GlobeIcon className="size-3.5 text-emerald-500" />
-                      Live
-                    </TabsTrigger>
-                  </TabsList>
+                  <Input
+                    value={testnetApiKey}
+                    onChange={(e) => setTestnetApiKey(e.target.value)}
+                    placeholder="Enter Binance Testnet API Key..."
+                    className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                  />
                 </div>
-
-                {/* Tab Testnet */}
-                <TabsContent value="testnet" className="space-y-4 pt-1">
-                  <div className="space-y-1.5">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                      Binance Testnet API Key
+                      Binance Testnet API Secret
                     </Label>
-                    <Input
-                      value={testnetApiKey}
-                      onChange={(e) => setTestnetApiKey(e.target.value)}
-                      placeholder="Enter Binance Testnet API Key..."
-                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
-                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                      onClick={() => setShowTestnetSecret(!showTestnetSecret)}
+                    >
+                      {showTestnetSecret ? "Hide" : "Show"}
+                    </Button>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                        Binance Testnet API Secret
-                      </Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
-                        onClick={() => setShowTestnetSecret(!showTestnetSecret)}
-                      >
-                        {showTestnetSecret ? "Hide" : "Show"}
-                      </Button>
-                    </div>
-                    <Input
-                      type={showTestnetSecret ? "text" : "password"}
-                      value={testnetApiSecret}
-                      onChange={(e) => setTestnetApiSecret(e.target.value)}
-                      placeholder="Enter Binance Testnet API Secret..."
-                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
-                    />
-                  </div>
-                </TabsContent>
-
-                {/* Tab Live */}
-                <TabsContent value="live" className="space-y-4 pt-1">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                      Binance Live API Key
-                    </Label>
-                    <Input
-                      value={liveApiKey}
-                      onChange={(e) => setLiveApiKey(e.target.value)}
-                      placeholder="Enter Binance Live API Key..."
-                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                        Binance Live API Secret
-                      </Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
-                        onClick={() => setShowLiveSecret(!showLiveSecret)}
-                      >
-                        {showLiveSecret ? "Hide" : "Show"}
-                      </Button>
-                    </div>
-                    <Input
-                      type={showLiveSecret ? "text" : "password"}
-                      value={liveApiSecret}
-                      onChange={(e) => setLiveApiSecret(e.target.value)}
-                      placeholder="Enter Binance Live API Secret..."
-                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              {/* Feedback Hasil Test Connection */}
-              {testResult && (
-                <div
-                  className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
-                    testResult.success
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                      : "border-destructive/30 bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  {testResult.success ? (
-                    <ShieldCheck className="size-4 shrink-0 mt-0.5" />
-                  ) : (
-                    <ShieldAlert className="size-4 shrink-0 mt-0.5" />
-                  )}
-                  <div className="space-y-0.5">
-                    <p className="font-semibold">
-                      {testResult.success
-                        ? "Status Verified"
-                        : "Verification Failed"}
-                    </p>
-                    <p className="text-[11px] leading-relaxed opacity-90">
-                      {testResult.message}
-                    </p>
-                  </div>
+                  <Input
+                    type={showTestnetSecret ? "text" : "password"}
+                    value={testnetApiSecret}
+                    onChange={(e) => setTestnetApiSecret(e.target.value)}
+                    placeholder="Enter Binance Testnet API Secret..."
+                    className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </TabsContent>
+
+              {/* Tab Live */}
+              <TabsContent value="live" className="space-y-4 pt-1">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                    Binance Live API Key
+                  </Label>
+                  <Input
+                    value={liveApiKey}
+                    onChange={(e) => setLiveApiKey(e.target.value)}
+                    placeholder="Enter Binance Live API Key..."
+                    className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                      Binance Live API Secret
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
+                      onClick={() => setShowLiveSecret(!showLiveSecret)}
+                    >
+                      {showLiveSecret ? "Hide" : "Show"}
+                    </Button>
+                  </div>
+                  <Input
+                    type={showLiveSecret ? "text" : "password"}
+                    value={liveApiSecret}
+                    onChange={(e) => setLiveApiSecret(e.target.value)}
+                    placeholder="Enter Binance Live API Secret..."
+                    className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Feedback Hasil Test Connection */}
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                  testResult.success
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                    : "border-destructive/30 bg-destructive/10 text-destructive"
+                }`}
+              >
+                {testResult.success ? (
+                  <ShieldCheck className="size-4 shrink-0 mt-0.5" />
+                ) : (
+                  <ShieldAlert className="size-4 shrink-0 mt-0.5" />
+                )}
+                <div className="space-y-0.5">
+                  <p className="font-semibold">
+                    {testResult.success
+                      ? "Status Verified"
+                      : "Verification Failed"}
+                  </p>
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    {testResult.message}
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Card 2: Pengaturan Risiko & Eksekusi Bot */}
         <Card className="shadow-sm flex flex-col justify-between">
@@ -614,348 +610,346 @@ export default function CredentialConfig() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-xs flex-1">
-              {/* Auto Execute Switch */}
-              <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
-                <div className="space-y-0.5">
-                  <Label
-                    htmlFor="auto-exec"
-                    className="text-xs font-semibold cursor-pointer"
-                  >
-                    Auto-Trade
-                  </Label>
-                  <p className="text-[10px] text-muted-foreground">
-                    Automatic execution
-                  </p>
-                </div>
-                <Switch
-                  id="auto-exec"
-                  checked={autoExecute}
-                  onCheckedChange={setAutoExecute}
-                />
-              </div>
-
-              {/* Margin Type */}
-              <div className="space-y-1.5 mt-2">
-                <Label htmlFor="margin-type" className="text-xs font-medium">
-                  Margin Type
-                </Label>
-                <select
-                  id="margin-type"
-                  value={marginType}
-                  onChange={(e) =>
-                    setMarginType(e.target.value as "ISOLATED" | "CROSSED")
-                  }
-                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            {/* Auto Execute Switch */}
+            <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+              <div className="space-y-0.5">
+                <Label
+                  htmlFor="auto-exec"
+                  className="text-xs font-semibold cursor-pointer"
                 >
-                  <option value="ISOLATED" className="text-black">
-                    ISOLATED
-                  </option>
-                  <option value="CROSSED" className="text-black">
-                    CROSS
-                  </option>
-                </select>
-              </div>
-
-              {/* Leverage */}
-              <div className="space-y-1.5 mt-2">
-                <Label htmlFor="leverage" className="text-xs font-medium">
-                  Default Leverage (x)
+                  Auto-Trade
                 </Label>
-                <Input
-                  id="leverage"
-                  type="number"
-                  min={1}
-                  max={125}
-                  value={leverage}
-                  onChange={(e) => setLeverage(Number(e.target.value))}
-                  className="h-8 text-xs"
-                />
+                <p className="text-[10px] text-muted-foreground">
+                  Automatic execution
+                </p>
               </div>
-
-              {/* Risk Per Trade % */}
-              <div className="space-y-1.5">
-                <Label htmlFor="risk-pct" className="text-xs font-medium">
-                  Risk Per Trade (% Wallet)
-                </Label>
-                <Input
-                  id="risk-pct"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  max="100"
-                  value={riskPerTradePct}
-                  onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
-                  className="h-8 text-xs"
-                />
-                {testResult?.balance ? (
-                  <div
-                    className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} leading-relaxed mt-2 space-y-1.5`}
-                  >
-                    <p>
-                      <strong>Risk Preview [{riskInfo.label}]:</strong> You are
-                      authorizing the bot to risk a maximum of{" "}
-                      <strong>
-                        ~$
-                        {(
-                          (testResult.balance * Number(riskPerTradePct)) /
-                          100
-                        ).toFixed(2)}{" "}
-                        USD
-                      </strong>{" "}
-                      per single trade.
-                    </p>
-                    <p className="opacity-90">
-                      <strong>Worst-Case Scenario:</strong> If all{" "}
-                      <strong>{maxOpenPositions}</strong> allowed positions hit
-                      Stop Loss simultaneously, your total potential loss is up
-                      to{" "}
-                      <strong>
-                        ~$
-                        {((testResult.balance * totalRiskPct) / 100).toFixed(
-                          2,
-                        )}{" "}
-                        USD ({totalRiskPct}%)
-                      </strong>{" "}
-                      of your balance.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground italic mt-1">
-                    * Please run 'Test Connection' first to see the estimated
-                    risk amount (USD) per trade.
-                  </p>
-                )}
-              </div>
-
-              {/* Max Open Positions */}
-              <div className="space-y-1.5">
-                <Label htmlFor="max-pos" className="text-xs font-medium">
-                  Max Open Positions
-                </Label>
-                <Input
-                  id="max-pos"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={maxOpenPositions}
-                  onChange={(e) => setMaxOpenPositions(Number(e.target.value))}
-                  className="h-8 text-xs"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Baris 2: Kartu Penuh untuk Filter Koin (Trading Scope) */}
-        <Card className="shadow-sm w-full">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FilterIcon className="size-4 text-primary" />
-              Coin Filter (Scope)
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Filter which coins your bot is allowed to execute.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs">
-            {/* Mode Selector */}
-            <div className="space-y-1.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <Label htmlFor="filter-mode" className="text-xs font-medium">
-                  Filter Mode
-                </Label>
-                <select
-                  id="filter-mode"
-                  value={coinFilterMode}
-                  onChange={(e) =>
-                    setCoinFilterMode(
-                      e.target.value as "ALL" | "WHITELIST" | "BLACKLIST",
-                    )
-                  }
-                  className="flex h-8 w-full sm:w-72 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="ALL" className="text-black">
-                    All Market (No Filter)
-                  </option>
-                  <option value="WHITELIST" className="text-black">
-                    Whitelist (Only Selected Coins)
-                  </option>
-                  <option value="BLACKLIST" className="text-black">
-                    Blacklist (Exclude Selected Coins)
-                  </option>
-                </select>
-              </div>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                {coinFilterMode === "ALL" &&
-                  "Bot will execute signals for any coin received from CryptoSpike."}
-                {coinFilterMode === "WHITELIST" &&
-                  "Bot will ONLY execute signals matching your selected coins below."}
-                {coinFilterMode === "BLACKLIST" &&
-                  "Bot will execute all signals EXCEPT the coins in your blacklist below."}
-              </p>
+              <Switch
+                id="auto-exec"
+                checked={autoExecute}
+                onCheckedChange={setAutoExecute}
+              />
             </div>
 
-            {coinFilterMode !== "ALL" && (
-              <div className="space-y-3.5 pt-3 border-t border-border/50">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <Label className="text-xs font-semibold">
-                    {coinFilterMode === "WHITELIST"
-                      ? "Allowed Coins"
-                      : "Blocked Coins"}{" "}
-                    ({coinList.length})
-                  </Label>
+            {/* Margin Type */}
+            <div className="space-y-1.5 mt-2">
+              <Label htmlFor="margin-type" className="text-xs font-medium">
+                Margin Type
+              </Label>
+              <select
+                id="margin-type"
+                value={marginType}
+                onChange={(e) =>
+                  setMarginType(e.target.value as "ISOLATED" | "CROSSED")
+                }
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="ISOLATED" className="text-black">
+                  ISOLATED
+                </option>
+                <option value="CROSSED" className="text-black">
+                  CROSS
+                </option>
+              </select>
+            </div>
 
-                  {/* Add coin input */}
-                  <div className="flex gap-1.5 w-full sm:w-72">
-                    <Input
-                      placeholder="e.g. BTC, ETH, ADAUSDT"
-                      value={coinInput}
-                      onChange={(e) => setCoinInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddCoin(coinInput);
-                        }
-                      }}
-                      className="h-8 text-xs font-mono uppercase"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleAddCoin(coinInput)}
-                      className="h-8 px-2.5 text-xs cursor-pointer shrink-0"
-                    >
-                      <PlusIcon className="size-3.5" />
-                    </Button>
-                  </div>
-                </div>
+            {/* Leverage */}
+            <div className="space-y-1.5 mt-2">
+              <Label htmlFor="leverage" className="text-xs font-medium">
+                Default Leverage (x)
+              </Label>
+              <Input
+                id="leverage"
+                type="number"
+                min={1}
+                max={125}
+                value={leverage}
+                onChange={(e) => setLeverage(Number(e.target.value))}
+                className="h-8 text-xs"
+              />
+            </div>
 
-                {/* Preset quick buttons */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground font-medium mr-1">
-                    Quick Presets:
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer"
-                    onClick={() =>
-                      handleSetPreset([
-                        "BTCUSDT",
-                        "ETHUSDT",
-                        "SOLUSDT",
-                        "BNBUSDT",
-                        "XRPUSDT",
-                      ])
-                    }
-                  >
-                    Bluechips
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer"
-                    onClick={() =>
-                      handleSetPreset([
-                        "ADAUSDT",
-                        "AVAXUSDT",
-                        "NEARUSDT",
-                        "SUIUSDT",
-                        "DOTUSDT",
-                      ])
-                    }
-                  >
-                    Top L1
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-                    onClick={() => handleSetPreset(TOP_50_CMC)}
-                  >
-                    Top 50 CMC
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
-                    onClick={() => handleSetPreset(TOP_100_CMC)}
-                  >
-                    Top 100 CMC
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-                    onClick={() => handleSetPreset(TOP_50_NO_MEME)}
-                  >
-                    Top 50 (No Memes)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10"
-                    onClick={() => handleSetPreset(TOP_100_NO_MEME)}
-                  >
-                    Top 100 (No Memes)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
-                    onClick={() => handleSetPreset(MEMECOINS)}
-                  >
-                    Memecoins
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[10px] px-1.5 py-0 text-muted-foreground hover:text-destructive cursor-pointer"
-                    onClick={() => setTargetCoins("")}
-                  >
-                    Clear
-                  </Button>
+            {/* Risk Per Trade % */}
+            <div className="space-y-1.5">
+              <Label htmlFor="risk-pct" className="text-xs font-medium">
+                Risk Per Trade (% Wallet)
+              </Label>
+              <Input
+                id="risk-pct"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="100"
+                value={riskPerTradePct}
+                onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
+                className="h-8 text-xs"
+              />
+              {testResult?.balance ? (
+                <div
+                  className={`text-[10px] ${riskInfo.color} ${riskInfo.bg} p-2.5 rounded-md border ${riskInfo.border} leading-relaxed mt-2 space-y-1.5`}
+                >
+                  <p>
+                    <strong>Risk Preview [{riskInfo.label}]:</strong> You are
+                    authorizing the bot to risk a maximum of{" "}
+                    <strong>
+                      ~$
+                      {(
+                        (testResult.balance * Number(riskPerTradePct)) /
+                        100
+                      ).toFixed(2)}{" "}
+                      USD
+                    </strong>{" "}
+                    per single trade.
+                  </p>
+                  <p className="opacity-90">
+                    <strong>Worst-Case Scenario:</strong> If all{" "}
+                    <strong>{maxOpenPositions}</strong> allowed positions hit
+                    Stop Loss simultaneously, your total potential loss is up to{" "}
+                    <strong>
+                      ~$
+                      {((testResult.balance * totalRiskPct) / 100).toFixed(
+                        2,
+                      )}{" "}
+                      USD ({totalRiskPct}%)
+                    </strong>{" "}
+                    of your balance.
+                  </p>
                 </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground italic mt-1">
+                  * Please run 'Test Connection' first to see the estimated risk
+                  amount (USD) per trade.
+                </p>
+              )}
+            </div>
 
-                {/* Badges container */}
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-md border bg-muted/20">
-                  {coinList.length === 0 ? (
-                    <span className="text-[10px] text-muted-foreground italic">
-                      No coins specified. Type a symbol above or select a
-                      preset.
-                    </span>
-                  ) : (
-                    coinList.map((coin) => (
-                      <Badge
-                        key={coin}
-                        variant="secondary"
-                        className="text-[10px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
-                      >
-                        {coin}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCoin(coin)}
-                          className="hover:text-destructive transition-colors cursor-pointer"
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      </Badge>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Max Open Positions */}
+            <div className="space-y-1.5">
+              <Label htmlFor="max-pos" className="text-xs font-medium">
+                Max Open Positions
+              </Label>
+              <Input
+                id="max-pos"
+                type="number"
+                min={1}
+                max={20}
+                value={maxOpenPositions}
+                onChange={(e) => setMaxOpenPositions(Number(e.target.value))}
+                className="h-8 text-xs"
+              />
+            </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Baris 2: Kartu Penuh untuk Filter Koin (Trading Scope) */}
+      <Card className="shadow-sm w-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FilterIcon className="size-4 text-primary" />
+            Coin Filter (Scope)
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Filter which coins your bot is allowed to execute.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-xs">
+          {/* Mode Selector */}
+          <div className="space-y-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <Label htmlFor="filter-mode" className="text-xs font-medium">
+                Filter Mode
+              </Label>
+              <select
+                id="filter-mode"
+                value={coinFilterMode}
+                onChange={(e) =>
+                  setCoinFilterMode(
+                    e.target.value as "ALL" | "WHITELIST" | "BLACKLIST",
+                  )
+                }
+                className="flex h-8 w-full sm:w-72 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="ALL" className="text-black">
+                  All Market (No Filter)
+                </option>
+                <option value="WHITELIST" className="text-black">
+                  Whitelist (Only Selected Coins)
+                </option>
+                <option value="BLACKLIST" className="text-black">
+                  Blacklist (Exclude Selected Coins)
+                </option>
+              </select>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              {coinFilterMode === "ALL" &&
+                "Bot will execute signals for any coin received from CryptoSpike."}
+              {coinFilterMode === "WHITELIST" &&
+                "Bot will ONLY execute signals matching your selected coins below."}
+              {coinFilterMode === "BLACKLIST" &&
+                "Bot will execute all signals EXCEPT the coins in your blacklist below."}
+            </p>
+          </div>
+
+          {coinFilterMode !== "ALL" && (
+            <div className="space-y-3.5 pt-3 border-t border-border/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <Label className="text-xs font-semibold">
+                  {coinFilterMode === "WHITELIST"
+                    ? "Allowed Coins"
+                    : "Blocked Coins"}{" "}
+                  ({coinList.length})
+                </Label>
+
+                {/* Add coin input */}
+                <div className="flex gap-1.5 w-full sm:w-72">
+                  <Input
+                    placeholder="e.g. BTC, ETH, ADAUSDT"
+                    value={coinInput}
+                    onChange={(e) => setCoinInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCoin(coinInput);
+                      }
+                    }}
+                    className="h-8 text-xs font-mono uppercase"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleAddCoin(coinInput)}
+                    className="h-8 px-2.5 text-xs cursor-pointer shrink-0"
+                  >
+                    <PlusIcon className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Preset quick buttons */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium mr-1">
+                  Quick Presets:
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer"
+                  onClick={() =>
+                    handleSetPreset([
+                      "BTCUSDT",
+                      "ETHUSDT",
+                      "SOLUSDT",
+                      "BNBUSDT",
+                      "XRPUSDT",
+                    ])
+                  }
+                >
+                  Bluechips
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer"
+                  onClick={() =>
+                    handleSetPreset([
+                      "ADAUSDT",
+                      "AVAXUSDT",
+                      "NEARUSDT",
+                      "SUIUSDT",
+                      "DOTUSDT",
+                    ])
+                  }
+                >
+                  Top L1
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                  onClick={() => handleSetPreset(TOP_50_CMC)}
+                >
+                  Top 50 CMC
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
+                  onClick={() => handleSetPreset(TOP_100_CMC)}
+                >
+                  Top 100 CMC
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                  onClick={() => handleSetPreset(TOP_50_NO_MEME)}
+                >
+                  Top 50 (No Memes)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10"
+                  onClick={() => handleSetPreset(TOP_100_NO_MEME)}
+                >
+                  Top 100 (No Memes)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+                  onClick={() => handleSetPreset(MEMECOINS)}
+                >
+                  Memecoins
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-1.5 py-0 text-muted-foreground hover:text-destructive cursor-pointer"
+                  onClick={() => setTargetCoins("")}
+                >
+                  Clear
+                </Button>
+              </div>
+
+              {/* Badges container */}
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-md border bg-muted/20">
+                {coinList.length === 0 ? (
+                  <span className="text-[10px] text-muted-foreground italic">
+                    No coins specified. Type a symbol above or select a preset.
+                  </span>
+                ) : (
+                  coinList.map((coin) => (
+                    <Badge
+                      key={coin}
+                      variant="secondary"
+                      className="text-[10px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
+                    >
+                      {coin}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCoin(coin)}
+                        className="hover:text-destructive transition-colors cursor-pointer"
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 mt-6 border-t border-border/50">
