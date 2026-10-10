@@ -8,26 +8,35 @@ datasource db {
 
 // Pengaturan Utama Bot & Kredensial (Single-row config)
 model AppConfig {
-  id               Int      @id @default(1)
+  id                   Int      @id @default(1)
   
+  // Pilihan Bursa Utama Aktif
+  targetExchange       String   @default("BINANCE") // "BINANCE" atau "TOKOCRYPTO"
+
   // Kredensial & Lisensi
-  clientToken      String?  // Token langganan dari Server Utama CryptoSpike
-  binanceApiKey    String?  // API Key Binance
-  binanceApiSecret String?  // API Secret Binance
-  environment      String   @default("TESTNET") // TESTNET atau MAINNET
+  clientToken          String?  // Token langganan dari Server Utama CryptoSpike
+  binanceApiKey        String?  // API Key Binance
+  binanceApiSecret     String?  // API Secret Binance
+  environment          String   @default("TESTNET") // TESTNET atau MAINNET
+
+  // Kredensial Tokocrypto Spot
+  tokocryptoApiKey     String?  // API Key Tokocrypto
+  tokocryptoApiSecret  String?  // API Secret Tokocrypto
+  tokocryptoQuoteAsset String   @default("USDT") // "USDT" atau "BIDR"
 
   // Manajemen Risiko Bot Lokal
-  autoExecute      Boolean  @default(false)
-  leverage         Int      @default(10)
-  marginType       String   @default("ISOLATED") // ISOLATED atau CROSSED
-  riskPerTradePct  Float    @default(2.0)
-  maxOpenPositions Int      @default(3)
+  autoExecute          Boolean  @default(false)
+  dryRun               Boolean  @default(false) // Mode simulasi tanpa uang riil
+  leverage             Int      @default(10)
+  marginType           String   @default("ISOLATED") // ISOLATED atau CROSSED
+  riskPerTradePct      Float    @default(2.0)
+  maxOpenPositions     Int      @default(3)
 
   // Filter Koin Eksekusi (Trading Scope)
-  coinFilterMode   String   @default("ALL") // ALL, WHITELIST, atau BLACKLIST
-  targetCoins      String?  @default("")    // Simbol koin koma terpisah (misal: "BTCUSDT,ETHUSDT,ADAUSDT")
+  coinFilterMode       String   @default("ALL") // ALL, WHITELIST, atau BLACKLIST
+  targetCoins          String?  @default("")    // Simbol koin koma terpisah (misal: "BTCUSDT,ETHUSDT,ADAUSDT")
 
-  updatedAt        DateTime @updatedAt
+  updatedAt            DateTime @updatedAt
 }
 
 // Akun Pengguna / Admin Aplikasi Lokal
@@ -38,5 +47,23 @@ model User {
   role         String   @default("Admin")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// Catatan Posisi Beli Koin Tokocrypto (Spot) Secara Lokal
+model SpotTrade {
+  id          String    @id @default(uuid())
+  exchange    String    @default("TOKOCRYPTO")
+  symbol      String    // Contoh: "BTC_USDT"
+  buyOrderId  String
+  entryPrice  Float
+  quantity    Float
+  tpPrice     Float     // Entry + 5%
+  slPrice     Float     // Entry - 2.5%
+  status      String    @default("OPEN") // "OPEN", "TP_CLOSED", "SL_CLOSED", "MANUAL_CLOSED"
+  exitPrice   Float?
+  exitOrderId String?
+  pnlUsd      Float?
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
 }
 

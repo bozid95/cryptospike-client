@@ -63,7 +63,10 @@ export function normalizeTokocryptoSymbol(
   if (!symbol) return `BTC_${targetQuote}`;
 
   // Bersihkan karakter pemisah: slash, dash, spasi
-  let clean = symbol.trim().toUpperCase().replace(/[\/\-\s]/g, "");
+  let clean = symbol
+    .trim()
+    .toUpperCase()
+    .replace(/[\/\-\s]/g, "");
 
   // Hapus awalan 1000 untuk meme koin (seperti 1000PEPE -> PEPE)
   if (clean.startsWith("1000")) {
@@ -99,7 +102,10 @@ export function createTokocryptoSignature(
   queryString: string,
   apiSecret: string,
 ): string {
-  return crypto.createHmac("sha256", apiSecret).update(queryString).digest("hex");
+  return crypto
+    .createHmac("sha256", apiSecret)
+    .update(queryString)
+    .digest("hex");
 }
 
 /**
@@ -214,7 +220,10 @@ export async function getTokocryptoSymbolRules(
           maxQty: parseFloat(match.maxQty || match.maxTradeQty || "1000000"),
           stepSize: parseFloat(match.stepSize || match.qtyStep || "0.0001"),
           minNotional: parseFloat(
-            match.minNotional || match.minNominal || match.minTradeAmount || "5.0",
+            match.minNotional ||
+              match.minNominal ||
+              match.minTradeAmount ||
+              "5.0",
           ),
           tickSize: parseFloat(match.tickSize || match.priceStep || "0.01"),
           pricePrecision: match.pricePrecision ?? 2,
@@ -257,7 +266,9 @@ export async function getTokocryptoTicker(
     );
     if (res.ok) {
       const json = (await res.json()) as any;
-      const price = parseFloat(json?.data?.price || json?.data?.lastPrice || "0");
+      const price = parseFloat(
+        json?.data?.price || json?.data?.lastPrice || "0",
+      );
       if (price > 0) {
         return { symbol: normSymbol, lastPrice: price };
       }
@@ -402,8 +413,14 @@ export function calculateSpotOrderQuantity(params: {
   isValid: boolean;
   reason?: string;
 } {
-  const { balance, riskPct, currentPrice, stepSize, minNotional, maxAllocationUsd } =
-    params;
+  const {
+    balance,
+    riskPct,
+    currentPrice,
+    stepSize,
+    minNotional,
+    maxAllocationUsd,
+  } = params;
 
   if (balance <= 0) {
     return {
@@ -486,10 +503,8 @@ export async function placeTokocryptoOrder(
   const cleanSecret = apiSecret.trim();
 
   const symbol = normalizeTokocryptoSymbol(params.symbol);
-  const side =
-    params.side === 1 || params.side === "SELL" ? 1 : 0; // 0 = BUY, 1 = SELL
-  const type =
-    params.type === 1 || params.type === "LIMIT" ? 1 : 2; // 1 = LIMIT, 2 = MARKET
+  const side = params.side === 1 || params.side === "SELL" ? 1 : 0; // 0 = BUY, 1 = SELL
+  const type = params.type === 1 || params.type === "LIMIT" ? 1 : 2; // 1 = LIMIT, 2 = MARKET
 
   const payload: Record<string, any> = {
     symbol,
@@ -503,7 +518,11 @@ export async function placeTokocryptoOrder(
   if (params.clientId) payload.clientId = params.clientId;
 
   const serverTime = await getTokocryptoServerTime(baseUrl, customFetch);
-  const queryString = buildTokocryptoSignedQuery(payload, cleanSecret, serverTime);
+  const queryString = buildTokocryptoSignedQuery(
+    payload,
+    cleanSecret,
+    serverTime,
+  );
 
   const res = await customFetch(`${baseUrl}/open/v1/orders?${queryString}`, {
     method: "POST",

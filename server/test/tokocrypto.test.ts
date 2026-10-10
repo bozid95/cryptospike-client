@@ -257,7 +257,8 @@ describe("Tokocrypto Spot Module Unit Tests", () => {
         return {
           ok: false,
           status: 401,
-          text: async () => JSON.stringify({ code: 401, msg: "Signature invalid" }),
+          text: async () =>
+            JSON.stringify({ code: 401, msg: "Signature invalid" }),
         };
       }) as unknown as typeof fetch;
 

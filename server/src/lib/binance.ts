@@ -577,7 +577,14 @@ export async function executeSignalOrder(
 
   // 2. Cek Filter Koin (Trading Scope: WHITELIST / BLACKLIST)
   const filterEval = evaluateCoinFilter(
-    (signal?.symbol || signal?.pair || signal?.coin || signal?.data?.symbol || symbol || "").toString(),
+    (
+      signal?.symbol ||
+      signal?.pair ||
+      signal?.coin ||
+      signal?.data?.symbol ||
+      symbol ||
+      ""
+    ).toString(),
     config.coinFilterMode || "ALL",
     config.targetCoins || "",
   );
