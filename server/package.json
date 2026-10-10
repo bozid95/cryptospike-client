@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "tsx --test test/coin-filter.test.ts"
   },
   "keywords": [],
   "author": "",
