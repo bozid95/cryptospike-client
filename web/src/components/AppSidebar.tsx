@@ -1,11 +1,13 @@
 import React from "react";
 import {
   BotIcon,
-  BriefcaseIcon,
   SlidersIcon,
   UserIcon,
   LogOutIcon,
   Terminal,
+  LayoutDashboard,
+  Layers,
+  Coins,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +31,8 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: { username: string; role: string };
   onLogout: () => void;
   botConnected: boolean;
-  activePositionsCount?: number;
+  binancePositionsCount?: number;
+  tokocryptoPositionsCount?: number;
 }
 
 export function AppSidebar({
@@ -38,31 +41,73 @@ export function AppSidebar({
   user,
   onLogout,
   botConnected,
-  activePositionsCount = 0,
+  binancePositionsCount = 0,
+  tokocryptoPositionsCount = 0,
   ...props
 }: AppSidebarProps) {
-  const menuItems = [
+  const navGroups = [
     {
-      id: "positions",
-      title: "Active Positions",
-      icon: BriefcaseIcon,
-      badge:
-        activePositionsCount > 0 ? `${activePositionsCount} Open` : undefined,
+      label: "Overview",
+      items: [
+        {
+          id: "dashboard",
+          title: "Dashboard Summary",
+          icon: LayoutDashboard,
+        },
+      ],
     },
     {
-      id: "config",
-      title: "Bot & API Config",
-      icon: SlidersIcon,
+      label: "Binance (Futures)",
+      items: [
+        {
+          id: "binance-positions",
+          title: "Active Positions",
+          icon: Layers,
+          badge:
+            binancePositionsCount > 0
+              ? `${binancePositionsCount} Open`
+              : undefined,
+        },
+        {
+          id: "binance-config",
+          title: "Configuration",
+          icon: SlidersIcon,
+        },
+      ],
     },
     {
-      id: "profile",
-      title: "Profile & Account",
-      icon: UserIcon,
+      label: "Tokocrypto (Spot)",
+      items: [
+        {
+          id: "tokocrypto-positions",
+          title: "Active Positions",
+          icon: Coins,
+          badge:
+            tokocryptoPositionsCount > 0
+              ? `${tokocryptoPositionsCount} Coins`
+              : undefined,
+        },
+        {
+          id: "tokocrypto-config",
+          title: "Configuration",
+          icon: SlidersIcon,
+        },
+      ],
     },
     {
-      id: "logs",
-      title: "Application Logs",
-      icon: Terminal,
+      label: "System",
+      items: [
+        {
+          id: "logs",
+          title: "Application Logs",
+          icon: Terminal,
+        },
+        {
+          id: "profile",
+          title: "Profile & Account",
+          icon: UserIcon,
+        },
+      ],
     },
   ];
 
@@ -101,38 +146,42 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setActiveTab(item.id)}
-                      tooltip={item.title}
-                      className="cursor-pointer"
-                    >
-                      <Icon className="size-4" />
-                      <span>{item.title}</span>
-                      {item.badge && (
-                        <Badge
-                          variant="secondary"
-                          className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 font-semibold"
-                        >
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navGroups.map((group) => (
+          <SidebarGroup key={group.label} className="py-1">
+            <SidebarGroupLabel className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setActiveTab(item.id)}
+                        tooltip={item.title}
+                        className="cursor-pointer text-xs"
+                      >
+                        <Icon className="size-4" />
+                        <span>{item.title}</span>
+                        {item.badge && (
+                          <Badge
+                            variant="secondary"
+                            className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 font-semibold"
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>

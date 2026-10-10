@@ -12,7 +12,11 @@ export const positionsRouter = Router();
 positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
     const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-    const targetExchange = (config?.targetExchange || "BINANCE").toUpperCase();
+    const requestedExchange = (req.query.exchange as string)?.toUpperCase();
+    const targetExchange =
+      requestedExchange === "BINANCE" || requestedExchange === "TOKOCRYPTO"
+        ? requestedExchange
+        : (config?.targetExchange || "BINANCE").toUpperCase();
 
     // JALUR 1: TOKOCRYPTO SPOT
     if (targetExchange === "TOKOCRYPTO") {
@@ -133,11 +137,11 @@ positionsRouter.post(
   requireAuth,
   async (req: Request, res: Response) => {
     try {
-      const { symbol, tradeId } = req.body;
+      const { symbol, tradeId, exchange } = req.body;
       const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-      const targetExchange = (
-        config?.targetExchange || "BINANCE"
-      ).toUpperCase();
+      const requestedExchange = (exchange as string)?.toUpperCase();
+      const targetExchange =
+        requestedExchange || (config?.targetExchange || "BINANCE").toUpperCase();
 
       // JALUR 1: Close Posisi Spot Tokocrypto
       if (targetExchange === "TOKOCRYPTO" || tradeId) {
@@ -243,9 +247,9 @@ positionsRouter.post(
   async (req: Request, res: Response) => {
     try {
       const config = await prisma.appConfig.findUnique({ where: { id: 1 } });
-      const targetExchange = (
-        config?.targetExchange || "BINANCE"
-      ).toUpperCase();
+      const requestedExchange = (req.body?.exchange || (req.query.exchange as string))?.toUpperCase();
+      const targetExchange =
+        requestedExchange || (config?.targetExchange || "BINANCE").toUpperCase();
 
       // JALUR 1: Close All Tokocrypto Spot
       if (targetExchange === "TOKOCRYPTO") {

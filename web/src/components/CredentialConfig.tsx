@@ -177,10 +177,25 @@ const TOP_100_NO_MEME: string[] = TOP_100_CMC.filter(
   (coin) => !MEMECOINS.includes(coin),
 );
 
-export default function CredentialConfig() {
+interface CredentialConfigProps {
+  forcedExchange?: "BINANCE" | "TOKOCRYPTO";
+}
+
+export default function CredentialConfig({
+  forcedExchange,
+}: CredentialConfigProps = {}) {
   const [token, setToken] = useState("");
-  const [targetExchange, setTargetExchange] = useState<"BINANCE" | "TOKOCRYPTO">("BINANCE");
+  const [targetExchange, setTargetExchange] = useState<
+    "BINANCE" | "TOKOCRYPTO"
+  >(forcedExchange || "BINANCE");
   const [environment, setEnvironment] = useState<"TESTNET" | "LIVE">("TESTNET");
+
+  // Sync with forcedExchange prop when tab changes
+  useEffect(() => {
+    if (forcedExchange) {
+      setTargetExchange(forcedExchange);
+    }
+  }, [forcedExchange]);
 
   // Binance Credentials
   const [testnetApiKey, setTestnetApiKey] = useState("");
@@ -195,7 +210,9 @@ export default function CredentialConfig() {
   const [tokocryptoApiKey, setTokocryptoApiKey] = useState("");
   const [tokocryptoApiSecret, setTokocryptoApiSecret] = useState("");
   const [showTokocryptoSecret, setShowTokocryptoSecret] = useState(false);
-  const [tokocryptoQuoteAsset, setTokocryptoQuoteAsset] = useState<"USDT" | "BIDR">("USDT");
+  const [tokocryptoQuoteAsset, setTokocryptoQuoteAsset] = useState<
+    "USDT" | "BIDR"
+  >("USDT");
   const [dryRun, setDryRun] = useState(false);
 
   // Risk Management
@@ -235,7 +252,7 @@ export default function CredentialConfig() {
           if (json.success && json.data) {
             const d = json.data;
             setToken(d.clientToken || "");
-            const ex = (d.targetExchange || "BINANCE").toUpperCase();
+            const ex = forcedExchange || (d.targetExchange || "BINANCE").toUpperCase();
             setTargetExchange(ex === "TOKOCRYPTO" ? "TOKOCRYPTO" : "BINANCE");
             const env = d.environment === "LIVE" ? "LIVE" : "TESTNET";
             setEnvironment(env);
@@ -515,34 +532,53 @@ export default function CredentialConfig() {
         </div>
 
         {/* Exchange Market Selector */}
-        <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-lg border w-fit">
-          <Button
-            type="button"
-            size="sm"
-            variant={targetExchange === "BINANCE" ? "default" : "ghost"}
-            onClick={() => {
-              setTargetExchange("BINANCE");
-              setTestResult(null);
-            }}
-            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+        {!forcedExchange ? (
+          <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-lg border w-fit">
+            <Button
+              type="button"
+              size="sm"
+              variant={targetExchange === "BINANCE" ? "default" : "ghost"}
+              onClick={() => {
+                setTargetExchange("BINANCE");
+                setTestResult(null);
+              }}
+              className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Layers className="size-3.5" />
+              Binance Futures
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={targetExchange === "TOKOCRYPTO" ? "default" : "ghost"}
+              onClick={() => {
+                setTargetExchange("TOKOCRYPTO");
+                setTestResult(null);
+              }}
+              className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Coins className="size-3.5 text-amber-500" />
+              Tokocrypto Spot
+            </Button>
+          </div>
+        ) : (
+          <Badge
+            variant="outline"
+            className="text-xs px-3 py-1.5 gap-1.5 font-medium border-primary/30 bg-primary/5 text-primary"
           >
-            <Layers className="size-3.5" />
-            Binance Futures
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={targetExchange === "TOKOCRYPTO" ? "default" : "ghost"}
-            onClick={() => {
-              setTargetExchange("TOKOCRYPTO");
-              setTestResult(null);
-            }}
-            className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
-          >
-            <Coins className="size-3.5 text-amber-500" />
-            Tokocrypto Spot
-          </Button>
-        </div>
+            {targetExchange === "TOKOCRYPTO" ? (
+              <>
+                <Coins className="size-3.5 text-amber-500" />
+                Tokocrypto Spot Configuration
+              </>
+            ) : (
+              <>
+                <Layers className="size-3.5" />
+                Binance Futures Configuration
+              </>
+            )}
+          </Badge>
+        )}
       </div>
 
       {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
@@ -556,19 +592,26 @@ export default function CredentialConfig() {
                   <KeyIcon className="size-4 text-primary" />
                   Binance Futures Credentials
                 </CardTitle>
-                <Badge variant="outline" className="text-[10px] text-primary border-primary/30">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-primary border-primary/30"
+                >
                   Futures Market
                 </Badge>
               </div>
               <CardDescription className="text-xs">
-                API keys are stored and encrypted locally in the SQLite database.
+                API keys are stored and encrypted locally in the SQLite
+                database.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 flex-1">
               {/* Client Token */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="client-token" className="text-xs font-semibold">
+                  <Label
+                    htmlFor="client-token"
+                    className="text-xs font-semibold"
+                  >
                     Client Token (CryptoSpike License)
                   </Label>
                   {token && (
@@ -728,7 +771,10 @@ export default function CredentialConfig() {
                   <KeyIcon className="size-4 text-amber-500" />
                   Tokocrypto Spot Credentials
                 </CardTitle>
-                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/5">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/5"
+                >
                   Spot Market
                 </Badge>
               </div>
@@ -740,7 +786,10 @@ export default function CredentialConfig() {
               {/* Client Token */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="client-token" className="text-xs font-semibold">
+                  <Label
+                    htmlFor="client-token"
+                    className="text-xs font-semibold"
+                  >
                     Client Token (CryptoSpike License)
                   </Label>
                   {token && (
@@ -786,7 +835,9 @@ export default function CredentialConfig() {
                       variant="ghost"
                       size="sm"
                       className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
-                      onClick={() => setShowTokocryptoSecret(!showTokocryptoSecret)}
+                      onClick={() =>
+                        setShowTokocryptoSecret(!showTokocryptoSecret)
+                      }
                     >
                       {showTokocryptoSecret ? "Hide" : "Show"}
                     </Button>
@@ -861,7 +912,10 @@ export default function CredentialConfig() {
                 Risk & Execution Management
               </CardTitle>
               {targetExchange === "TOKOCRYPTO" && (
-                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-amber-600 border-amber-500/30"
+                >
                   Spot Execution
                 </Badge>
               )}
@@ -906,12 +960,16 @@ export default function CredentialConfig() {
                     >
                       Dry-Run Mode (Simulation)
                     </Label>
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 border-amber-500/40 text-amber-600">
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1 py-0 h-3.5 border-amber-500/40 text-amber-600"
+                    >
                       Paper Trading
                     </Badge>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Simulate spot buy & TP/SL monitoring locally without real funds.
+                    Simulate spot buy & TP/SL monitoring locally without real
+                    funds.
                   </p>
                 </div>
                 <Switch
@@ -967,8 +1025,10 @@ export default function CredentialConfig() {
                   Market: Spot 1x Cash-Only
                 </span>
                 <p>
-                  Pasar Spot Tokocrypto tidak menggunakan leverage maupun sistem margin likuidasi.
-                  Setiap posisi beli akan dipantau otomatis oleh background worker dengan target <strong>TP +5%</strong> dan <strong>SL -2.5%</strong>.
+                  Pasar Spot Tokocrypto tidak menggunakan leverage maupun sistem
+                  margin likuidasi. Setiap posisi beli akan dipantau otomatis
+                  oleh background worker dengan target <strong>TP +5%</strong>{" "}
+                  dan <strong>SL -2.5%</strong>.
                 </p>
               </div>
             )}
@@ -1002,7 +1062,9 @@ export default function CredentialConfig() {
                       {(
                         (testResult.balance * Number(riskPerTradePct)) /
                         100
-                      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                      ).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}{" "}
                       {testResult.quoteAsset || "USDT"}
                     </strong>{" "}
                     per single trade.
@@ -1013,10 +1075,12 @@ export default function CredentialConfig() {
                     Stop Loss simultaneously, your total exposure is up to{" "}
                     <strong>
                       ~
-                      {((testResult.balance * totalRiskPct) / 100).toLocaleString(
-                        undefined,
-                        { maximumFractionDigits: 2 },
-                      )}{" "}
+                      {(
+                        (testResult.balance * totalRiskPct) /
+                        100
+                      ).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}{" "}
                       {testResult.quoteAsset || "USDT"} ({totalRiskPct}%)
                     </strong>{" "}
                     of your available balance.
@@ -1024,8 +1088,8 @@ export default function CredentialConfig() {
                 </div>
               ) : (
                 <p className="text-[10px] text-muted-foreground italic mt-1">
-                  * Please run 'Test Connection' first to see the estimated allocation
-                  amount per trade.
+                  * Please run 'Test Connection' first to see the estimated
+                  allocation amount per trade.
                 </p>
               )}
             </div>
@@ -1308,7 +1372,9 @@ export default function CredentialConfig() {
             <div className="flex justify-between border-b pb-2">
               <span className="text-muted-foreground">Market Exchange:</span>
               <span className="font-semibold text-primary">
-                {targetExchange === "TOKOCRYPTO" ? "Tokocrypto (Spot)" : "Binance (Futures)"}
+                {targetExchange === "TOKOCRYPTO"
+                  ? "Tokocrypto (Spot)"
+                  : "Binance (Futures)"}
               </span>
             </div>
             {targetExchange === "TOKOCRYPTO" ? (
@@ -1319,7 +1385,9 @@ export default function CredentialConfig() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-muted-foreground">Execution Mode:</span>
-                  <span className={`font-semibold ${dryRun ? "text-amber-500" : "text-emerald-500"}`}>
+                  <span
+                    className={`font-semibold ${dryRun ? "text-amber-500" : "text-emerald-500"}`}
+                  >
                     {dryRun ? "Paper Trading (Dry-Run)" : "Live Spot Order"}
                   </span>
                 </div>
@@ -1368,7 +1436,9 @@ export default function CredentialConfig() {
             <div className="flex flex-col border-b pb-2 gap-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
-                  {targetExchange === "TOKOCRYPTO" ? "Max Total Allocation:" : "Total Max Risk:"}
+                  {targetExchange === "TOKOCRYPTO"
+                    ? "Max Total Allocation:"
+                    : "Total Max Risk:"}
                 </span>
                 <span className={`font-bold ${riskInfo.color.split(" ")[0]}`}>
                   {totalRiskPct}%
@@ -1382,7 +1452,9 @@ export default function CredentialConfig() {
                     <strong>Balance Preview [{riskInfo.label}]:</strong> Out of
                     your available balance of{" "}
                     <strong>
-                      {testResult.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                      {testResult.balance.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}{" "}
                       {testResult.quoteAsset || "USDT"}
                     </strong>
                     , allocation per trade is approximately{" "}
@@ -1391,7 +1463,9 @@ export default function CredentialConfig() {
                       {(
                         (testResult.balance * Number(riskPerTradePct)) /
                         100
-                      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                      ).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}{" "}
                       {testResult.quoteAsset || "USDT"}
                     </strong>
                     .
@@ -1399,8 +1473,8 @@ export default function CredentialConfig() {
                 </div>
               ) : (
                 <div className="text-xs mt-2 p-2.5 rounded-md bg-muted text-muted-foreground leading-relaxed italic">
-                  * Please run 'Test Connection' first to see the estimated allocation
-                  amount.
+                  * Please run 'Test Connection' first to see the estimated
+                  allocation amount.
                 </div>
               )}
             </div>

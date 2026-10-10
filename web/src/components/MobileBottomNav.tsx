@@ -1,38 +1,52 @@
-import { BriefcaseIcon, SlidersIcon, UserIcon, Terminal } from "lucide-react";
+import {
+  LayoutDashboard,
+  Layers,
+  Coins,
+  UserIcon,
+  Terminal,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface MobileBottomNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  activePositionsCount?: number;
+  binancePositionsCount?: number;
+  tokocryptoPositionsCount?: number;
 }
 
 export function MobileBottomNav({
   activeTab,
   setActiveTab,
-  activePositionsCount = 0,
+  binancePositionsCount = 0,
+  tokocryptoPositionsCount = 0,
 }: MobileBottomNavProps) {
   const navItems = [
     {
-      id: "positions",
-      label: "Positions",
-      icon: BriefcaseIcon,
-      badge: activePositionsCount > 0 ? activePositionsCount : undefined,
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
     },
     {
-      id: "config",
-      label: "Config",
-      icon: SlidersIcon,
+      id: "binance-positions",
+      label: "Binance",
+      icon: Layers,
+      badge: binancePositionsCount > 0 ? binancePositionsCount : undefined,
     },
     {
-      id: "profile",
-      label: "Profile",
-      icon: UserIcon,
+      id: "tokocrypto-positions",
+      label: "Tokocrypto",
+      icon: Coins,
+      badge: tokocryptoPositionsCount > 0 ? tokocryptoPositionsCount : undefined,
     },
     {
       id: "logs",
       label: "Logs",
       icon: Terminal,
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: UserIcon,
     },
   ];
 
