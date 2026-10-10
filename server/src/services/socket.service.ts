@@ -114,7 +114,9 @@ export async function handleIncomingSignal(data: any): Promise<void> {
       return;
     }
 
-    const targetExchange = (appConfig.targetExchange || "BINANCE").toUpperCase();
+    const targetExchange = (
+      appConfig.targetExchange || "BINANCE"
+    ).toUpperCase();
     const shouldExecuteTokocrypto =
       targetExchange === "TOKOCRYPTO" || targetExchange === "BOTH";
     const shouldExecuteBinance =

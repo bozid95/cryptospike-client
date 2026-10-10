@@ -52,3 +52,4 @@ DROP TABLE "AppConfig";
 ALTER TABLE "new_AppConfig" RENAME TO "AppConfig";
 PRAGMA foreign_keys=ON;
 PRAGMA defer_foreign_keys=OFF;
+

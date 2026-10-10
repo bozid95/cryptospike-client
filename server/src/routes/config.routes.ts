@@ -16,7 +16,9 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       prisma.tokocryptoConfig.findUnique({ where: { id: 1 } }),
     ]);
 
-    const targetExchange = (appConfig?.targetExchange || "BINANCE").toUpperCase();
+    const targetExchange = (
+      appConfig?.targetExchange || "BINANCE"
+    ).toUpperCase();
     const clientToken = appConfig?.clientToken || "";
 
     const binanceAuto = Boolean(binanceConfig?.autoExecute);
@@ -131,7 +133,9 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (binanceApiKey !== undefined)
       binanceUpdate.apiKey = binanceApiKey ? binanceApiKey.trim() : null;
     if (binanceApiSecret !== undefined)
-      binanceUpdate.apiSecret = binanceApiSecret ? binanceApiSecret.trim() : null;
+      binanceUpdate.apiSecret = binanceApiSecret
+        ? binanceApiSecret.trim()
+        : null;
     if (environment !== undefined) binanceUpdate.environment = environment;
     if (marginType !== undefined) binanceUpdate.marginType = marginType;
     if (leverage !== undefined) binanceUpdate.leverage = Number(leverage);

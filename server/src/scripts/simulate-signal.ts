@@ -19,7 +19,12 @@ async function runSimulation() {
     await prisma.binanceConfig.upsert({
       where: { id: 1 },
       update: { autoExecute: true, maxOpenPositions: 3, coinFilterMode: "ALL" },
-      create: { id: 1, autoExecute: true, maxOpenPositions: 3, coinFilterMode: "ALL" },
+      create: {
+        id: 1,
+        autoExecute: true,
+        maxOpenPositions: 3,
+        coinFilterMode: "ALL",
+      },
     });
     await prisma.tokocryptoConfig.upsert({
       where: { id: 1 },

@@ -22,7 +22,9 @@ export async function checkSpotTradesCycle(): Promise<void> {
       return;
     }
 
-    const config = await prisma.tokocryptoConfig.findUnique({ where: { id: 1 } });
+    const config = await prisma.tokocryptoConfig.findUnique({
+      where: { id: 1 },
+    });
     const apiKey = (config?.apiKey || "").trim();
     const apiSecret = (config?.apiSecret || "").trim();
     const isDryRun = config?.dryRun ?? false;
@@ -121,7 +123,9 @@ export async function closeSpotTradeManually(tradeId: string): Promise<{
       };
     }
 
-    const config = await prisma.tokocryptoConfig.findUnique({ where: { id: 1 } });
+    const config = await prisma.tokocryptoConfig.findUnique({
+      where: { id: 1 },
+    });
     const isDryRun = config?.dryRun ?? false;
     const apiKey = (config?.apiKey || "").trim();
     const apiSecret = (config?.apiSecret || "").trim();
