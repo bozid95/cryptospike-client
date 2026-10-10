@@ -196,7 +196,7 @@ export default function App() {
           </div>
         </SidebarProvider>
       )}
-      <Toaster />
+      <Toaster position="top-right" />
     </ThemeProvider>
   );
 }
