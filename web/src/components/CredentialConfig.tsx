@@ -1224,7 +1224,9 @@ export default function CredentialConfig({
               {activeExchangeForm === "TOKOCRYPTO" && (
                 <p className="text-[10px] text-muted-foreground">
                   * Minimum Tokocrypto:{" "}
-                  {tokocryptoQuoteAsset === "BIDR" ? "Rp 100.000" : "$5.00 USDT"}{" "}
+                  {tokocryptoQuoteAsset === "BIDR"
+                    ? "Rp 100.000"
+                    : "$5.00 USDT"}{" "}
                   per order spot.
                 </p>
               )}
@@ -1271,7 +1273,8 @@ export default function CredentialConfig({
                     {Number(riskPerTradePct) * Number(maxOpenPositions) >
                       testResult.balance && (
                       <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium pt-1 border-t border-amber-500/20">
-                        * Total alokasi ({tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
+                        * Total alokasi (
+                        {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {(
                           Number(riskPerTradePct) * Number(maxOpenPositions)
                         ).toLocaleString()}
@@ -1710,7 +1713,8 @@ export default function CredentialConfig({
                 activeExchangeForm === "TOKOCRYPTO" ? (
                   <div className="text-xs mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
                     <p>
-                      <strong>Tokocrypto Cash Allocation:</strong> Each spot buy order will allocate{" "}
+                      <strong>Tokocrypto Cash Allocation:</strong> Each spot buy
+                      order will allocate{" "}
                       <strong>
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {Number(riskPerTradePct).toLocaleString()}{" "}
