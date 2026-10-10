@@ -1,66 +1,107 @@
 # CryptoSpike Client
 
-CryptoSpike Client adalah aplikasi bot otomatis untuk mengeksekusi sinyal trading di Binance Futures (USDT-M). Aplikasi ini terhubung langsung ke server sinyal CryptoSpike menggunakan koneksi WebSocket, sehingga eksekusi order bisa berjalan sangat cepat begitu ada sinyal baru yang masuk.
+**CryptoSpike Client** adalah aplikasi bot trading otomatis mutakhir untuk mengeksekusi sinyal trading secara instan ke bursa **Binance Futures (USDT-M)** dan **Tokocrypto Spot Market**. 
 
-Semua data penting, seperti API Key dan API Secret Binance Anda, disimpan langsung di komputer atau server Anda sendiri menggunakan database lokal SQLite. Kredensial Anda tidak pernah dikirim ke server pusat atau pihak mana pun, sehingga akun Anda tetap aman di bawah kendali penuh Anda sendiri.
+Aplikasi ini terhubung langsung ke Server Sinyal CryptoSpike melalui koneksi WebSocket *real-time* berlatensi rendah (*ultra-low latency*), sehingga setiap sinyal yang terbit dapat langsung diproses dan dieksekusi tanpa jeda.
 
----
-
-## Kemampuan dan Fitur Utama
-
-- **Eksekusi Sinyal Cepat**: Menerima sinyal dari server secara instan dan langsung membuka posisi di Binance Futures tanpa jeda.
-- **Data Tersimpan Lokal**: API Key dan Secret Binance Anda tersimpan aman di database lokal Anda sendiri.
-- **Take Profit dan Stop Loss Otomatis**:
-  - Otomatis memasang target Take Profit bertahap: TP1 (50%), TP2 (30%), dan TP3 (20%).
-  - Otomatis memasang Stop Loss di bursa Binance untuk membatasi risiko kerugian.
-- **Pengaturan Risiko Sesuai Keinginan**:
-  - Bisa mengatur leverage bebas (1x sampai 125x) dan tipe margin (Isolated atau Cross).
-  - Bisa menentukan persentase modal yang siap dirisikokan pada setiap transaksi.
-  - Membatasi jumlah maksimal posisi yang boleh terbuka secara bersamaan.
-  - Menampilkan pratinjau estimasi nominal dolar (USD) yang berisiko sebelum Anda menyimpan setelan.
-- **Filter Pilihan Koin**:
-  - **All Market**: Mengeksekusi semua koin yang masuk dari sinyal.
-  - **Whitelist**: Hanya mengeksekusi koin-koin tertentu yang Anda pilih (misalnya hanya BTC dan ADA).
-  - **Blacklist**: Mengeksekusi semua koin kecuali koin-koin yang Anda masukkan ke daftar hitam.
-  - **Tombol Pilihan Cepat**: Tersedia tombol instan untuk memilih koin Bluechip, Layer 1, Top 50 CMC, atau Top 100 CMC.
-- **Tampilan Web yang Mudah Digunakan**: Dilengkapi dashboard untuk melihat posisi yang sedang berjalan, riwayat trading, dan catatan log aktivitas bot secara langsung.
+Semua data sensitif—termasuk API Key dan API Secret bursa Anda—disimpan secara lokal di perangkat/server Anda sendiri menggunakan basis data SQLite lokal. Kredensial Anda **tidak pernah dikirimkan** ke server sinyal atau pihak ketiga mana pun, memberikan keamanan maksimal di bawah kendali penuh Anda.
 
 ---
 
-## Kebutuhan Sistem
+## 🚀 Fitur Unggulan & Arsitektur Utama
 
-Sebelum memulai instalasi, pastikan perangkat atau server Anda sudah terpasang:
-- **Docker dan Docker Compose** (cara yang paling disarankan dan paling mudah).
-- Atau **Node.js** versi 20 ke atas (jika ingin menjalankan manual tanpa Docker).
+### 1. Multi-Exchange Architecture (Dual-Bursa Simultan)
+Pilih bursa target eksekusi sesuai preferensi dan profil risiko Anda:
+- **Binance Futures (USDT-M)**:
+  - Mendukung posisi **LONG & SHORT** dengan leverage bebas ($1\times$ hingga $125\times$).
+  - Pilihan tipe margin: **Isolated** atau **Cross Margin**.
+  - **Smart Multi-Take Profit**: Otomatis memasang TP bertahap di bursa: TP1 (50%), TP2 (30%), dan TP3 (20%).
+  - **Stop Loss Otomatis**: Memasang proteksi Stop Loss di Binance untuk membatasi risiko likuidasi.
+- **Tokocrypto Spot Market (OpenAPI v1)**:
+  - Pasar Spot 1x Cash-Only: Khusus posisi **BUY / LONG** tanpa risiko margin liquidation.
+  - Mendukung pilihan **Quote Asset**: **USDT** (misal: BTC_USDT, ETH_USDT) dan **BIDR** (Rupiah, misal: BTC_BIDR).
+  - **Fixed Cash Allocation**: Alokasi pembelian spot berbasis nominal kas tetap ($ / Rp) per transaksi yang disesuaikan secara presisi terhadap aturan `stepSize` dan `minNotional` bursa.
+  - **Background Spot Monitor**: Pemantauan harga otomatis setiap 4 detik untuk mengeksekusi Take Profit atau Stop Loss posisi spot.
+  - **Manual Sell Now & Close All**: Kemudahan menutup sebagian atau seluruh posisi spot aktif secara manual kapan saja dari dashboard.
+- **Mode BOTH (Dual Execution)**: Mengeksekusi order ke Binance Futures dan Tokocrypto Spot secara bersamaan dari satu sinyal yang sama.
 
 ---
 
-## Cara Instalasi
+### 2. 🛡️ Fee Shield Protection (Anti-Rugi Biaya Bursa)
+Transaksi spot pada bursa teregulasi seperti Tokocrypto dikenakan biaya transaksi dan pajak (Taker 0.15%, PPh Final 0.21%, ICEx 0.0444% per sisi, total *round-trip* $\approx 0.8088\%$).
 
-### Cara 1: Menggunakan Docker Compose (Paling Disarankan)
+Fitur **Fee Shield** otomatis mengevaluasi target Take Profit:
+- Jika TP1 sinyal dinilai terlalu tipis ($<+2.5\%$), sistem otomatis mengalihkan target ke TP2 atau menaikkannya ke batas aman minimal $+3.0\%$.
+- Menjamin margin keuntungan bersih (*net profit*) tetap positif dan tebal di atas biaya komisi dan pajak bursa.
 
-Cara ini paling praktis jika Anda menggunakan server VPS (seperti Ubuntu atau Debian) maupun panel hosting seperti Dokploy.
+---
 
-1. **Unduh repositori ini:**
+### 3. 🧪 Mode Dry-Run (Simulasi Tanpa Modal Riil)
+- Uji coba strategi dan alur eksekusi sinyal Tokocrypto Spot tanpa perlu menyetor dana atau menggunakan saldo asli.
+- Order simulasi dicatat dan dipantau di dashboard dengan kalkulasi PnL riil berdasarkan harga pasar terkini.
+
+---
+
+### 4. 🎯 Universal Coin Filter (Trading Scope)
+Batasi dan sesuaikan pasangan koin yang ingin Anda perdagangkan secara independen untuk Binance dan Tokocrypto:
+- **ALL**: Mengeksekusi seluruh sinyal koin yang terbit.
+- **WHITELIST**: Hanya mengeksekusi koin-koin pilihan yang ada di daftar putih Anda (misal: BTC, ETH, SOL).
+- **BLACKLIST**: Mengeksekusi semua koin *kecuali* koin-koin yang masuk dalam daftar hitam.
+- **Quick Preset Buttons**: Tombol instan untuk memilih koin **Bluechip**, **Layer 1**, **Top 50 CoinMarketCap**, atau **Top 100 CoinMarketCap**.
+- **Smart Symbol Dual-Match**: Otomatis mendeteksi variasi format simbol, seperti `BTCUSDT`, `BTC_USDT`, `BTC/USDT`, hingga multiplier memecoin (`1000PEPE` vs `PEPE`).
+
+---
+
+### 5. 📊 Interactive Risk & Allocation Calculator
+- **Live Balance Auto-Fetch**: Saldo dompet Futures dan Kas Spot dimuat otomatis dari bursa.
+- **Transparansi Risiko**:
+  - Pratinjau alokasi margin per trade, perkiraan contract size dengan leverage, dan batas risiko terburuk (*worst-case margin risk*).
+  - Pratinjau modal kas spot, total modal yang dibutuhkan untuk seluruh posisi terbuka, dan sisa cadangan kas (*Cash Reserve*).
+  - Indikator peringatan cerdas apabila alokasi modal melebihi saldo kas (*over-budget*) atau alokasi margin melebihi $100\%$ saldo dompet.
+
+---
+
+### 6. 💻 Dashboard Web Modern & Terstandarisasi
+- Antarmuka web responsif dengan navigasi bersih berbasis Tailwind CSS dan Lucide Icons.
+- Standardisasi bahasa Inggris yang konsisten dan profesional pada seluruh status, log eksekusi, dan notifikasi.
+- **Side-by-Side Dual-Exchange Snapshot**: Menampilkan metrik akun Binance dan Tokocrypto secara berdampingan.
+- **Live Mark Price Stream**: Pembaruan harga berjalan melalui WebSocket Binance Futures dan ticker Tokocrypto.
+
+---
+
+## 🛠️ Kebutuhan Sistem
+
+Sebelum memulai instalasi, pastikan sistem Anda telah terpasang salah satu dari opsi berikut:
+- **Docker & Docker Compose** (*Sangat disarankan untuk kemudahan deployment VPS / Server / Dokploy*).
+- Atau **Node.js versi 20 ke atas** bersama npm (jika ingin menjalankan manual tanpa Docker).
+
+---
+
+## 📥 Panduan Instalasi
+
+### Cara 1: Menggunakan Docker Compose (Rekomendasi Utama)
+
+Metode terbaik untuk server VPS (Ubuntu, Debian, CentOS) maupun panel hosting Dokploy/Coolify:
+
+1. **Clone repositori:**
    ```bash
    git clone https://github.com/bozid95/cryptospike-client.git
    cd cryptospike-client
    ```
 
-2. **Siapkan file konfigurasi environment:**
-   Salin file contoh pengaturan:
+2. **Siapkan environment file:**
    ```bash
    cp .env.example .env
    ```
-   Buka file `.env` jika Anda ingin mengubah pengaturan bawaan:
+   Sesuaikan isi `.env` jika diperlukan:
    ```env
    PORT=3080
    SERVER_URL=https://signal.forlearning.my.id
    CLIENT_TOKEN=
    ```
 
-3. **Atur port web (jika tidak menggunakan reverse proxy):**
-   Jika Anda menjalankan bot ini langsung di server biasa tanpa Dokploy atau Traefik, buka file `docker-compose.yml` dan pastikan bagian port diarahkan ke port yang Anda inginkan (misalnya port 3080):
+3. **Verifikasi port di `docker-compose.yml`:**
+   Pastikan port web telah diarahkan sesuai kebutuhan (contoh: port 3080):
    ```yaml
    services:
      client:
@@ -73,34 +114,30 @@ Cara ini paling praktis jika Anda menggunakan server VPS (seperti Ubuntu atau De
          - cryptospike_data:/app/server/data
    ```
 
-4. **Jalankan aplikasi:**
+4. **Jalankan container:**
    ```bash
    docker compose up --build -d
    ```
 
-5. **Buka di browser:**
-   Akses dashboard melalui alamat:
+5. **Akses Dashboard:**
+   Buka browser dan akses alamat:
    ```
    http://IP-SERVER-ANDA:3080
    ```
-   (Atau gunakan nama domain Anda jika Anda memakai Dokploy).
 
 ---
 
-### Cara 2: Menjalankan Manual di Komputer Lokal (Tanpa Docker)
+### Cara 2: Menjalankan Manual di Komputer Lokal (Node.js)
 
-Jika Anda ingin mencoba langsung di komputer Windows atau Mac menggunakan Node.js:
-
-1. **Jalankan bagian server (backend):**
+1. **Jalankan Backend Server:**
    ```bash
    cd server
    npm install
-   npx prisma db push
    npx prisma generate
    npm start
    ```
 
-2. **Jalankan bagian tampilan (frontend):**
+2. **Jalankan Frontend Web:**
    Buka jendela terminal baru:
    ```bash
    cd web
@@ -108,36 +145,37 @@ Jika Anda ingin mencoba langsung di komputer Windows atau Mac menggunakan Node.j
    npm run dev
    ```
 
-3. **Buka di browser:**
-   Kunjungi alamat `http://localhost:5173`.
+3. **Akses Dashboard:**
+   Buka browser di `http://localhost:5173`.
 
 ---
 
-## Panduan Penggunaan Pertama Kali
-
-Setelah dashboard web terbuka di browser Anda:
+## 📖 Panduan Konfigurasi Pertama Kali
 
 1. **Daftarkan Akun Admin**:
-   Saat pertama kali dibuka, buat username dan password baru untuk mengunci dashboard bot Anda.
-2. **Masukkan Token Lisensi**:
-   Buka menu **Bot Config & Credentials**, lalu tempelkan Client Token CryptoSpike yang Anda miliki.
-3. **Masukkan Kunci API Binance**:
-   - Pilih jaringan: **Testnet** (untuk uji coba dengan saldo virtual) atau **Live** (untuk akun asli).
-   - Masukkan Binance API Key dan API Secret Anda. Pastikan pada setelan API Binance Anda, izin **Enable Futures** sudah dicentang.
-   - Klik tombol **Test Connection** untuk mengecek apakah kunci API valid dan saldo terbaca.
-4. **Atur Risiko dan Pilihan Koin**:
-   - Tentukan leverage, tipe margin, dan risiko per trade yang Anda inginkan.
-   - Pada bagian **Coin Filter**, pilih apakah Anda ingin mengeksekusi semua koin atau hanya koin tertentu. Anda bisa menekan tombol cepat seperti **Top 50 CMC** atau **Top 100 CMC**.
-5. **Nyalakan Auto-Trade dan Simpan**:
-   - Nyalakan tombol **Auto-Trade**.
-   - Klik **Save Configuration**, periksa ringkasannya di jendela konfirmasi, lalu klik **Confirm & Save**.
-   - Bot sekarang sudah berjalan dan akan membuka posisi otomatis saat ada sinyal masuk.
+   Pada kunjungan pertama, buat username dan password untuk mengamankan akses ke dashboard bot Anda.
+2. **Masukkan License Token (Client Token)**:
+   Buka menu **Bot Settings & Credentials**, lalu masukkan Client Token lisensi CryptoSpike Anda.
+3. **Pilih Target Exchange**:
+   - Pilih bursa trading yang ingin dioperasikan: **Binance Futures**, **Tokocrypto Spot**, atau **BOTH (Dual Execution)**.
+4. **Konfigurasi Kredensial Bursa**:
+   - **Binance Futures**: Masukkan API Key & Secret (pilih *Testnet* atau *Live*). Pastikan opsi *Enable Futures* aktif pada manajemen API Binance Anda.
+   - **Tokocrypto Spot**: Masukkan API Key & Secret OpenAPI Tokocrypto serta pilih Quote Asset trading Anda (**USDT** atau **BIDR**).
+   - Klik tombol **Test Connection** untuk memverifikasi keabsahan API dan memuat saldo kas/wallet.
+5. **Atur Parameter Risiko & Alokasi**:
+   - Untuk **Binance**: Tentukan leverage ($1\times - 125\times$), margin type (Isolated/Cross), persentase risiko per trade (% Wallet), dan batas maksimal posisi terbuka.
+   - Untuk **Tokocrypto**: Tentukan alokasi nominal kas per order ($ USDT atau Rp BIDR) serta batas maksimal koin yang boleh dibeli bersamaan. Anda juga dapat mengaktifkan **Dry-Run (Simulasi)** untuk uji coba.
+6. **Setel Filter Koin (Trading Scope)**:
+   - Pilih mode `ALL`, `WHITELIST`, atau `BLACKLIST` dan manfaatkan tombol preset cepat (*Top 50 CMC*, *Top 100 CMC*, dll.).
+7. **Aktifkan Auto-Trade & Simpan**:
+   - Nyalakan sakelar **Auto-Trade**, klik **Save Configuration**, periksa pratinjau kalkulasi pada modal konfirmasi, lalu klik **Confirm & Save**.
+   - Bot sekarang aktif di latar belakang dan siap mengeksekusi setiap sinyal yang masuk secara otomatis!
 
 ---
 
-## Cara Menjalankan Tes Otomatis (Unit Test)
+## 🧪 Menjalankan Pengujian Otomatis (Unit Testing)
 
-Jika Anda ingin memastikan logika penyaringan koin berjalan dengan benar di sistem Anda:
+Untuk memverifikasi keakuratan logika filter koin dan perhitungan alokasi lot:
 
 ```bash
 cd server
@@ -146,25 +184,27 @@ npm test
 
 ---
 
-## Cara Memperbarui Bot (Update)
+## 🔄 Cara Memperbarui Bot (Update)
 
-Jika ada pembaruan kode dari repositori ini, Anda cukup menjalankan perintah berikut di folder proyek:
+Jika terdapat pembaruan kode pada repositori GitHub:
 
 ```bash
 git pull
 docker compose up --build -d
 ```
 
-Seluruh setelan dan akun Anda tetap aman tersimpan di volume database lokal.
+*Seluruh konfigurasi, kredensial, dan data transaksi Anda tetap aman tersimpan di volume database lokal.*
 
 ---
 
-## Catatan Risiko
+## ⚠️ Disclaimer & Manajemen Risiko
 
-Trading aset kripto di pasar Futures memiliki risiko yang tinggi. Bot ini hanya alat bantu untuk mengeksekusi order secara otomatis. Selalu gunakan dana yang siap Anda tanggung jika terjadi kerugian, uji coba terlebih dahulu menggunakan akun Testnet, dan gunakan manajemen risiko yang bijak. Segala keuntungan dan kerugian trading sepenuhnya merupakan tanggung jawab Anda sendiri.
+Trading aset kripto—khususnya pada pasar derivatif Futures maupun pasar Spot—memiliki tingkat volatilitas dan risiko kerugian modal yang nyata. 
+
+Aplikasi **CryptoSpike Client** berfungsi sebagai perangkat lunak otomatisasi eksekusi sinyal dan tidak menjamin keuntungan finansial tertentu. Selalu gunakan manajemen modal yang bijak, lakukan uji coba menggunakan akun Testnet atau mode Dry-Run sebelum menggunakan dana riil, dan jangan pernah merisikokan dana yang Anda tidak siap untuk kehilangan. Segala keputusan trading dan hasil finansial sepenuhnya merupakan tanggung jawab Anda sendiri.
 
 ---
 
-## Lisensi
+## 📄 Lisensi
 
-Proyek ini menggunakan lisensi MIT.
+Didistribusikan di bawah lisensi resmi **MIT License**.
