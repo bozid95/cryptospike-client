@@ -13,9 +13,9 @@ Semua data sensitif seperti API Key dan Secret tersimpan aman di database lokal 
   - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah).
   - **Mode BOTH**: Bisa menjalankan eksekusi ke Binance dan Tokocrypto secara bersamaan dari satu sinyal.
 - **Fee Shield (Tokocrypto)**: Menyesuaikan target Take Profit jika margin profit terlalu tipis, memastikan hasil trading tetap surplus setelah dipotong biaya bursa dan pajak.
-- **Background Spot Monitor**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP dan SL otomatis. Tersedia juga tombol manual *Sell Now* dan *Close All*.
+- **Background Spot Monitor**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP dan SL otomatis. Tersedia juga tombol manual _Sell Now_ dan _Close All_.
 - **Mode Dry-Run (Simulasi)**: Uji coba sinyal di Tokocrypto tanpa menggunakan saldo riil.
-- **Filter Koin**: Pilihan mode *All Market*, *Whitelist*, atau *Blacklist*, lengkap dengan tombol cepat (Top 50 CMC, Top 100 CMC, Bluechip, Layer 1).
+- **Filter Koin**: Pilihan mode _All Market_, _Whitelist_, atau _Blacklist_, lengkap dengan tombol cepat (Top 50 CMC, Top 100 CMC, Bluechip, Layer 1).
 - **Kalkulator Risiko**: Estimasi nominal risiko per trade, contract size, cadangan kas, serta peringatan otomatis jika alokasi melebihi saldo.
 - **Dashboard Web**: Tampilan modern untuk memantau posisi aktif, riwayat transaksi, live mark price, dan log eksekusi.
 
@@ -42,6 +42,7 @@ Buka dashboard di browser melalui `http://IP-SERVER-ANDA:3080`.
 ### 2. Menjalankan Manual (Node.js v20+)
 
 **Backend:**
+
 ```bash
 cd server
 npm install
@@ -50,6 +51,7 @@ npm start
 ```
 
 **Frontend:**
+
 ```bash
 cd web
 npm install
