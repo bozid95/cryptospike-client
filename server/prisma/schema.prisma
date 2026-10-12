@@ -57,19 +57,28 @@ model User {
 
 // Catatan Posisi Beli Koin Tokocrypto (Spot) Secara Lokal
 model SpotTrade {
-  id          String    @id @default(uuid())
-  exchange    String    @default("TOKOCRYPTO")
-  symbol      String    // Contoh: "BTC_USDT"
-  buyOrderId  String
-  entryPrice  Float
-  quantity    Float
-  tpPrice     Float     // Entry + 5%
-  slPrice     Float     // Entry - 2.5%
-  status      String    @default("OPEN") // "OPEN", "TP_CLOSED", "SL_CLOSED", "MANUAL_CLOSED"
-  exitPrice   Float?
-  exitOrderId String?
-  pnlUsd      Float?
-  createdAt   DateTime  @default(now())
-  closedAt    DateTime?
+  id           String    @id @default(uuid())
+  exchange     String    @default("TOKOCRYPTO")
+  symbol       String    // Contoh: "BTC_USDT"
+  buyOrderId   String
+  entryPrice   Float
+  quantity     Float
+  remainingQty Float?    // Sisa koin yang belum terjual
+  tp1Price     Float?
+  tp2Price     Float?
+  tp3Price     Float?
+  tp1Qty       Float?    // Alokasi kuantitas untuk TP1 (50% / merged)
+  tp2Qty       Float?    // Alokasi kuantitas untuk TP2 (30% / merged)
+  tp3Qty       Float?    // Alokasi kuantitas untuk TP3 (20% / merged)
+  tpStage      Int       @default(0) // 0 = belum TP, 1 = TP1 hit, 2 = TP2 hit, 3 = Full TP
+  realizedPnl  Float     @default(0) // Akumulasi profit terkunci (USD)
+  tpPrice      Float     // Target fallback / backward compatibility
+  slPrice      Float     // Entry - 2.5%
+  status       String    @default("OPEN") // "OPEN", "TP_CLOSED", "SL_CLOSED", "MANUAL_CLOSED"
+  exitPrice    Float?
+  exitOrderId  String?
+  pnlUsd       Float?
+  createdAt    DateTime  @default(now())
+  closedAt     DateTime?
 }
 

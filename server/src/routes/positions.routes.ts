@@ -56,15 +56,24 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
             }
           } catch {}
 
+          const activeQty = trade.remainingQty ?? trade.quantity;
           const unRealizedProfit =
-            (markPrice - trade.entryPrice) * trade.quantity;
+            (markPrice - trade.entryPrice) * activeQty +
+            (trade.realizedPnl || 0);
           const roiPct =
             trade.entryPrice > 0
               ? ((markPrice - trade.entryPrice) / trade.entryPrice) * 100
               : 0;
-          const notionalValue = trade.quantity * markPrice;
+          const notionalValue = activeQty * markPrice;
 
           totalUnrealizedProfit += unRealizedProfit;
+
+          const activeTpPrice =
+            trade.tpStage === 0
+              ? trade.tp1Price || trade.tpPrice
+              : trade.tpStage === 1
+                ? trade.tp2Price || trade.tpPrice
+                : trade.tp3Price || trade.tpPrice;
 
           return {
             id: trade.id,
@@ -72,16 +81,23 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
             side: "LONG" as const,
             entryPrice: trade.entryPrice,
             markPrice,
-            positionAmt: trade.quantity,
+            positionAmt: activeQty,
+            totalQty: trade.quantity,
+            remainingQty: activeQty,
+            tpStage: trade.tpStage,
+            realizedPnl: trade.realizedPnl || 0,
             leverage: 1,
             unRealizedProfit,
             liquidationPrice: 0,
-            isolatedMargin: trade.quantity * trade.entryPrice,
+            isolatedMargin: activeQty * trade.entryPrice,
             notionalValue,
             roiPct,
             distanceToLiqPct: 0,
             marginType: "SPOT",
-            tpPrice: trade.tpPrice,
+            tpPrice: activeTpPrice,
+            tp1Price: trade.tp1Price,
+            tp2Price: trade.tp2Price,
+            tp3Price: trade.tp3Price,
             slPrice: trade.slPrice,
             status: trade.status,
             createdAt: trade.createdAt,

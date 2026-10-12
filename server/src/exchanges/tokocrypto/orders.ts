@@ -151,6 +151,94 @@ export function calculateSpotOrderQuantity(params: {
   };
 }
 
+export interface TokocryptoTpPlan {
+  tp1Price: number;
+  tp2Price: number;
+  tp3Price: number;
+  tp1Qty: number;
+  tp2Qty: number;
+  tp3Qty: number;
+  slPrice: number;
+  isMergedToSingle: boolean;
+}
+
+/**
+ * Menghitung alokasi parsial TP1 (50%), TP2 (30%), TP3 (20%) dan Stop Loss untuk Tokocrypto Spot
+ * dilengkapi proteksi FeeShield (min +2.5%) dan Smart Merge jika notional per tier < minNotional ($5).
+ */
+export function calculateTokocryptoTpPlan(params: {
+  totalQty: number;
+  entryPrice: number;
+  tp1?: number | undefined;
+  tp2?: number | undefined;
+  tp3?: number | undefined;
+  sl?: number | undefined;
+  stepSize: number;
+  minNotional: number;
+}): TokocryptoTpPlan {
+  const { totalQty, entryPrice, tp1, tp2, tp3, sl, stepSize, minNotional } =
+    params;
+
+  // ── FEE SHIELD: Target minimal kotor adalah +2.5% agar margin profit bersih tetap tebal di atas biaya bursa ──
+  const minGainPct = 2.5;
+  let targetTp1 = tp1 ? Number(tp1) : entryPrice * 1.03;
+  const tp1GainPct = ((targetTp1 - entryPrice) / entryPrice) * 100;
+
+  if (tp1GainPct < minGainPct) {
+    if (tp2 && ((Number(tp2) - entryPrice) / entryPrice) * 100 >= minGainPct) {
+      targetTp1 = Number(tp2);
+    } else {
+      targetTp1 = entryPrice * 1.03;
+    }
+  }
+
+  const targetTp2 =
+    tp2 && Number(tp2) > targetTp1 ? Number(tp2) : targetTp1 * 1.015;
+  const targetTp3 =
+    tp3 && Number(tp3) > targetTp2 ? Number(tp3) : targetTp2 * 1.02;
+  const slPrice = sl ? Number(sl) : entryPrice * 0.975;
+
+  const precision = Math.max(0, Math.round(-Math.log10(stepSize)));
+  const roundStepLocal = (val: number) => {
+    const stepped = Math.floor((val + stepSize * 1e-6) / stepSize) * stepSize;
+    return parseFloat(stepped.toFixed(precision));
+  };
+
+  let qty1 = roundStepLocal(totalQty * 0.5);
+  let qty2 = roundStepLocal(totalQty * 0.3);
+  let qty3 = roundStepLocal(Math.max(0, totalQty - qty1 - qty2));
+
+  // Smart TP Merge jika nilai notional < minNotional (standar $5 USDT di Tokocrypto)
+  if (qty3 > 0 && qty3 * targetTp3 < minNotional) {
+    qty2 = roundStepLocal(qty2 + qty3);
+    qty3 = 0;
+  }
+  if (qty2 > 0 && qty2 * targetTp2 < minNotional) {
+    qty1 = totalQty;
+    qty2 = 0;
+  } else if (qty3 === 0 && qty2 > 0) {
+    qty2 = parseFloat((totalQty - qty1).toFixed(precision));
+  } else if (qty3 > 0) {
+    qty3 = parseFloat((totalQty - qty1 - qty2).toFixed(precision));
+  }
+
+  const isMergedToSingle = qty2 === 0 && qty3 === 0;
+  if (isMergedToSingle) {
+    qty1 = totalQty;
+  }
+
+  return {
+    tp1Price: targetTp1,
+    tp2Price: targetTp2,
+    tp3Price: targetTp3,
+    tp1Qty: qty1,
+    tp2Qty: qty2,
+    tp3Qty: qty3,
+    slPrice,
+    isMergedToSingle,
+  };
+}
+
 /**
  * Mengirim order BUY atau SELL ke Tokocrypto Spot
  */
@@ -245,6 +333,7 @@ export async function executeTokocryptoSignalOrder(
   success: boolean;
   message: string;
   order?: TokocryptoOrderResult;
+  tpPlan?: TokocryptoTpPlan;
   tpPrice?: number;
   slPrice?: number;
   simulated?: boolean;
@@ -335,12 +424,24 @@ export async function executeTokocryptoSignalOrder(
     const rawQty = simNotional / entryPrice;
     const simQty = Number(rawQty.toFixed(rawQty < 1 ? 6 : 4));
 
+    const tpPlan = calculateTokocryptoTpPlan({
+      totalQty: simQty > 0 ? simQty : 1,
+      entryPrice,
+      tp1: signal.tp1,
+      tp2: signal.tp2,
+      tp3: signal.tp3,
+      sl: signal.sl,
+      stepSize: 0.0001,
+      minNotional: 5.0,
+    });
+
     return {
       success: true,
       message: simulatedMsg,
       simulated: true,
-      tpPrice,
-      slPrice,
+      tpPlan,
+      tpPrice: tpPlan.tp1Price,
+      slPrice: tpPlan.slPrice,
       order: {
         orderId: `SIM-${Date.now()}`,
         symbol: formattedSymbol,
@@ -431,12 +532,38 @@ export async function executeTokocryptoSignalOrder(
     const successMsg = `BUY order for ${formattedSymbol} executed successfully on Tokocrypto! OrderID: ${orderResult.orderId}`;
     addAppLog("SUCCESS", "Tokocrypto", successMsg);
 
+    const tpPlan = calculateTokocryptoTpPlan({
+      totalQty: orderResult.executedQty,
+      entryPrice,
+      tp1: signal.tp1,
+      tp2: signal.tp2,
+      tp3: signal.tp3,
+      sl: signal.sl,
+      stepSize: rules.stepSize,
+      minNotional: rules.minNotional,
+    });
+
+    if (tpPlan.isMergedToSingle) {
+      addAppLog(
+        "INFO",
+        "Tokocrypto",
+        `[SmartMerge] Allocation under $15. TP merged into single target: $${tpPlan.tp1Price.toFixed(4)} (100% qty: ${tpPlan.tp1Qty}).`,
+      );
+    } else {
+      addAppLog(
+        "INFO",
+        "Tokocrypto",
+        `[Multi-TP Plan] TP1: 50% (${tpPlan.tp1Qty}) @ $${tpPlan.tp1Price.toFixed(4)} | TP2: 30% (${tpPlan.tp2Qty}) @ $${tpPlan.tp2Price.toFixed(4)} | TP3: 20% (${tpPlan.tp3Qty}) @ $${tpPlan.tp3Price.toFixed(4)} | SL: $${tpPlan.slPrice.toFixed(4)}.`,
+      );
+    }
+
     return {
       success: true,
       message: successMsg,
       order: orderResult,
-      tpPrice,
-      slPrice,
+      tpPlan,
+      tpPrice: tpPlan.tp1Price,
+      slPrice: tpPlan.slPrice,
     };
   } catch (err: any) {
     const errorMsg = `Failed to execute Tokocrypto order for ${formattedSymbol}: ${err.message}`;

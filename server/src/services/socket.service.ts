@@ -152,15 +152,35 @@ export async function handleIncomingSignal(data: any): Promise<void> {
 
           // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
           if (result.success && result.order) {
+            const plan = result.tpPlan;
+            const executedQty = result.order.executedQty;
             await prisma.spotTrade.create({
               data: {
                 exchange: "TOKOCRYPTO",
                 symbol: result.order.symbol,
                 buyOrderId: result.order.orderId,
                 entryPrice: Number(data.entryPrice),
-                quantity: result.order.executedQty,
-                tpPrice: result.tpPrice || Number(data.entryPrice) * 1.05,
-                slPrice: result.slPrice || Number(data.entryPrice) * 0.975,
+                quantity: executedQty,
+                remainingQty: executedQty,
+                tp1Price:
+                  plan?.tp1Price ||
+                  result.tpPrice ||
+                  Number(data.entryPrice) * 1.05,
+                tp2Price: plan?.tp2Price ?? null,
+                tp3Price: plan?.tp3Price ?? null,
+                tp1Qty: plan?.tp1Qty ?? executedQty,
+                tp2Qty: plan?.tp2Qty ?? 0,
+                tp3Qty: plan?.tp3Qty ?? 0,
+                tpStage: 0,
+                realizedPnl: 0,
+                tpPrice:
+                  plan?.tp1Price ||
+                  result.tpPrice ||
+                  Number(data.entryPrice) * 1.05,
+                slPrice:
+                  plan?.slPrice ||
+                  result.slPrice ||
+                  Number(data.entryPrice) * 0.975,
                 status: "OPEN",
               },
             });
