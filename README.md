@@ -10,10 +10,10 @@ Semua data sensitif seperti API Key dan Secret tersimpan aman di database lokal 
 
 - **Mendukung Dua Bursa (Multi-Exchange)**:
   - **Binance Futures (USDT-M)**: Posisi Long & Short, leverage 1x - 125x, margin Isolated/Cross, serta Take Profit bertahap (TP1 50%, TP2 30%, TP3 20%) dan Stop Loss otomatis.
-  - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah).
-  - **Mode BOTH**: Bisa menjalankan eksekusi ke Binance dan Tokocrypto secara bersamaan dari satu sinyal.
-- **Fee Shield (Tokocrypto)**: Menyesuaikan target Take Profit jika margin profit terlalu tipis, memastikan hasil trading tetap surplus setelah dipotong biaya bursa dan pajak.
-- **Background Spot Monitor**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP dan SL otomatis. Tersedia juga tombol manual _Sell Now_ dan _Close All_.
+  - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah). Dilengkapi Take Profit bertahap dinamis (TP1 50%, TP2 30%, TP3 20%) dengan **Smart Merge** (otomatis menggabungkan target jika order di bawah batas minimal $5 bursa) serta Stop Loss otomatis mengikuti sinyal.
+  - **Mode BOTH**: Eksekusi sinyal ke Binance dan Tokocrypto secara bersamaan dari satu sinyal.
+- **Fee Shield (Tokocrypto)**: Proteksi otomatis yang menyesuaikan target Take Profit jika margin profit terlalu tipis, memastikan hasil trading tetap surplus di atas biaya bursa dan pajak.
+- **Background Spot Monitor**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP bertahap dan SL otomatis secara real-time. Tersedia juga tombol manual _Sell Now_ dan _Close All_.
 - **Mode Dry-Run (Simulasi)**: Uji coba sinyal di Tokocrypto tanpa menggunakan saldo riil.
 - **Filter Koin**: Pilihan mode _All Market_, _Whitelist_, atau _Blacklist_, lengkap dengan tombol cepat (Top 50 CMC, Top 100 CMC, Bluechip, Layer 1).
 - **Kalkulator Risiko**: Estimasi nominal risiko per trade, contract size, cadangan kas, serta peringatan otomatis jika alokasi melebihi saldo.
