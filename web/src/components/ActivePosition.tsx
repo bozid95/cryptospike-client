@@ -413,7 +413,7 @@ export default function ActivePosition({
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 pt-1.5 border-t border-border/50">
                 <span>Targets:</span>
                 <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400 text-[11px] sm:text-xs">
-                  +5% TP / -2.5% SL
+                  Multi-Stage TP (50/30/20) / SL
                 </span>
               </div>
             </CardContent>
@@ -508,7 +508,7 @@ export default function ActivePosition({
             </div>
             <p className="text-xs text-muted-foreground hidden sm:block">
               {activeExchange === "TOKOCRYPTO"
-                ? "List of active Tokocrypto Spot coin holdings with automated TP (+5%) and SL (-2.5%) monitoring."
+                ? "List of active Tokocrypto Spot coin holdings with Multi-Stage TP (50/30/20) and SL monitoring."
                 : "List of open Binance Futures positions with real-time entry, liquidation, and PnL."}
             </p>
           </div>

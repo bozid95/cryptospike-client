@@ -1122,7 +1122,7 @@ export default function CredentialConfig({
             </div>
             <CardDescription className="text-xs hidden sm:block">
               {activeExchangeForm === "TOKOCRYPTO"
-                ? "Spot trading execution parameters with auto TP (+5%) & SL (-2.5%)."
+                ? "Spot trading execution parameters with Multi-Stage TP (50/30/20) & Smart Merge."
                 : "Execution parameters when a signal is received on Binance Futures."}
             </CardDescription>
           </CardHeader>
@@ -1227,8 +1227,9 @@ export default function CredentialConfig({
                 <p>
                   Tokocrypto Spot operates without leverage or margin
                   liquidation risks. Each buy position is monitored
-                  automatically with targets of <strong>TP +5%</strong> and{" "}
-                  <strong>SL -2.5%</strong>.
+                  automatically with targets of{" "}
+                  <strong>Multi-Stage TP (50/30/20)</strong> with{" "}
+                  <strong>Smart Merge & Stop Loss</strong>.
                 </p>
               </div>
             )}
@@ -1756,7 +1757,7 @@ export default function CredentialConfig({
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-muted-foreground">Target TP / SL:</span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    +5% TP / -2.5% SL
+                    Multi-Stage TP (50/30/20) / Dynamic SL
                   </span>
                 </div>
               </>

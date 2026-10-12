@@ -277,7 +277,7 @@ export function DashboardSummary({
                 {isDual
                   ? "Signals are executed simultaneously on Binance Futures (LONG & SHORT) and Tokocrypto Spot (LONG Only)."
                   : isTokocrypto
-                    ? "Signals are executed exclusively on Tokocrypto Spot with 1x Cash and auto TP (+5%) / SL (-2.5%)."
+                    ? "Signals are executed exclusively on Tokocrypto Spot with 1x Cash and Multi-Stage TP (50/30/20) / SL."
                     : "Signals are executed exclusively on Binance Futures with leverage & isolated margin."}
               </p>
             </div>
@@ -615,7 +615,8 @@ export function DashboardSummary({
               </Button>
             </div>
             <CardDescription className="text-xs hidden sm:block">
-              Live spot coin holdings monitored with auto TP (+5%) & SL (-2.5%).
+              Live spot coin holdings monitored with Multi-Stage TP (50/30/20) &
+              SL.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 p-3.5 sm:p-6 pt-0 sm:pt-0">
