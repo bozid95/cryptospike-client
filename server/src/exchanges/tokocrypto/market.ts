@@ -71,22 +71,66 @@ export async function getTokocryptoSymbolRules(
       );
 
       if (match) {
+        const filters = Array.isArray(match.filters) ? match.filters : [];
+        const lotSizeFilter = filters.find(
+          (f: any) => f.filterType === "LOT_SIZE",
+        );
+        const priceFilter = filters.find(
+          (f: any) => f.filterType === "PRICE_FILTER",
+        );
+        const notionalFilter = filters.find(
+          (f: any) =>
+            f.filterType === "NOTIONAL" || f.filterType === "MIN_NOTIONAL",
+        );
+
+        const stepSize = parseFloat(
+          lotSizeFilter?.stepSize ||
+            match.stepSize ||
+            match.qtyStep ||
+            "0.0001",
+        );
+        const tickSize = parseFloat(
+          priceFilter?.tickSize || match.tickSize || match.priceStep || "0.01",
+        );
+        const minQty = parseFloat(
+          lotSizeFilter?.minQty ||
+            match.minQty ||
+            match.minTradeQty ||
+            "0.0001",
+        );
+        const maxQty = parseFloat(
+          lotSizeFilter?.maxQty ||
+            match.maxQty ||
+            match.maxTradeQty ||
+            "1000000",
+        );
+        const minNotional = parseFloat(
+          notionalFilter?.minNotional ||
+            match.minNotional ||
+            match.minNominal ||
+            match.minTradeAmount ||
+            "5.0",
+        );
+
+        const quantityPrecision =
+          match.quantityPrecision ??
+          (stepSize > 0 ? Math.max(0, Math.round(-Math.log10(stepSize))) : 4);
+
+        const pricePrecision =
+          match.pricePrecision ??
+          (tickSize > 0 ? Math.max(0, Math.round(-Math.log10(tickSize))) : 2);
+
         const rules: TokocryptoSymbolRules = {
           symbol: formattedSymbol,
           baseAsset: match.baseAsset || formattedSymbol.split("_")[0],
           quoteAsset: match.quoteAsset || formattedSymbol.split("_")[1],
-          minQty: parseFloat(match.minQty || match.minTradeQty || "0.0001"),
-          maxQty: parseFloat(match.maxQty || match.maxTradeQty || "1000000"),
-          stepSize: parseFloat(match.stepSize || match.qtyStep || "0.0001"),
-          minNotional: parseFloat(
-            match.minNotional ||
-              match.minNominal ||
-              match.minTradeAmount ||
-              "5.0",
-          ),
-          tickSize: parseFloat(match.tickSize || match.priceStep || "0.01"),
-          pricePrecision: match.pricePrecision ?? 2,
-          quantityPrecision: match.quantityPrecision ?? 4,
+          minQty,
+          maxQty,
+          stepSize,
+          minNotional,
+          tickSize,
+          pricePrecision,
+          quantityPrecision,
         };
         tokocryptoSymbolCache.set(formattedSymbol, rules);
         return rules;

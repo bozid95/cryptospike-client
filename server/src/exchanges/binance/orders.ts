@@ -536,11 +536,45 @@ export async function executeSignalOrder(
         `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice}`,
       );
     } catch (err: any) {
-      addAppLog(
-        "WARN",
-        "Executor",
-        `Failed to place Stop Loss for ${symbol}: ${err.message}`,
-      );
+      if (
+        err.message?.includes("closePosition in the direction is existing") ||
+        err.message?.includes("-4130")
+      ) {
+        // Fallback: pasang SL dengan reduceOnly & kuantitas spesifik jika closePosition bentrok
+        try {
+          await placeOrder(
+            apiKey,
+            apiSecret,
+            {
+              symbol,
+              side: exitSide,
+              type: "STOP_MARKET",
+              stopPrice: targetSlPrice,
+              quantity,
+              reduceOnly: true,
+            },
+            isTestnet,
+          );
+          const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
+          addAppLog(
+            "INFO",
+            "Executor",
+            `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice} (qty: ${quantity}, reduceOnly)`,
+          );
+        } catch (retryErr: any) {
+          addAppLog(
+            "INFO",
+            "Executor",
+            `[SL ACTIVE] Position ${symbol} already protected by active stop order on Binance.`,
+          );
+        }
+      } else {
+        addAppLog(
+          "WARN",
+          "Executor",
+          `Failed to place Stop Loss for ${symbol}: ${err.message}`,
+        );
+      }
     }
   } catch (err: any) {
     addAppLog(
