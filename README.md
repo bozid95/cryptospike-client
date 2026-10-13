@@ -10,7 +10,7 @@ Semua data sensitif seperti API Key dan Secret tersimpan aman di database lokal 
 
 - **Mendukung Dua Bursa (Multi-Exchange)**:
   - **Binance Futures (USDT-M)**: Posisi Long & Short, leverage 1x - 125x, margin Isolated/Cross, serta Take Profit bertahap (TP1 50%, TP2 30%, TP3 20%) dan Stop Loss otomatis.
-  - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah). Dilengkapi perhitungan kuantitas bersih koin (*Net Quantity Accounting*) pasca komisi bursa, Take Profit bertahap dinamis (TP1 50%, TP2 30%, TP3 20%) dengan **Smart Merge & Dynamic Auto-Merge** (mencegah sisa koin tanggung di bawah $5 bursa), serta Stop Loss otomatis.
+  - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah). Dilengkapi perhitungan kuantitas bersih koin (_Net Quantity Accounting_) pasca komisi bursa, Take Profit bertahap dinamis (TP1 50%, TP2 30%, TP3 20%) dengan **Smart Merge & Dynamic Auto-Merge** (mencegah sisa koin tanggung di bawah $5 bursa), serta Stop Loss otomatis.
   - **Mode BOTH**: Eksekusi sinyal ke Binance dan Tokocrypto secara bersamaan dari satu sinyal.
 - **Fee Shield (Tokocrypto)**: Proteksi otomatis yang menyesuaikan target Take Profit jika margin profit terlalu tipis, memastikan hasil trading tetap surplus di atas biaya bursa dan pajak.
 - **Background Spot Monitor & Hold Mode**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP bertahap dan SL otomatis secara real-time. Jika toggle **Auto-Trade** dimatikan, pemantau otomatis dijeda (**Hold Mode**) sehingga aset koin tetap aman di-hold tanpa auto-sell. Tersedia juga deteksi auto-sync posisi kosong serta tombol manual _Sell Now_ dan _Close All_.
