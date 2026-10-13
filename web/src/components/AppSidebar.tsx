@@ -222,7 +222,9 @@ export function AppSidebar({
         </SidebarMenu>
         <div className="px-2 pt-1 pb-0 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
           <span>CryptoSpike Client</span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">v{appVersion}</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+            v{appVersion}
+          </span>
         </div>
       </SidebarFooter>
       <SidebarRail />
