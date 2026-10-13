@@ -32,6 +32,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: { username: string; role: string };
   onLogout: () => void;
   botConnected: boolean;
+  appVersion?: string;
   binancePositionsCount?: number;
   tokocryptoPositionsCount?: number;
 }
@@ -42,6 +43,7 @@ export function AppSidebar({
   user,
   onLogout,
   botConnected,
+  appVersion = "1.0.0",
   binancePositionsCount = 0,
   tokocryptoPositionsCount = 0,
   ...props
@@ -137,9 +139,9 @@ export function AppSidebar({
                   CryptoSpike
                   <Badge
                     variant="outline"
-                    className="text-[10px] px-1 py-0 h-4 border-emerald-500/40 text-emerald-600 bg-emerald-500/5"
+                    className="text-[10px] px-1 py-0 h-4 border-emerald-500/40 text-emerald-600 bg-emerald-500/5 font-mono font-medium"
                   >
-                    CLIENT
+                    v{appVersion}
                   </Badge>
                 </span>
                 <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
@@ -218,6 +220,10 @@ export function AppSidebar({
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
+        <div className="px-2 pt-1 pb-0 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+          <span>CryptoSpike Client</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">v{appVersion}</span>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

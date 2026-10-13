@@ -59,6 +59,7 @@ export default function App() {
   const [status, setStatus] = useState({
     bot_connected: false,
     server_url: "",
+    version: "1.0.0",
   });
 
   // Simpan activeTab ke localStorage & sinkronkan ke URL hash
@@ -90,7 +91,11 @@ export default function App() {
           setStatus(data);
         }
       } catch (err) {
-        setStatus({ bot_connected: false, server_url: "localhost:3030" });
+        setStatus({
+          bot_connected: false,
+          server_url: "localhost:3030",
+          version: "1.0.0",
+        });
       }
     };
     fetchStatus();
@@ -188,6 +193,7 @@ export default function App() {
               user={user}
               onLogout={handleLogout}
               botConnected={status.bot_connected}
+              appVersion={status.version || "1.0.0"}
               binancePositionsCount={binancePositionsCount}
               tokocryptoPositionsCount={tokocryptoPositionsCount}
             />
