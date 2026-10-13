@@ -321,8 +321,8 @@ export async function checkSpotTradesCycle(): Promise<void> {
 
             const plannedHasNextStage = Boolean(
               remainingQty - requestedTp1Qty > 0 &&
-                ((trade.tp2Qty && trade.tp2Qty > 0) ||
-                  (trade.tp3Qty && trade.tp3Qty > 0)),
+              ((trade.tp2Qty && trade.tp2Qty > 0) ||
+                (trade.tp3Qty && trade.tp3Qty > 0)),
             );
 
             let sellQty = requestedTp1Qty;
@@ -454,8 +454,8 @@ export async function checkSpotTradesCycle(): Promise<void> {
 
             const plannedHasNextStage = Boolean(
               remainingQty - requestedTp2Qty > 0 &&
-                trade.tp3Qty &&
-                trade.tp3Qty > 0,
+              trade.tp3Qty &&
+              trade.tp3Qty > 0,
             );
 
             let sellQty = requestedTp2Qty;

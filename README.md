@@ -10,10 +10,10 @@ Semua data sensitif seperti API Key dan Secret tersimpan aman di database lokal 
 
 - **Mendukung Dua Bursa (Multi-Exchange)**:
   - **Binance Futures (USDT-M)**: Posisi Long & Short, leverage 1x - 125x, margin Isolated/Cross, serta Take Profit bertahap (TP1 50%, TP2 30%, TP3 20%) dan Stop Loss otomatis.
-  - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah). Dilengkapi Take Profit bertahap dinamis (TP1 50%, TP2 30%, TP3 20%) dengan **Smart Merge** (otomatis menggabungkan target jika order di bawah batas minimal $5 bursa) serta Stop Loss otomatis mengikuti sinyal.
+  - **Tokocrypto Spot**: Pasar Spot 1x (khusus Buy/Long) tanpa risiko likuidasi margin, mendukung pair USDT dan BIDR (Rupiah). Dilengkapi perhitungan kuantitas bersih koin (*Net Quantity Accounting*) pasca komisi bursa, Take Profit bertahap dinamis (TP1 50%, TP2 30%, TP3 20%) dengan **Smart Merge & Dynamic Auto-Merge** (mencegah sisa koin tanggung di bawah $5 bursa), serta Stop Loss otomatis.
   - **Mode BOTH**: Eksekusi sinyal ke Binance dan Tokocrypto secara bersamaan dari satu sinyal.
 - **Fee Shield (Tokocrypto)**: Proteksi otomatis yang menyesuaikan target Take Profit jika margin profit terlalu tipis, memastikan hasil trading tetap surplus di atas biaya bursa dan pajak.
-- **Background Spot Monitor**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP bertahap dan SL otomatis secara real-time. Tersedia juga tombol manual _Sell Now_ dan _Close All_.
+- **Background Spot Monitor & Hold Mode**: Pemantau posisi spot aktif di latar belakang (tiap 4 detik) untuk eksekusi TP bertahap dan SL otomatis secara real-time. Jika toggle **Auto-Trade** dimatikan, pemantau otomatis dijeda (**Hold Mode**) sehingga aset koin tetap aman di-hold tanpa auto-sell. Tersedia juga deteksi auto-sync posisi kosong serta tombol manual _Sell Now_ dan _Close All_.
 - **Mode Dry-Run (Simulasi)**: Uji coba sinyal di Tokocrypto tanpa menggunakan saldo riil.
 - **Filter Koin**: Pilihan mode _All Market_, _Whitelist_, atau _Blacklist_, lengkap dengan tombol cepat (Top 50 CMC, Top 100 CMC, Bluechip, Layer 1).
 - **Kalkulator Risiko**: Estimasi nominal risiko per trade, contract size, cadangan kas, serta peringatan otomatis jika alokasi melebihi saldo.
@@ -72,7 +72,7 @@ Buka di browser melalui `http://localhost:5173`.
 4. **Atur Risiko & Filter Koin**:
    - Tentukan leverage, persentase risiko (Binance), atau alokasi nominal kas (Tokocrypto).
    - Tentukan filter koin jika hanya ingin trading koin tertentu.
-5. **Aktifkan Auto-Trade**: Nyalakan toggle Auto-Trade, lalu klik **Save Configuration**. Bot sudah siap berjalan otomatis.
+5. **Aktifkan Auto-Trade**: Nyalakan toggle Auto-Trade, lalu klik **Save Configuration**. Bot sudah siap berjalan otomatis. (Khusus Tokocrypto: matikan toggle Auto-Trade jika ingin mengaktifkan **Hold Mode** agar koin yang sudah dibeli tidak dijual otomatis oleh pemantau TP/SL).
 
 ---
 
