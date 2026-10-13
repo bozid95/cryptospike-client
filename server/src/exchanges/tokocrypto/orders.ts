@@ -240,6 +240,146 @@ export function calculateTokocryptoTpPlan(params: {
 }
 
 /**
+ * Membulatkan kuantitas ke bawah (Math.floor) sesuai stepSize bursa,
+ * dan menjamin hasil pembulatan tidak pernah melebihi nilai aktual (val).
+ */
+export function floorToStepSize(val: number, stepSize: number): number {
+  if (!Number.isFinite(val) || val <= 0) return 0;
+  if (!stepSize || stepSize <= 0) return val;
+
+  const precision = Math.max(0, Math.round(-Math.log10(stepSize)));
+  let stepped = Math.floor(val / stepSize + 1e-9) * stepSize;
+  let result = parseFloat(stepped.toFixed(precision));
+
+  if (result > val + 1e-12) {
+    stepped = Math.max(0, result - stepSize);
+    result = parseFloat(stepped.toFixed(precision));
+  }
+
+  return Math.max(0, result);
+}
+
+/**
+ * Mengambil kuantitas koin bersih (net quantity) setelah dikurangi potongan
+ * komisi beli (commission) dari endpoint GET /open/v1/orders/trades dan saldo dompet.
+ */
+export async function getTokocryptoOrderNetQty(params: {
+  apiKey: string;
+  apiSecret: string;
+  symbol: string;
+  orderId: string;
+  fallbackGrossQty: number;
+  stepSize: number;
+  baseUrl?: string;
+  customFetch?: typeof fetch;
+}): Promise<number> {
+  const {
+    apiKey,
+    apiSecret,
+    symbol,
+    orderId,
+    fallbackGrossQty,
+    stepSize,
+    baseUrl = TOKOCRYPTO_BASE_URL,
+    customFetch = fetch,
+  } = params;
+
+  const cleanKey = apiKey.trim();
+  const cleanSecret = apiSecret.trim();
+  const formattedSymbol = normalizeTokocryptoSymbol(symbol);
+  const baseAsset = (
+    formattedSymbol.split("_")[0] || formattedSymbol
+  ).toUpperCase();
+
+  let netFromTrades = 0;
+
+  // 1. Query GET /open/v1/orders/trades untuk menghitung qty - commission (jika commissionAsset === baseAsset)
+  try {
+    const serverTime = await getTokocryptoServerTime(baseUrl, customFetch);
+    const queryString = buildTokocryptoSignedQuery(
+      { symbol: formattedSymbol },
+      cleanSecret,
+      serverTime,
+    );
+
+    const res = await customFetch(
+      `${baseUrl}/open/v1/orders/trades?${queryString}`,
+      {
+        method: "GET",
+        headers: {
+          "X-MBX-APIKEY": cleanKey,
+        },
+      },
+    );
+
+    if (res.ok) {
+      const json = (await res.json()) as any;
+      const list = Array.isArray(json?.data?.list)
+        ? json.data.list
+        : Array.isArray(json?.data)
+          ? json.data
+          : [];
+
+      const matchingTrades = list.filter(
+        (t: any) => String(t.orderId || "") === String(orderId),
+      );
+
+      if (matchingTrades.length > 0) {
+        let totalFillQty = 0;
+        let totalBaseCommission = 0;
+
+        for (const t of matchingTrades) {
+          const fillQty = parseFloat(t.qty || "0");
+          const comm = parseFloat(t.commission || "0");
+          const commAsset = String(t.commissionAsset || "").toUpperCase();
+
+          if (fillQty > 0) {
+            totalFillQty += fillQty;
+          }
+          if (comm > 0 && commAsset === baseAsset) {
+            totalBaseCommission += comm;
+          }
+        }
+
+        if (totalFillQty > 0) {
+          netFromTrades = Math.max(0, totalFillQty - totalBaseCommission);
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Cek saldo aktual baseAsset di dompet (GET /open/v1/account/spot/asset) sebagai pengaman tambahan
+  let walletFreeBalance = 0;
+  try {
+    const bal = await getTokocryptoBalance(
+      cleanKey,
+      cleanSecret,
+      baseAsset,
+      baseUrl,
+      customFetch,
+    );
+    if (bal.free > 0) {
+      walletFreeBalance = bal.free;
+    }
+  } catch {}
+
+  let rawNetQty = fallbackGrossQty;
+  if (netFromTrades > 0) {
+    rawNetQty =
+      walletFreeBalance > 0
+        ? Math.min(netFromTrades, walletFreeBalance)
+        : netFromTrades;
+  } else if (walletFreeBalance > 0 && walletFreeBalance <= fallbackGrossQty) {
+    rawNetQty = walletFreeBalance;
+  }
+
+  const flooredQty = floorToStepSize(rawNetQty, stepSize);
+  return flooredQty > 0
+    ? flooredQty
+    : floorToStepSize(fallbackGrossQty, stepSize);
+}
+
+/**
  * Mengirim order BUY atau SELL ke Tokocrypto Spot
  */
 export async function placeTokocryptoOrder(
@@ -293,6 +433,7 @@ export async function placeTokocryptoOrder(
   }
 
   const data = json.data || {};
+  const parsedExecutedQty = parseFloat(data.executedQty || "0");
   return {
     orderId: String(data.orderId || data.id || Date.now()),
     clientId: data.clientId || params.clientId,
@@ -300,7 +441,8 @@ export async function placeTokocryptoOrder(
     side: side === 0 ? "BUY" : "SELL",
     type: type === 1 ? "LIMIT" : "MARKET",
     status: data.status || "FILLED",
-    executedQty: parseFloat(data.executedQty || params.quantity || "0"),
+    executedQty:
+      parsedExecutedQty > 0 ? parsedExecutedQty : Number(params.quantity || 0),
     cummulativeQuoteQty: parseFloat(
       data.cummulativeQuoteQty || params.quoteOrderQty || "0",
     ),
@@ -529,11 +671,24 @@ export async function executeTokocryptoSignalOrder(
       customFetch,
     );
 
-    const successMsg = `BUY order for ${formattedSymbol} executed successfully on Tokocrypto! OrderID: ${orderResult.orderId}`;
+    // Hitung kuantitas bersih (net quantity) setelah potongan komisi beli bursa
+    const netExecutedQty = await getTokocryptoOrderNetQty({
+      apiKey,
+      apiSecret,
+      symbol: formattedSymbol,
+      orderId: orderResult.orderId,
+      fallbackGrossQty: orderResult.executedQty || qtyResult.quantity,
+      stepSize: rules.stepSize,
+      baseUrl,
+      customFetch,
+    });
+    orderResult.executedQty = netExecutedQty;
+
+    const successMsg = `BUY order for ${formattedSymbol} executed successfully on Tokocrypto! OrderID: ${orderResult.orderId} (Net Qty: ${netExecutedQty})`;
     addAppLog("SUCCESS", "Tokocrypto", successMsg);
 
     const tpPlan = calculateTokocryptoTpPlan({
-      totalQty: orderResult.executedQty,
+      totalQty: netExecutedQty,
       entryPrice,
       tp1: signal.tp1,
       tp2: signal.tp2,

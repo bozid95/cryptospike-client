@@ -1138,7 +1138,7 @@ export default function CredentialConfig({
                 </Label>
                 <p className="text-[10px] text-muted-foreground">
                   {activeExchangeForm === "TOKOCRYPTO"
-                    ? "Automatic execution of LONG / BUY spot orders"
+                    ? "Auto-buy LONG signals & 4s TP/SL monitor (turn OFF to HOLD assets)"
                     : "Automatic execution of Binance Futures signals"}
                 </p>
               </div>
