@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   BotIcon,
   SlidersIcon,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 import {
   Sidebar,
   SidebarContent,
@@ -43,12 +44,13 @@ export function AppSidebar({
   user,
   onLogout,
   botConnected,
-  appVersion = "1.0.0",
+  appVersion = "1.0.1",
   binancePositionsCount = 0,
   tokocryptoPositionsCount = 0,
   ...props
 }: AppSidebarProps) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
 
   const handleSelectTab = (id: string) => {
     setActiveTab(id);
@@ -139,7 +141,12 @@ export function AppSidebar({
                   CryptoSpike
                   <Badge
                     variant="outline"
-                    className="text-[10px] px-1 py-0 h-4 border-emerald-500/40 text-emerald-600 bg-emerald-500/5 font-mono font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReleaseNotesOpen(true);
+                    }}
+                    title="Klik untuk melihat catatan rilis & patch updates"
+                    className="text-[10px] px-1 py-0 h-4 border-emerald-500/40 text-emerald-600 bg-emerald-500/5 font-mono font-medium hover:bg-emerald-500/20 hover:border-emerald-500/60 cursor-pointer transition-colors"
                   >
                     v{appVersion}
                   </Badge>
@@ -222,12 +229,21 @@ export function AppSidebar({
         </SidebarMenu>
         <div className="px-2 pt-1 pb-0 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
           <span>CryptoSpike Client</span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+          <button
+            onClick={() => setReleaseNotesOpen(true)}
+            title="Klik untuk melihat catatan rilis & patch updates"
+            className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline cursor-pointer"
+          >
             v{appVersion}
-          </span>
+          </button>
         </div>
       </SidebarFooter>
       <SidebarRail />
+      <ReleaseNotesDialog
+        open={releaseNotesOpen}
+        onOpenChange={setReleaseNotesOpen}
+        currentAppVersion={appVersion}
+      />
     </Sidebar>
   );
 }

@@ -59,7 +59,7 @@ export default function App() {
   const [status, setStatus] = useState({
     bot_connected: false,
     server_url: "",
-    version: "1.0.0",
+    version: "1.0.1",
   });
 
   // Simpan activeTab ke localStorage & sinkronkan ke URL hash
@@ -94,7 +94,7 @@ export default function App() {
         setStatus({
           bot_connected: false,
           server_url: "localhost:3030",
-          version: "1.0.0",
+          version: "1.0.1",
         });
       }
     };
