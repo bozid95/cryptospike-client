@@ -1,7 +1,7 @@
 import { getBaseUrl, getBinanceServerTime, createSignature } from "./client";
 import { getSymbolFilters, roundStep, roundTick } from "./market";
 import { getAccountAndPositions, testBinanceConnection } from "./account";
-import { BinanceExecutionConfig } from "./types";
+import { BinanceExecutionConfig, PlaceOrderParams } from "./types";
 import { SignalPayload } from "../types";
 import { evaluateCoinFilter } from "../../lib/coin-filter";
 import { addAppLog } from "../../lib/logger";
@@ -74,17 +74,7 @@ export async function setMarginType(
 export async function placeOrder(
   apiKey: string,
   apiSecret: string,
-  params: {
-    symbol: string;
-    side: "BUY" | "SELL";
-    type: "MARKET" | "LIMIT" | "STOP_MARKET" | "TAKE_PROFIT_MARKET";
-    quantity?: number;
-    price?: number;
-    stopPrice?: number;
-    reduceOnly?: boolean;
-    closePosition?: boolean;
-    timeInForce?: "GTC" | "IOC" | "FOK";
-  },
+  params: PlaceOrderParams,
   isTestnet: boolean,
 ) {
   const baseUrl = getBaseUrl(isTestnet);
@@ -101,17 +91,28 @@ export async function placeOrder(
   if (params.quantity !== undefined) queryObj.quantity = params.quantity;
   if (params.price !== undefined) queryObj.price = params.price;
   if (params.stopPrice !== undefined) queryObj.stopPrice = params.stopPrice;
+  if (params.callbackRate !== undefined)
+    queryObj.callbackRate = params.callbackRate;
+  if (params.activationPrice !== undefined)
+    queryObj.activationPrice = params.activationPrice;
   if (params.reduceOnly) queryObj.reduceOnly = "true";
   if (params.closePosition) queryObj.closePosition = "true";
   if (params.timeInForce) queryObj.timeInForce = params.timeInForce;
+  if (params.workingType) queryObj.workingType = params.workingType;
 
   const isAlgo =
-    params.type === "STOP_MARKET" || params.type === "TAKE_PROFIT_MARKET";
+    params.type === "STOP_MARKET" ||
+    params.type === "TAKE_PROFIT_MARKET" ||
+    params.type === "TRAILING_STOP_MARKET";
   if (isAlgo) {
     queryObj.algoType = "CONDITIONAL";
     if (queryObj.stopPrice) {
       queryObj.triggerPrice = queryObj.stopPrice;
       delete queryObj.stopPrice;
+    }
+    if (queryObj.activationPrice) {
+      queryObj.activatePrice = queryObj.activationPrice;
+      delete queryObj.activationPrice;
     }
   }
 
@@ -138,7 +139,7 @@ export async function placeOrder(
 }
 
 /**
- * Membatalkan semua pesanan terbuka pada suatu simbol
+ * Membatalkan semua pesanan terbuka pada suatu simbol (Regular Orders + Algo Orders)
  */
 export async function cancelAllOpenOrders(
   apiKey: string,
@@ -152,14 +153,48 @@ export async function cancelAllOpenOrders(
     const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
     const signature = createSignature(query, apiSecret);
 
-    const res = await fetch(
+    // 1. Batalkan semua regular orders
+    await fetch(
       `${baseUrl}/fapi/v1/allOpenOrders?${query}&signature=${signature}`,
       {
         method: "DELETE",
         headers: { "X-MBX-APIKEY": apiKey },
       },
     );
-    return await res.json();
+
+    // 2. Batalkan semua open algo orders (SL, TP, Trailing Stop)
+    try {
+      const algoRes = await fetch(
+        `${baseUrl}/fapi/v1/openAlgoOrders?${query}&signature=${signature}`,
+        {
+          headers: { "X-MBX-APIKEY": apiKey },
+        },
+      );
+      if (algoRes.ok) {
+        const algoData = (await algoRes.json()) as any;
+        const algoOrders = Array.isArray(algoData?.orders)
+          ? algoData.orders
+          : Array.isArray(algoData)
+            ? algoData
+            : [];
+        for (const algo of algoOrders) {
+          if (algo.algoId) {
+            const delTs = await getBinanceServerTime(baseUrl);
+            const delQuery = `symbol=${symbol}&algoId=${algo.algoId}&timestamp=${delTs}&recvWindow=60000`;
+            const delSig = createSignature(delQuery, apiSecret);
+            await fetch(
+              `${baseUrl}/fapi/v1/algoOrder?${delQuery}&signature=${delSig}`,
+              {
+                method: "DELETE",
+                headers: { "X-MBX-APIKEY": apiKey },
+              },
+            );
+          }
+        }
+      }
+    } catch {}
+
+    return { success: true };
   } catch (err: any) {
     addAppLog(
       "WARN",
@@ -475,35 +510,115 @@ export async function executeSignalOrder(
       }
     }
 
-    // Pasang TP3
-    if (targetTp3 && qtyTP3 > 0) {
-      const p3 = roundTick(targetTp3, filters.tickSize);
-      try {
-        await placeOrder(
-          apiKey,
-          apiSecret,
-          {
-            symbol,
-            side: exitSide,
-            type: "LIMIT",
-            price: p3,
-            quantity: qtyTP3,
-            timeInForce: "GTC",
-            reduceOnly: true,
-          },
-          isTestnet,
-        );
-        addAppLog(
-          "INFO",
-          "Executor",
-          `[TP3 PLACED] ${symbol} Qty: ${qtyTP3} @ ${p3}`,
-        );
-      } catch (err: any) {
-        addAppLog(
-          "WARN",
-          "Executor",
-          `Failed to place TP3 for ${symbol}: ${err.message}`,
-        );
+    // Pasang TP3 (Hybrid Runner: Trailing Stop 20% Moonbag)
+    const isTrailingEnabled =
+      config.trailingStopEnabled ??
+      process.env.BINANCE_TRAILING_STOP !== "false";
+    const trailingCallback =
+      config.trailingCallbackRate ??
+      parseFloat(process.env.BINANCE_TRAILING_CALLBACK || "2.5");
+    const trailingActivationMode = (
+      config.trailingActivation ||
+      process.env.BINANCE_TRAILING_ACTIVATION ||
+      "TP1"
+    ).toUpperCase();
+
+    if (qtyTP3 > 0) {
+      if (isTrailingEnabled) {
+        // Tentukan Activation Price (Default TP1 agar mulai melacak saat profit pertama tercapai)
+        const activationBase =
+          trailingActivationMode === "TP2" && targetTp2
+            ? targetTp2
+            : targetTp1 ||
+              (side === "LONG" ? entryPrice * 1.015 : entryPrice * 0.985);
+        const activationPrice = roundTick(activationBase, filters.tickSize);
+
+        try {
+          await placeOrder(
+            apiKey,
+            apiSecret,
+            {
+              symbol,
+              side: exitSide,
+              type: "TRAILING_STOP_MARKET",
+              quantity: qtyTP3,
+              callbackRate: trailingCallback,
+              activationPrice,
+              reduceOnly: true,
+            },
+            isTestnet,
+          );
+          addAppLog(
+            "INFO",
+            "Executor",
+            `[HYBRID RUNNER] ${symbol} Trailing Stop placed (20% Qty: ${qtyTP3}) | Callback: ${trailingCallback}% | Activation: ${activationPrice}`,
+          );
+        } catch (err: any) {
+          addAppLog(
+            "WARN",
+            "Executor",
+            `Failed to place Trailing Stop for ${symbol}: ${err.message}. Fallback to static TP3 Limit Order...`,
+          );
+          if (targetTp3) {
+            const p3 = roundTick(targetTp3, filters.tickSize);
+            try {
+              await placeOrder(
+                apiKey,
+                apiSecret,
+                {
+                  symbol,
+                  side: exitSide,
+                  type: "LIMIT",
+                  price: p3,
+                  quantity: qtyTP3,
+                  timeInForce: "GTC",
+                  reduceOnly: true,
+                },
+                isTestnet,
+              );
+              addAppLog(
+                "INFO",
+                "Executor",
+                `[TP3 FALLBACK PLACED] ${symbol} Qty: ${qtyTP3} @ ${p3}`,
+              );
+            } catch (fallbackErr: any) {
+              addAppLog(
+                "WARN",
+                "Executor",
+                `Failed to place fallback TP3 for ${symbol}: ${fallbackErr.message}`,
+              );
+            }
+          }
+        }
+      } else if (targetTp3) {
+        const p3 = roundTick(targetTp3, filters.tickSize);
+        try {
+          await placeOrder(
+            apiKey,
+            apiSecret,
+            {
+              symbol,
+              side: exitSide,
+              type: "LIMIT",
+              price: p3,
+              quantity: qtyTP3,
+              timeInForce: "GTC",
+              reduceOnly: true,
+            },
+            isTestnet,
+          );
+          addAppLog(
+            "INFO",
+            "Executor",
+            `[TP3 PLACED] ${symbol} Qty: ${qtyTP3} @ ${p3}`,
+          );
+        } catch (err: any) {
+          addAppLog(
+            "WARN",
+            "Executor",
+            `Failed to place TP3 for ${symbol}: ${err.message}`,
+          );
+        }
       }
     }
 
@@ -583,5 +698,113 @@ export async function executeSignalOrder(
       `Signal execution failed for ${symbol}: ${err.message}`,
       err,
     );
+  }
+}
+
+/**
+ * Mengambil daftar order terbuka untuk simbol tertentu di Binance Futures
+ */
+export async function getOpenOrders(
+  apiKey: string,
+  apiSecret: string,
+  symbol: string,
+  isTestnet: boolean,
+): Promise<any[]> {
+  try {
+    const baseUrl = getBaseUrl(isTestnet);
+    const timestamp = await getBinanceServerTime(baseUrl);
+    const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
+    const signature = createSignature(query, apiSecret);
+
+    const res = await fetch(
+      `${baseUrl}/fapi/v1/openOrders?${query}&signature=${signature}`,
+      {
+        headers: { "X-MBX-APIKEY": apiKey },
+      },
+    );
+    if (!res.ok) return [];
+    return (await res.json()) as any[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Memindahkan Stop Loss ke Break-Even (Harga Entry + Buffer Fee)
+ */
+export async function moveSlToBreakEven(
+  apiKey: string,
+  apiSecret: string,
+  symbol: string,
+  side: "LONG" | "SHORT",
+  entryPrice: number,
+  isTestnet: boolean,
+  bufferPct: number = 0.2,
+): Promise<boolean> {
+  try {
+    const filters = await getSymbolFilters(symbol, isTestnet);
+    const exitSide = side === "LONG" ? "SELL" : "BUY";
+    const multiplier =
+      side === "LONG" ? 1 + bufferPct / 100 : 1 - bufferPct / 100;
+    const bepPrice = roundTick(entryPrice * multiplier, filters.tickSize);
+
+    // 1. Ambil order terbuka dan batalkan STOP_MARKET lama
+    const openOrders = await getOpenOrders(
+      apiKey,
+      apiSecret,
+      symbol,
+      isTestnet,
+    );
+    const baseUrl = getBaseUrl(isTestnet);
+
+    for (const ord of openOrders) {
+      if (ord.type === "STOP_MARKET" || ord.origType === "STOP_MARKET") {
+        try {
+          const timestamp = await getBinanceServerTime(baseUrl);
+          const delQuery = `symbol=${symbol}&orderId=${ord.orderId}&timestamp=${timestamp}&recvWindow=60000`;
+          const delSig = createSignature(delQuery, apiSecret);
+          await fetch(
+            `${baseUrl}/fapi/v1/order?${delQuery}&signature=${delSig}`,
+            {
+              method: "DELETE",
+              headers: { "X-MBX-APIKEY": apiKey },
+            },
+          );
+          addAppLog(
+            "INFO",
+            "AutoBEP",
+            `[Auto-BEP] Canceled old SL order (${ord.orderId}) for ${symbol}`,
+          );
+        } catch {}
+      }
+    }
+
+    // 2. Pasang SL baru di harga BEP
+    await placeOrder(
+      apiKey,
+      apiSecret,
+      {
+        symbol,
+        side: exitSide,
+        type: "STOP_MARKET",
+        stopPrice: bepPrice,
+        closePosition: true,
+      },
+      isTestnet,
+    );
+
+    addAppLog(
+      "SUCCESS",
+      "AutoBEP",
+      `[Auto-BEP] Stop Loss moved to Break-Even for ${symbol} @ ${bepPrice} (+${bufferPct}% fee buffer). Position is now RISK-FREE!`,
+    );
+    return true;
+  } catch (err: any) {
+    addAppLog(
+      "WARN",
+      "AutoBEP",
+      `[Auto-BEP] Failed to move SL to Break-Even for ${symbol}: ${err.message}`,
+    );
+    return false;
   }
 }

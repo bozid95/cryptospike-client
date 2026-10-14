@@ -22,6 +22,26 @@ export interface PositionRiskItem {
   marginType?: "ISOLATED" | "CROSSED";
 }
 
+export interface PlaceOrderParams {
+  symbol: string;
+  side: "BUY" | "SELL";
+  type:
+    | "MARKET"
+    | "LIMIT"
+    | "STOP_MARKET"
+    | "TAKE_PROFIT_MARKET"
+    | "TRAILING_STOP_MARKET";
+  quantity?: number | undefined;
+  price?: number | undefined;
+  stopPrice?: number | undefined;
+  callbackRate?: number | undefined;
+  activationPrice?: number | undefined;
+  reduceOnly?: boolean | undefined;
+  closePosition?: boolean | undefined;
+  timeInForce?: "GTC" | "IOC" | "FOK" | undefined;
+  workingType?: "MARK_PRICE" | "CONTRACT_PRICE" | undefined;
+}
+
 export interface BinanceExecutionConfig {
   autoExecute: boolean;
   binanceApiKey: string | null;
@@ -33,4 +53,9 @@ export interface BinanceExecutionConfig {
   maxOpenPositions: number;
   coinFilterMode?: string;
   targetCoins?: string | null;
+  trailingStopEnabled?: boolean;
+  trailingCallbackRate?: number;
+  trailingActivation?: "TP1" | "TP2";
+  autoBreakEven?: boolean;
+  breakEvenBufferPct?: number;
 }
