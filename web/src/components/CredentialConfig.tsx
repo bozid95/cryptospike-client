@@ -1278,7 +1278,8 @@ export default function CredentialConfig({
                     </option>
                   </select>
                   <p className="text-[10px] text-muted-foreground">
-                    Filter bot execution to Long, Short, or both positions on Binance Futures.
+                    Filter bot execution to Long, Short, or both positions on
+                    Binance Futures.
                   </p>
                 </div>
               </>
