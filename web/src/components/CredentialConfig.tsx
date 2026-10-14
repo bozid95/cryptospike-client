@@ -1303,7 +1303,9 @@ export default function CredentialConfig({
                       Minimum Signal Score
                     </Label>
                     <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
-                      {binanceMinScore > 0 ? `>= ${binanceMinScore}` : "ALL SIGNALS"}
+                      {binanceMinScore > 0
+                        ? `>= ${binanceMinScore}`
+                        : "ALL SIGNALS"}
                     </span>
                   </div>
                   <select
@@ -1329,7 +1331,8 @@ export default function CredentialConfig({
                     </option>
                   </select>
                   <p className="text-[10px] text-muted-foreground">
-                    Only execute signals with a quality score meeting or exceeding this threshold.
+                    Only execute signals with a quality score meeting or
+                    exceeding this threshold.
                   </p>
                 </div>
 
@@ -1350,7 +1353,9 @@ export default function CredentialConfig({
                     />
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Automatically protects against market dumps by rejecting LONG positions when BTC macro trend is Bearish or Choppy. SHORT positions remain active.
+                    Automatically protects against market dumps by rejecting
+                    LONG positions when BTC macro trend is Bearish or Choppy.
+                    SHORT positions remain active.
                   </p>
                 </div>
               </>

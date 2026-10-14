@@ -153,7 +153,9 @@ async function runAllScenarios() {
   );
 
   // --- KELOMPOK 2: PENGUJIAN FILTER TREN BTC (TOGGLE ON) ---
-  console.log("\n📌 KELOMPOK 2: Proteksi Tren Makro BTC (blockLongOnBtcBearish: ON)");
+  console.log(
+    "\n📌 KELOMPOK 2: Proteksi Tren Makro BTC (blockLongOnBtcBearish: ON)",
+  );
   executedOrders = [];
   logsLogged = [];
 
@@ -230,7 +232,9 @@ async function runAllScenarios() {
   console.log("  ✅ [PASS] Sinyal SHORT saat BTC Choppy tetap dieksekusi");
 
   // --- KELOMPOK 3: PENGUJIAN JIKA TOGGLE BTC DIMATIKAN (OFF) ---
-  console.log("\n📌 KELOMPOK 3: Perilaku Jika Toggle BTC Dimatikan (blockLongOnBtcBearish: OFF)");
+  console.log(
+    "\n📌 KELOMPOK 3: Perilaku Jika Toggle BTC Dimatikan (blockLongOnBtcBearish: OFF)",
+  );
   executedOrders = [];
 
   // Skenario 3.1: Sinyal LONG saat BTC Bearish tapi toggle OFF -> Tetap Lolos
@@ -309,7 +313,9 @@ async function runAllScenarios() {
   );
 
   // --- KELOMPOK 5: INTEGRASI MULTI-GATE DENGAN ALLOWED POSITION SIDE ---
-  console.log("\n📌 KELOMPOK 5: Integrasi Multi-Gate (Allowed Side + Score + BTC Trend)");
+  console.log(
+    "\n📌 KELOMPOK 5: Integrasi Multi-Gate (Allowed Side + Score + BTC Trend)",
+  );
 
   // Skenario 5.1: SHORT_ONLY memblokir LONG di Gate 1 sebelum cek BTC
   logsLogged = [];
