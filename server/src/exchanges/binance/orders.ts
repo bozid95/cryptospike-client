@@ -329,7 +329,47 @@ export async function executeSignalOrder(
     return;
   }
 
-  // 4. Cek Kredensial API
+  // 4. Cek Filter Skor Minimum (Minimum Signal Score)
+  const minScore = Number(config.minScore ?? 0);
+  const rawScore = signal?.score ?? signal?.data?.score;
+  const signalScore =
+    rawScore !== undefined && rawScore !== null ? Number(rawScore) : 0;
+  if (minScore > 0) {
+    if (isNaN(signalScore) || signalScore < minScore) {
+      addAppLog(
+        "WARN",
+        "ScoreFilter",
+        `Signal ${symbol} skipped: Score (${signalScore}) is below minimum threshold (${minScore}).`,
+      );
+      return;
+    }
+  }
+
+  // 5. Cek Filter Tren Makro BTC (Block LONG on BTC Bearish/Choppy)
+  const shouldBlockBtc = config.blockLongOnBtcBearish ?? true;
+  if (shouldBlockBtc && normalizedSignalSide === "LONG") {
+    const rawBtcBias = (
+      signal?.analytics?.btcTrendBias ||
+      signal?.analytics?.extraData?.btcMtf?.h4?.trend ||
+      signal?.analytics?.extraData?.trendBias ||
+      signal?.btcTrendBias ||
+      ""
+    )
+      .toString()
+      .trim()
+      .toLowerCase();
+
+    if (rawBtcBias === "bearish" || rawBtcBias === "choppy") {
+      addAppLog(
+        "WARN",
+        "BtcFilter",
+        `Signal ${symbol} LONG skipped: BTC macro trend is ${rawBtcBias.toUpperCase()} (Block LONG protection active).`,
+      );
+      return;
+    }
+  }
+
+  // 6. Cek Kredensial API
   if (!config.binanceApiKey || !config.binanceApiSecret) {
     addAppLog(
       "ERROR",

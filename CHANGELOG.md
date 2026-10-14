@@ -26,6 +26,10 @@ Format berkas ini mengacu pada [Keep a Changelog](https://keepachangelog.com/id/
   - Deteksi penutupan posisi (_position closed_) untuk pembersihan otomatis sisa order terbuka (_open orders cleanup_).
 - **Interactive Release Notes Modal**:
   - Modal dialog interaktif pada Web Dashboard yang dapat dibuka dengan mengklik lencana versi di sidebar untuk melihat riwayat patch dan catatan pembaruan.
+- **Minimum Signal Score Filter (minScore)**:
+  - Kemampuan menetapkan batas skor minimum (0 - 100) pada sinyal yang diterima, menolak otomatis sinyal di bawah ambang batas kualitas dengan opsi preset: All Signals, 80+ Standard, 90+ High, 95+ Elite, 99 Perfect.
+- **BTC Macro Trend Protection (blockLongOnBtcBearish)**:
+  - Proteksi cerdas berbasis analisis tren makro BTC dari payload server: secara otomatis menolak sinyal LONG ketika tren BTC berada dalam kondisi Bearish atau Choppy guna menghindari jebakan koreksi pasar, sementara sinyal SHORT tetap dieksekusi secara optimal. Dilengkapi tombol toggle ON/OFF pada Web Dashboard.
 
 ### 🛡️ Peningkatan & Patch (Changed & Improved)
 

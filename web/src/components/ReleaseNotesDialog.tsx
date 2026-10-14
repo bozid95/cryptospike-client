@@ -52,6 +52,14 @@ export const RELEASE_NOTES_DATA: ReleaseNote[] = [
             headline: "Background Futures Monitor Service",
             desc: "Layanan latar belakang cerdas yang secara realtime memantau keterisian TP1 untuk pergeseran BEP dan membersihkan order terbuka saat posisi ditutup.",
           },
+          {
+            headline: "Minimum Signal Score Filter (minScore)",
+            desc: "Pilihan ambang batas skor kualitas sinyal (0 - 100) dengan opsi All Signals, 80+, 90+, 95+, atau 99 untuk hanya mengeksekusi sinyal berprobabilitas tinggi.",
+          },
+          {
+            headline: "Block LONG on BTC Bearish / Choppy",
+            desc: "Proteksi cerdas berbasis analisis tren makro BTC dari server: menolak otomatis posisi LONG saat BTC melemah/sideway guna mencegah rugi koreksi pasar.",
+          },
         ],
       },
       {

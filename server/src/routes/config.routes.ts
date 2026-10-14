@@ -41,6 +41,12 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       binanceTargetCoins: binanceConfig?.targetCoins || "",
       binanceTradeDirection: binanceConfig?.tradeDirection || "BOTH",
       tradeDirection: binanceConfig?.tradeDirection || "BOTH",
+      binanceMinScore: binanceConfig?.minScore ?? 0,
+      minScore: binanceConfig?.minScore ?? 0,
+      binanceBlockLongOnBtcBearish:
+        binanceConfig?.blockLongOnBtcBearish ?? true,
+      blockLongOnBtcBearish:
+        binanceConfig?.blockLongOnBtcBearish ?? true,
       // Tokocrypto Dedicated Fields
       tokocryptoApiKey: tokocryptoConfig?.apiKey || "",
       tokocryptoApiSecret: tokocryptoConfig?.apiSecret || "",
@@ -92,6 +98,10 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       binanceTargetCoins,
       binanceTradeDirection,
       tradeDirection,
+      binanceMinScore,
+      minScore,
+      binanceBlockLongOnBtcBearish,
+      blockLongOnBtcBearish,
       // Tokocrypto
       tokocryptoApiKey,
       tokocryptoApiSecret,
@@ -186,6 +196,21 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
         dir === "LONG_ONLY" || dir === "SHORT_ONLY" ? dir : "BOTH";
     }
 
+    if (binanceMinScore !== undefined) {
+      binanceUpdate.minScore = Math.max(
+        0,
+        Math.min(100, Number(binanceMinScore) || 0),
+      );
+    } else if (minScore !== undefined) {
+      binanceUpdate.minScore = Math.max(0, Math.min(100, Number(minScore) || 0));
+    }
+
+    if (binanceBlockLongOnBtcBearish !== undefined) {
+      binanceUpdate.blockLongOnBtcBearish = Boolean(binanceBlockLongOnBtcBearish);
+    } else if (blockLongOnBtcBearish !== undefined) {
+      binanceUpdate.blockLongOnBtcBearish = Boolean(blockLongOnBtcBearish);
+    }
+
     const savedBinance = await prisma.binanceConfig.upsert({
       where: { id: 1 },
       update: binanceUpdate,
@@ -196,6 +221,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
         environment: binanceUpdate.environment || "TESTNET",
         autoExecute: binanceUpdate.autoExecute ?? false,
         tradeDirection: binanceUpdate.tradeDirection || "BOTH",
+        minScore: binanceUpdate.minScore ?? 0,
+        blockLongOnBtcBearish: binanceUpdate.blockLongOnBtcBearish ?? true,
         marginType: binanceUpdate.marginType || "ISOLATED",
         leverage: binanceUpdate.leverage ?? 10,
         riskPerTradePct: binanceUpdate.riskPerTradePct ?? 2.0,

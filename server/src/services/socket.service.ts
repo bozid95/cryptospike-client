@@ -211,6 +211,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           coinFilterMode: binanceConfig.coinFilterMode || "ALL",
           targetCoins: binanceConfig.targetCoins || "",
           tradeDirection: binanceConfig.tradeDirection || "BOTH",
+          minScore: binanceConfig.minScore ?? 0,
+          blockLongOnBtcBearish: binanceConfig.blockLongOnBtcBearish ?? true,
         });
       } catch (binanceErr: any) {
         addAppLog(

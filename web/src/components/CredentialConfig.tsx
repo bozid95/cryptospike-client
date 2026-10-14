@@ -232,6 +232,9 @@ export default function CredentialConfig({
   const [binanceTradeDirection, setBinanceTradeDirection] = useState<
     "BOTH" | "LONG_ONLY" | "SHORT_ONLY"
   >("BOTH");
+  const [binanceMinScore, setBinanceMinScore] = useState<number>(0);
+  const [binanceBlockLongOnBtcBearish, setBinanceBlockLongOnBtcBearish] =
+    useState<boolean>(true);
 
   // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoAutoExecute, setTokocryptoAutoExecute] = useState(false);
@@ -365,6 +368,14 @@ export default function CredentialConfig({
               loadedDir === "LONG_ONLY" || loadedDir === "SHORT_ONLY"
                 ? loadedDir
                 : "BOTH",
+            );
+            setBinanceMinScore(Number(d.binanceMinScore ?? d.minScore ?? 0));
+            setBinanceBlockLongOnBtcBearish(
+              d.binanceBlockLongOnBtcBearish !== undefined
+                ? Boolean(d.binanceBlockLongOnBtcBearish)
+                : d.blockLongOnBtcBearish !== undefined
+                  ? Boolean(d.blockLongOnBtcBearish)
+                  : true,
             );
 
             // Tokocrypto Config
@@ -581,6 +592,8 @@ export default function CredentialConfig({
         marginType,
         leverage: Number(leverage),
         binanceTradeDirection,
+        binanceMinScore: Number(binanceMinScore),
+        binanceBlockLongOnBtcBearish: Boolean(binanceBlockLongOnBtcBearish),
         binanceRiskPerTradePct: Number(binanceRiskPerTradePct),
         binanceMaxOpenPositions: Number(binanceMaxOpenPositions),
         binanceCoinFilterMode: isTokoForm
@@ -1280,6 +1293,64 @@ export default function CredentialConfig({
                   <p className="text-[10px] text-muted-foreground">
                     Filter bot execution to Long, Short, or both positions on
                     Binance Futures.
+                  </p>
+                </div>
+
+                {/* Minimum Signal Score Filter */}
+                <div className="space-y-1.5 mt-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="min-score" className="text-xs font-medium">
+                      Minimum Signal Score
+                    </Label>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
+                      {binanceMinScore > 0 ? `>= ${binanceMinScore}` : "ALL SIGNALS"}
+                    </span>
+                  </div>
+                  <select
+                    id="min-score"
+                    value={binanceMinScore}
+                    onChange={(e) => setBinanceMinScore(Number(e.target.value))}
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value={0} className="text-black">
+                      All Scores (No Minimum Filter - Default)
+                    </option>
+                    <option value={80} className="text-black">
+                      Score 80+ (Standard Quality)
+                    </option>
+                    <option value={90} className="text-black">
+                      Score 90+ (High Quality)
+                    </option>
+                    <option value={95} className="text-black">
+                      Score 95+ (Elite Signals)
+                    </option>
+                    <option value={99} className="text-black">
+                      Score 99 (Perfect Only)
+                    </option>
+                  </select>
+                  <p className="text-[10px] text-muted-foreground">
+                    Only execute signals with a quality score meeting or exceeding this threshold.
+                  </p>
+                </div>
+
+                {/* Block LONG on BTC Bearish/Choppy */}
+                <div className="space-y-1.5 mt-2 p-2.5 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="btc-trend-guard"
+                      className="text-xs font-medium flex items-center gap-1.5"
+                    >
+                      <ShieldCheck className="size-3.5 text-emerald-500" />
+                      Block LONG on BTC Bearish / Choppy
+                    </Label>
+                    <Switch
+                      id="btc-trend-guard"
+                      checked={binanceBlockLongOnBtcBearish}
+                      onCheckedChange={setBinanceBlockLongOnBtcBearish}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Automatically protects against market dumps by rejecting LONG positions when BTC macro trend is Bearish or Choppy. SHORT positions remain active.
                   </p>
                 </div>
               </>

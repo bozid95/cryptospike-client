@@ -54,6 +54,8 @@ export interface BinanceExecutionConfig {
   coinFilterMode?: string | undefined;
   targetCoins?: string | null | undefined;
   tradeDirection?: "BOTH" | "LONG_ONLY" | "SHORT_ONLY" | string | undefined;
+  minScore?: number | undefined;
+  blockLongOnBtcBearish?: boolean | undefined;
   trailingStopEnabled?: boolean | undefined;
   trailingCallbackRate?: number | undefined;
   trailingActivation?: "TP1" | "TP2" | undefined;
