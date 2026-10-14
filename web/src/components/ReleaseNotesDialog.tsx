@@ -7,13 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sparkles,
-  Wrench,
-  Calendar,
-  History,
-  TrendingUp,
-} from "lucide-react";
+import { Sparkles, Wrench, Calendar, History, TrendingUp } from "lucide-react";
 
 export interface ReleaseNote {
   version: string;
@@ -229,14 +223,17 @@ export function ReleaseNotesDialog({
             {/* Sections */}
             <div className="space-y-5">
               {activeRelease.sections.map((sec, secIdx) => {
-                let badgeClass = "bg-emerald-500/10 text-emerald-600 border-emerald-500/30";
+                let badgeClass =
+                  "bg-emerald-500/10 text-emerald-600 border-emerald-500/30";
                 let Icon = Sparkles;
 
                 if (sec.type === "improvement") {
-                  badgeClass = "bg-blue-500/10 text-blue-600 border-blue-500/30";
+                  badgeClass =
+                    "bg-blue-500/10 text-blue-600 border-blue-500/30";
                   Icon = TrendingUp;
                 } else if (sec.type === "fix") {
-                  badgeClass = "bg-amber-500/10 text-amber-600 border-amber-500/30";
+                  badgeClass =
+                    "bg-amber-500/10 text-amber-600 border-amber-500/30";
                   Icon = Wrench;
                 }
 
