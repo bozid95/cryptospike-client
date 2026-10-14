@@ -21,6 +21,7 @@ model BinanceConfig {
   apiSecret        String?  // API Secret Binance
   environment      String   @default("TESTNET") // TESTNET atau LIVE
   autoExecute      Boolean  @default(false)
+  tradeDirection   String   @default("BOTH") // "BOTH", "LONG_ONLY", atau "SHORT_ONLY"
   leverage         Int      @default(10)
   marginType       String   @default("ISOLATED") // ISOLATED atau CROSSED
   riskPerTradePct  Float    @default(2.0)

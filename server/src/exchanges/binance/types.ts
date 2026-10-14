@@ -51,11 +51,12 @@ export interface BinanceExecutionConfig {
   leverage: number;
   riskPerTradePct: number;
   maxOpenPositions: number;
-  coinFilterMode?: string;
-  targetCoins?: string | null;
-  trailingStopEnabled?: boolean;
-  trailingCallbackRate?: number;
-  trailingActivation?: "TP1" | "TP2";
-  autoBreakEven?: boolean;
-  breakEvenBufferPct?: number;
+  coinFilterMode?: string | undefined;
+  targetCoins?: string | null | undefined;
+  tradeDirection?: "BOTH" | "LONG_ONLY" | "SHORT_ONLY" | string | undefined;
+  trailingStopEnabled?: boolean | undefined;
+  trailingCallbackRate?: number | undefined;
+  trailingActivation?: "TP1" | "TP2" | undefined;
+  autoBreakEven?: boolean | undefined;
+  breakEvenBufferPct?: number | undefined;
 }

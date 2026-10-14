@@ -39,6 +39,8 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       binanceMaxOpenPositions: binanceConfig?.maxOpenPositions ?? 3,
       binanceCoinFilterMode: binanceConfig?.coinFilterMode || "ALL",
       binanceTargetCoins: binanceConfig?.targetCoins || "",
+      binanceTradeDirection: binanceConfig?.tradeDirection || "BOTH",
+      tradeDirection: binanceConfig?.tradeDirection || "BOTH",
       // Tokocrypto Dedicated Fields
       tokocryptoApiKey: tokocryptoConfig?.apiKey || "",
       tokocryptoApiSecret: tokocryptoConfig?.apiSecret || "",
@@ -88,6 +90,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       binanceMaxOpenPositions,
       binanceCoinFilterMode,
       binanceTargetCoins,
+      binanceTradeDirection,
+      tradeDirection,
       // Tokocrypto
       tokocryptoApiKey,
       tokocryptoApiSecret,
@@ -172,6 +176,16 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
         typeof targetCoins === "string" ? targetCoins.trim() : "";
     }
 
+    if (binanceTradeDirection !== undefined) {
+      const dir = String(binanceTradeDirection).trim().toUpperCase();
+      binanceUpdate.tradeDirection =
+        dir === "LONG_ONLY" || dir === "SHORT_ONLY" ? dir : "BOTH";
+    } else if (tradeDirection !== undefined) {
+      const dir = String(tradeDirection).trim().toUpperCase();
+      binanceUpdate.tradeDirection =
+        dir === "LONG_ONLY" || dir === "SHORT_ONLY" ? dir : "BOTH";
+    }
+
     const savedBinance = await prisma.binanceConfig.upsert({
       where: { id: 1 },
       update: binanceUpdate,
@@ -181,6 +195,7 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
         apiSecret: binanceUpdate.apiSecret || null,
         environment: binanceUpdate.environment || "TESTNET",
         autoExecute: binanceUpdate.autoExecute ?? false,
+        tradeDirection: binanceUpdate.tradeDirection || "BOTH",
         marginType: binanceUpdate.marginType || "ISOLATED",
         leverage: binanceUpdate.leverage ?? 10,
         riskPerTradePct: binanceUpdate.riskPerTradePct ?? 2.0,
@@ -262,6 +277,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       binanceMaxOpenPositions: savedBinance.maxOpenPositions ?? 3,
       binanceCoinFilterMode: savedBinance.coinFilterMode || "ALL",
       binanceTargetCoins: savedBinance.targetCoins || "",
+      binanceTradeDirection: savedBinance.tradeDirection || "BOTH",
+      tradeDirection: savedBinance.tradeDirection || "BOTH",
       // Tokocrypto
       tokocryptoApiKey: savedToko.apiKey || "",
       tokocryptoApiSecret: savedToko.apiSecret || "",

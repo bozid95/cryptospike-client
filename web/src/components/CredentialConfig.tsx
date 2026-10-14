@@ -229,6 +229,9 @@ export default function CredentialConfig({
     "ALL" | "WHITELIST" | "BLACKLIST"
   >("ALL");
   const [binanceTargetCoins, setBinanceTargetCoins] = useState("");
+  const [binanceTradeDirection, setBinanceTradeDirection] = useState<
+    "BOTH" | "LONG_ONLY" | "SHORT_ONLY"
+  >("BOTH");
 
   // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoAutoExecute, setTokocryptoAutoExecute] = useState(false);
@@ -353,6 +356,16 @@ export default function CredentialConfig({
               d.binanceCoinFilterMode || d.coinFilterMode || "ALL",
             );
             setBinanceTargetCoins(d.binanceTargetCoins || d.targetCoins || "");
+            const loadedDir = (
+              d.binanceTradeDirection ||
+              d.tradeDirection ||
+              "BOTH"
+            ).toUpperCase();
+            setBinanceTradeDirection(
+              loadedDir === "LONG_ONLY" || loadedDir === "SHORT_ONLY"
+                ? loadedDir
+                : "BOTH",
+            );
 
             // Tokocrypto Config
             setTokocryptoApiKey(d.tokocryptoApiKey || "");
@@ -567,6 +580,7 @@ export default function CredentialConfig({
         binanceAutoExecute,
         marginType,
         leverage: Number(leverage),
+        binanceTradeDirection,
         binanceRiskPerTradePct: Number(binanceRiskPerTradePct),
         binanceMaxOpenPositions: Number(binanceMaxOpenPositions),
         binanceCoinFilterMode: isTokoForm
@@ -1217,6 +1231,59 @@ export default function CredentialConfig({
                     onChange={(e) => setLeverage(Number(e.target.value))}
                     className="h-8 text-xs"
                   />
+                </div>
+
+                <div className="space-y-1.5 mt-2">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="trade-direction"
+                      className="text-xs font-medium"
+                    >
+                      Allowed Position Side (Arah Sinyal)
+                      Allowed Position Side
+                    </Label>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ${
+                        binanceTradeDirection === "LONG_ONLY"
+                          ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                          : binanceTradeDirection === "SHORT_ONLY"
+                            ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                            : "bg-primary/10 text-primary border border-primary/20"
+                      }`}
+                    >
+                      {binanceTradeDirection === "LONG_ONLY"
+                        ? "LONG ONLY"
+                        : binanceTradeDirection === "SHORT_ONLY"
+                          ? "SHORT ONLY"
+                          : "BOTH SIDES"}
+                    </span>
+                  </div>
+                  <select
+                    id="trade-direction"
+                    value={binanceTradeDirection}
+                    onChange={(e) =>
+                      setBinanceTradeDirection(
+                        e.target.value as "BOTH" | "LONG_ONLY" | "SHORT_ONLY",
+                      )
+                    }
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="BOTH" className="text-black">
+                      Kedua Arah (LONG &amp; SHORT) - Default
+                      Both Sides (LONG &amp; SHORT) - Default
+                    </option>
+                    <option value="LONG_ONLY" className="text-black">
+                      Hanya LONG (Bullish Sinyal Saja)
+                      Long Only (Bullish Signals Only)
+                    </option>
+                    <option value="SHORT_ONLY" className="text-black">
+                      Hanya SHORT (Bearish Sinyal Saja)
+                      Short Only (Bearish Signals Only)
+                    </option>
+                  </select>
+                  <p className="text-[10px] text-muted-foreground">
+                    Automatically filter execution to Long, Short, or both signals on your Binance Futures account.
+                  </p>
                 </div>
               </>
             ) : (

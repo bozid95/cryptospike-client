@@ -210,6 +210,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           maxOpenPositions: binanceConfig.maxOpenPositions ?? 3,
           coinFilterMode: binanceConfig.coinFilterMode || "ALL",
           targetCoins: binanceConfig.targetCoins || "",
+          tradeDirection: binanceConfig.tradeDirection || "BOTH",
         });
       } catch (binanceErr: any) {
         addAppLog(

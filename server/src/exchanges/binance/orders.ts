@@ -292,7 +292,44 @@ export async function executeSignalOrder(
     addAppLog("INFO", "CoinFilter", filterEval.reason);
   }
 
-  // 3. Cek Kredensial API
+  // 3. Cek Filter Arah Posisi (Trade Direction: BOTH / LONG_ONLY / SHORT_ONLY)
+  const allowedDirection = (
+    config.tradeDirection ||
+    process.env.BINANCE_ALLOWED_SIDE ||
+    "BOTH"
+  ).toUpperCase();
+  const rawSide = (side || "").toString().trim().toUpperCase();
+  const normalizedSignalSide =
+    rawSide === "BUY" ? "LONG" : rawSide === "SELL" ? "SHORT" : rawSide;
+
+  if (normalizedSignalSide !== "LONG" && normalizedSignalSide !== "SHORT") {
+    addAppLog(
+      "WARN",
+      "DirectionFilter",
+      `Signal ${symbol} skipped: Invalid side '${side}'. Must be LONG or SHORT.`,
+    );
+    return;
+  }
+
+  if (allowedDirection === "LONG_ONLY" && normalizedSignalSide !== "LONG") {
+    addAppLog(
+      "WARN",
+      "DirectionFilter",
+      `Signal ${symbol} ${side} skipped: Binance bot is configured for LONG_ONLY.`,
+    );
+    return;
+  }
+
+  if (allowedDirection === "SHORT_ONLY" && normalizedSignalSide !== "SHORT") {
+    addAppLog(
+      "WARN",
+      "DirectionFilter",
+      `Signal ${symbol} ${side} skipped: Binance bot is configured for SHORT_ONLY.`,
+    );
+    return;
+  }
+
+  // 4. Cek Kredensial API
   if (!config.binanceApiKey || !config.binanceApiSecret) {
     addAppLog(
       "ERROR",
@@ -514,9 +551,12 @@ export async function executeSignalOrder(
     const isTrailingEnabled =
       config.trailingStopEnabled ??
       process.env.BINANCE_TRAILING_STOP !== "false";
-    const trailingCallback =
+    const rawCallback =
       config.trailingCallbackRate ??
       parseFloat(process.env.BINANCE_TRAILING_CALLBACK || "2.5");
+    const trailingCallback = isNaN(rawCallback)
+      ? 2.5
+      : Number(Math.min(5.0, Math.max(0.1, rawCallback)).toFixed(1));
     const trailingActivationMode = (
       config.trailingActivation ||
       process.env.BINANCE_TRAILING_ACTIVATION ||
