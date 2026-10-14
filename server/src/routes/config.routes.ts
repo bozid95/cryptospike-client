@@ -46,8 +46,7 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       minScore: binanceConfig?.minScore ?? 0,
       binanceBlockLongOnBtcBearish:
         binanceConfig?.blockLongOnBtcBearish ?? true,
-      blockLongOnBtcBearish:
-        binanceConfig?.blockLongOnBtcBearish ?? true,
+      blockLongOnBtcBearish: binanceConfig?.blockLongOnBtcBearish ?? true,
       // Tokocrypto Dedicated Fields
       tokocryptoApiKey: tokocryptoConfig?.apiKey || "",
       tokocryptoApiSecret: tokocryptoConfig?.apiSecret || "",
@@ -203,11 +202,16 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
         Math.min(100, Number(binanceMinScore) || 0),
       );
     } else if (minScore !== undefined) {
-      binanceUpdate.minScore = Math.max(0, Math.min(100, Number(minScore) || 0));
+      binanceUpdate.minScore = Math.max(
+        0,
+        Math.min(100, Number(minScore) || 0),
+      );
     }
 
     if (binanceBlockLongOnBtcBearish !== undefined) {
-      binanceUpdate.blockLongOnBtcBearish = Boolean(binanceBlockLongOnBtcBearish);
+      binanceUpdate.blockLongOnBtcBearish = Boolean(
+        binanceBlockLongOnBtcBearish,
+      );
     } else if (blockLongOnBtcBearish !== undefined) {
       binanceUpdate.blockLongOnBtcBearish = Boolean(blockLongOnBtcBearish);
     }

@@ -200,7 +200,9 @@ export default function ActivePosition({
         console.log("⚪ Binance WebSocket Disconnected");
       };
     } catch (err) {
-      console.warn("🟡 Could not create browser WebSocket, relying on server cache.");
+      console.warn(
+        "🟡 Could not create browser WebSocket, relying on server cache.",
+      );
     }
 
     return () => {
