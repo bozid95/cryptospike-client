@@ -21,9 +21,11 @@ interface MonitoredWsPosition {
 
 // State Internal WebSocket
 let wsClient: WebSocket | null = null;
+let marketWsClient: WebSocket | null = null;
 let currentListenKey: string | null = null;
 let keepAliveTimer: NodeJS.Timeout | null = null;
 let reconnectTimer: NodeJS.Timeout | null = null;
+let marketReconnectTimer: NodeJS.Timeout | null = null;
 let isReconnecting = false;
 let bannedUntilTimestamp: number = 0;
 let isWsConnected = false;
@@ -84,6 +86,89 @@ function getWsBaseUrl(isTestnet: boolean): string {
   return isTestnet
     ? "wss://stream.binancefuture.com/ws/"
     : "wss://fstream.binance.com/ws/";
+}
+
+/**
+ * Menghubungkan ke Public Mark Price Stream (!markPrice@arr@1s)
+ * untuk memperbarui markPrice, unRealizedProfit, dan roiPct posisi terbuka secara live setiap detik di memori
+ */
+export function connectBinanceMarketWs(isTestnet: boolean): void {
+  if (marketWsClient) {
+    try {
+      marketWsClient.close();
+    } catch {}
+    marketWsClient = null;
+  }
+  if (marketReconnectTimer) {
+    clearTimeout(marketReconnectTimer);
+    marketReconnectTimer = null;
+  }
+
+  const baseWs = getWsBaseUrl(isTestnet);
+  const marketUrl = `${baseWs}!markPrice@arr@1s`;
+
+  try {
+    marketWsClient = new WebSocket(marketUrl);
+
+    marketWsClient.on("open", () => {
+      addAppLog(
+        "INFO",
+        "BinanceWS",
+        `Public Mark Price stream connected (${isTestnet ? "Testnet" : "Live"}). Real-time pricing active.`,
+      );
+    });
+
+    marketWsClient.on("message", (data: WebSocket.RawData) => {
+      try {
+        const rawStr = data.toString();
+        const items = JSON.parse(rawStr);
+        if (Array.isArray(items) && livePositions.size > 0) {
+          let hasUpdated = false;
+          for (const item of items) {
+            if (item && item.s && item.p && livePositions.has(item.s)) {
+              const pos = livePositions.get(item.s);
+              if (pos) {
+                const markPrice = parseFloat(item.p);
+                pos.markPrice = markPrice;
+                const isLong = pos.side === "LONG";
+                const pnl = isLong
+                  ? (markPrice - pos.entryPrice) * pos.positionAmt
+                  : (pos.entryPrice - markPrice) * pos.positionAmt;
+                pos.unRealizedProfit = pnl;
+                const initialMargin =
+                  (pos.entryPrice * pos.positionAmt) / (pos.leverage || 1);
+                pos.roiPct =
+                  initialMargin > 0 ? (pnl / initialMargin) * 100 : 0;
+                pos.notionalValue = pos.positionAmt * markPrice;
+                hasUpdated = true;
+              }
+            }
+          }
+          if (hasUpdated) {
+            let totalUpnl = 0;
+            for (const p of livePositions.values()) {
+              totalUpnl += p.unRealizedProfit || 0;
+            }
+            liveAccount.totalUnrealizedProfit = totalUpnl;
+            lastCacheUpdate = Date.now();
+          }
+        }
+      } catch {}
+    });
+
+    marketWsClient.on("error", () => {
+      // Abaikan error public stream, onclose akan memicu rekoneksi
+    });
+
+    marketWsClient.on("close", () => {
+      if (!marketReconnectTimer) {
+        marketReconnectTimer = setTimeout(() => {
+          marketReconnectTimer = null;
+          connectBinanceMarketWs(isTestnet);
+        }, 10000);
+      }
+    });
+  } catch {}
 }
 
 /**
@@ -201,20 +286,32 @@ export async function handleBinanceWsMessage(
           if (absAmt > 0) {
             // Posisi Terbuka / Berubah
             const side: "LONG" | "SHORT" = posAmt > 0 ? "LONG" : "SHORT";
+            const existing = livePositions.get(symbol);
+            const markPrice = existing?.markPrice || entryPrice;
+            const leverage = existing?.leverage || 10;
+            const notional = absAmt * markPrice;
+            const initialMargin = (entryPrice * absAmt) / leverage;
+            const roiPct =
+              initialMargin > 0 ? (unRealizedProfit / initialMargin) * 100 : 0;
+
             livePositions.set(symbol, {
               symbol,
               side,
               entryPrice,
-              markPrice: entryPrice, // akan diupdate secara dinamis
+              markPrice,
               positionAmt: absAmt,
-              leverage: 10,
+              leverage,
               unRealizedProfit,
-              liquidationPrice: 0,
-              isolatedMargin: 0,
-              notionalValue: absAmt * entryPrice,
-              roiPct: 0,
-              distanceToLiqPct: 0,
-              marginType: (p.mt || "ISOLATED").toUpperCase(),
+              liquidationPrice: existing?.liquidationPrice || 0,
+              isolatedMargin: existing?.isolatedMargin || 0,
+              notionalValue: notional,
+              roiPct,
+              distanceToLiqPct: existing?.distanceToLiqPct || 0,
+              marginType: (
+                p.mt ||
+                existing?.marginType ||
+                "ISOLATED"
+              ).toUpperCase(),
             });
 
             // Sinkronkan ke monitoredWsPositions jika belum ada
@@ -407,6 +504,9 @@ export async function connectBinanceWs(): Promise<void> {
         },
         30 * 60 * 1000,
       );
+
+      // Mulai Public Mark Price Stream agar harga dan PnL posisi live setiap detik
+      connectBinanceMarketWs(isTestnet);
     });
 
     wsClient.on("message", (data: WebSocket.RawData) => {
@@ -506,10 +606,20 @@ export function restartBinanceWsService(): void {
     } catch {}
     wsClient = null;
   }
+  if (marketWsClient) {
+    try {
+      marketWsClient.close();
+    } catch {}
+    marketWsClient = null;
+  }
   isWsConnected = false;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
+  }
+  if (marketReconnectTimer) {
+    clearTimeout(marketReconnectTimer);
+    marketReconnectTimer = null;
   }
   connectBinanceWs();
 }
@@ -522,6 +632,10 @@ export async function stopBinanceWsService(): Promise<void> {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  if (marketReconnectTimer) {
+    clearTimeout(marketReconnectTimer);
+    marketReconnectTimer = null;
+  }
   if (keepAliveTimer) {
     clearInterval(keepAliveTimer);
     keepAliveTimer = null;
@@ -532,6 +646,12 @@ export async function stopBinanceWsService(): Promise<void> {
       wsClient.close();
     } catch {}
     wsClient = null;
+  }
+  if (marketWsClient) {
+    try {
+      marketWsClient.close();
+    } catch {}
+    marketWsClient = null;
   }
   isWsConnected = false;
 

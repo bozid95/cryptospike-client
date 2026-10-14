@@ -4,6 +4,7 @@ import { testBinanceConnection } from "../lib/binance";
 import { testTokocryptoConnection } from "../lib/tokocrypto";
 import { requireAuth } from "../middlewares/auth";
 import { connectToNestJS } from "../services/socket.service";
+import { restartBinanceWsService } from "../services/binance-ws.service";
 
 export const configRouter = Router();
 
@@ -289,6 +290,9 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (savedApp.clientToken) {
       connectToNestJS(savedApp.clientToken);
     }
+
+    // Otomatis Reconnect Binance Futures WebSocket Stream (Live/Testnet Switch)
+    restartBinanceWsService();
 
     const mergedSaved = {
       targetExchange: savedApp.targetExchange,

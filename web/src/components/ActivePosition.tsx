@@ -92,6 +92,9 @@ export default function ActivePosition({
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
   const [itemToClose, setItemToClose] = useState<PositionItem | null>(null);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [binanceEnvironment, setBinanceEnvironment] = useState<
+    "TESTNET" | "LIVE"
+  >("TESTNET");
 
   useEffect(() => {
     if (forcedExchange) {
@@ -118,6 +121,11 @@ export default function ActivePosition({
                 : "BINANCE",
             );
           }
+          if (data.environment) {
+            setBinanceEnvironment(
+              data.environment.toUpperCase() === "LIVE" ? "LIVE" : "TESTNET",
+            );
+          }
           if (data.account?.quoteAsset) {
             setQuoteAsset(data.account.quoteAsset);
           }
@@ -141,7 +149,7 @@ export default function ActivePosition({
     fetchPositions();
     const interval = setInterval(() => {
       fetchPositions();
-    }, 3000);
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -149,42 +157,60 @@ export default function ActivePosition({
   useEffect(() => {
     if (activeExchange !== "BINANCE") return;
 
-    const wsUrl = "wss://fstream.binance.com/ws/!markPrice@arr@1s";
-    const ws = new WebSocket(wsUrl);
+    const isTestnet = binanceEnvironment === "TESTNET";
+    const wsBase = isTestnet
+      ? "wss://stream.binancefuture.com/ws/"
+      : "wss://fstream.binance.com/ws/";
+    const wsUrl = `${wsBase}!markPrice@arr@1s`;
 
-    ws.onopen = () => {
-      console.log("🟢 Binance WebSocket Connected:", wsUrl);
-    };
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket(wsUrl);
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (Array.isArray(data)) {
-          setLivePrices((prev) => {
-            const newPrices = { ...prev };
-            data.forEach((item) => {
-              if (item.s && item.p) {
-                newPrices[item.s] = parseFloat(item.p);
-              }
+      ws.onopen = () => {
+        console.log("🟢 Binance WebSocket Connected:", wsUrl);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (Array.isArray(data)) {
+            setLivePrices((prev) => {
+              const newPrices = { ...prev };
+              data.forEach((item) => {
+                if (item.s && item.p) {
+                  newPrices[item.s] = parseFloat(item.p);
+                }
+              });
+              return newPrices;
             });
-            return newPrices;
-          });
+          }
+        } catch (e) {
+          // Abaikan error parse
         }
-      } catch (e) {
-        // Abaikan error parse
+      };
+
+      ws.onerror = () => {
+        console.warn(
+          "🟡 Binance direct browser WebSocket unavailable, relying on backend real-time cache.",
+        );
+      };
+
+      ws.onclose = () => {
+        console.log("⚪ Binance WebSocket Disconnected");
+      };
+    } catch (err) {
+      console.warn("🟡 Could not create browser WebSocket, relying on server cache.");
+    }
+
+    return () => {
+      if (ws) {
+        try {
+          ws.close();
+        } catch {}
       }
     };
-
-    ws.onerror = (error) => {
-      console.error("🔴 Binance WebSocket Error:", error);
-    };
-
-    ws.onclose = () => {
-      console.log("⚪ Binance WebSocket Disconnected");
-    };
-
-    return () => ws.close();
-  }, [activeExchange]);
+  }, [activeExchange, binanceEnvironment]);
 
   const [isCloseAllModalOpen, setIsCloseAllModalOpen] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
