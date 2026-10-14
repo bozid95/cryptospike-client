@@ -3,8 +3,18 @@ import { prisma } from "../lib/db";
 import { getAccountAndPositions, closePositionDirect } from "../lib/binance";
 import { getTokocryptoBalance, getTokocryptoTicker } from "../lib/tokocrypto";
 import { closeSpotTradeManually } from "../services/spot-monitor.service";
+import {
+  isBinanceWsConnected,
+  getLiveBinanceAccount,
+  getLiveBinancePositions,
+  getLiveCacheLastUpdated,
+} from "../services/binance-ws.service";
 import { addAppLog } from "../lib/logger";
 import { requireAuth } from "../middlewares/auth";
+
+// Cache jangka pendek untuk fallback REST agar tidak spam bursa
+let lastRestPositionsFetch = 0;
+let lastRestPositionsData: { account: any; positions: any[] } | null = null;
 
 export const positionsRouter = Router();
 
@@ -128,19 +138,63 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const { account, positions } = await getAccountAndPositions(
-      binanceConfig.apiKey.trim(),
-      binanceConfig.apiSecret.trim(),
-      binanceConfig.environment || "TESTNET",
-    );
+    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream aktif
+    if (isBinanceWsConnected() && getLiveCacheLastUpdated() > 0) {
+      return res.json({
+        success: true,
+        exchange: "BINANCE",
+        account: getLiveBinanceAccount(),
+        positions: getLiveBinancePositions(),
+        environment: binanceConfig.environment || "TESTNET",
+        source: "WEBSOCKET_STREAM",
+      });
+    }
 
-    res.json({
-      success: true,
-      exchange: "BINANCE",
-      account,
-      positions,
-      environment: binanceConfig.environment || "TESTNET",
-    });
+    // 2. Fallback REST dengan Caching 5 Detik (Mencegah Rate-Limit Ban)
+    const now = Date.now();
+    if (now - lastRestPositionsFetch < 5000 && lastRestPositionsData) {
+      return res.json({
+        success: true,
+        exchange: "BINANCE",
+        account: lastRestPositionsData.account,
+        positions: lastRestPositionsData.positions,
+        environment: binanceConfig.environment || "TESTNET",
+        source: "MEMORY_CACHE",
+      });
+    }
+
+    try {
+      const { account, positions } = await getAccountAndPositions(
+        binanceConfig.apiKey.trim(),
+        binanceConfig.apiSecret.trim(),
+        binanceConfig.environment || "TESTNET",
+      );
+
+      lastRestPositionsFetch = now;
+      lastRestPositionsData = { account, positions };
+
+      res.json({
+        success: true,
+        exchange: "BINANCE",
+        account,
+        positions,
+        environment: binanceConfig.environment || "TESTNET",
+        source: "REST_API",
+      });
+    } catch (apiErr: any) {
+      // Jika terjadi rate limit / ban pada REST, kembalikan data cache terakhir jika ada
+      if (lastRestPositionsData) {
+        return res.json({
+          success: true,
+          exchange: "BINANCE",
+          account: lastRestPositionsData.account,
+          positions: lastRestPositionsData.positions,
+          environment: binanceConfig.environment || "TESTNET",
+          source: "STALE_CACHE_FALLBACK",
+        });
+      }
+      throw apiErr;
+    }
   } catch (err: any) {
     res.status(500).json({
       success: false,

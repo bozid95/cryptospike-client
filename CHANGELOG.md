@@ -30,6 +30,13 @@ Format berkas ini mengacu pada [Keep a Changelog](https://keepachangelog.com/id/
   - Kemampuan menetapkan batas skor minimum (0 - 100) pada sinyal yang diterima, menolak otomatis sinyal di bawah ambang batas kualitas dengan opsi preset: All Signals, 80+ Standard, 90+ High, 95+ Elite, 99 Perfect.
 - **BTC Macro Trend Protection (blockLongOnBtcBearish)**:
   - Proteksi cerdas berbasis analisis tren makro BTC dari payload server: secara otomatis menolak sinyal LONG ketika tren BTC berada dalam kondisi Bearish atau Choppy guna menghindari jebakan koreksi pasar, sementara sinyal SHORT tetap dieksekusi secara optimal. Dilengkapi tombol toggle ON/OFF pada Web Dashboard.
+- **Binance Futures WebSocket Stream & Zero-Polling Architecture**:
+  - Implementasi koneksi native WebSocket real-time ke User Data Stream Binance Futures (`wss://stream.binancefuture.com/ws/` atau `wss://fstream.binance.com/ws/`) dengan manajemen siklus hidup `listenKey` otomatis (regenerasi dan keep-alive PUT setiap 30 menit).
+  - Event push `ACCOUNT_UPDATE`: Pembaruan saldo dompet dan posisi seketika di memori tanpa query REST ke bursa. Pembersihan massal sisa order secara instan saat posisi ditutup (`positionAmt` = 0).
+  - Event push `ORDER_TRADE_UPDATE`: Eksekusi instan pergeseran Stop Loss ke BEP (0 ms latency) saat order TP1 berstatus `FILLED` dengan idempotency guard.
+  - In-Memory Cache pada endpoint `/api/positions`: Data akun dan posisi disajikan langsung dari memori tanpa mengirim request ke bursa sehingga menghindarkan IP dari penalti rate-limit.
+- **Intelligent IP Ban Detection & Auto-Backoff**:
+  - Pendeteksian cerdas string error sanksi rate-limit Cloudflare/Binance (`IP banned until <timestamp>`). Sistem otomatis mengekstrak masa berlaku ban dan menunda rekoneksi hingga masa sanksi berakhir untuk mencegah perpanjangan ban.
 
 ### 🛡️ Peningkatan & Patch (Changed & Improved)
 
@@ -44,6 +51,9 @@ Format berkas ini mengacu pada [Keep a Changelog](https://keepachangelog.com/id/
   - Pencegahan crash/unhandled exception jika payload sinyal cacat (`side: null`, `undefined`, atau teks acak).
 - **Sub-lot Size Guard**:
   - Validasi kuantitas pasca pembulatan `stepSize`. Eksekusi dihentikan lebih awal jika kuantitas bernilai `0` untuk mencegah error bursa.
+- **Relaksasi Polling Frekuensi Frontend & Monitor**:
+  - Mengubah interval fallback Binance Monitor dari 6 detik ke 20 detik (otomatis bypass saat WebSocket aktif).
+  - Menurunkan frekuensi fetch posisi aktif di sidebar frontend dari 5 detik ke 15 detik.
 
 ### 🐛 Perbaikan Bug (Fixed)
 
@@ -51,6 +61,8 @@ Format berkas ini mengacu pada [Keep a Changelog](https://keepachangelog.com/id/
   - Pembersihan order terbuka kini membatalkan _regular orders_ (`/fapi/v1/allOpenOrders`) dan _algo conditional orders_ (`/fapi/v1/allOpenOrders` algo) secara serentak sehingga tidak ada sisa order Trailing Stop yang tertinggal saat posisi sudah ditutup.
 - **Anti-Spam / Idempotency pada Auto-BEP**:
   - Memastikan perintah pergeseran Stop Loss ke BEP hanya dieksekusi tepat 1 kali untuk setiap siklus posisi aktif, mencegah redundansi request ke bursa.
+- **Pencegahan Total Error 429 Too Many Requests / IP Ban WAF**:
+  - Menghentikan pemanggilan polling agresif REST API bursa Binance Futures dengan mengalihkan seluruh pengawasan posisi ke push event WebSocket dan in-memory cache.
 
 ---
 

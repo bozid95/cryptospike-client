@@ -6,6 +6,7 @@ import {
   cancelAllOpenOrders,
   moveSlToBreakEven,
 } from "../lib/binance";
+import { isBinanceWsConnected } from "./binance-ws.service";
 
 interface MonitoredPosition {
   symbol: string;
@@ -45,6 +46,10 @@ function logThrottled(
  */
 export async function checkBinancePositionsCycle(): Promise<void> {
   if (isChecking) return;
+  // Jika WebSocket aktif, pemantauan ditangani 100% oleh push event stream (Zero-Polling)
+  if (isBinanceWsConnected()) {
+    return;
+  }
   isChecking = true;
 
   try {
@@ -175,12 +180,13 @@ export async function checkBinancePositionsCycle(): Promise<void> {
       }
     }
   } catch (err: any) {
+    const isBan = /banned until/i.test(err.message);
     logThrottled(
       "binance-monitor-err",
       "WARN",
       "BinanceMonitor",
       `Error in Binance position monitor cycle: ${err.message}`,
-      30_000,
+      isBan ? 300_000 : 30_000,
     );
   } finally {
     isChecking = false;
@@ -188,15 +194,15 @@ export async function checkBinancePositionsCycle(): Promise<void> {
 }
 
 /**
- * Menjalankan background worker pemantau Binance Futures
+ * Menjalankan background worker pemantau Binance Futures (Fallback)
  */
-export function startBinanceMonitor(intervalMs: number = 6_000): void {
+export function startBinanceMonitor(intervalMs: number = 20_000): void {
   if (monitorInterval) return;
 
   addAppLog(
     "INFO",
     "BinanceMonitor",
-    `Binance Futures Position & Auto-BEP Monitor started (interval: ${intervalMs / 1000}s).`,
+    `Binance Futures Position & Auto-BEP Monitor fallback started (interval: ${intervalMs / 1000}s).`,
   );
 
   monitorInterval = setInterval(() => {

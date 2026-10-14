@@ -132,7 +132,7 @@ export default function App() {
     };
 
     fetchCounts();
-    const interval = setInterval(fetchCounts, 5000);
+    const interval = setInterval(fetchCounts, 15000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 

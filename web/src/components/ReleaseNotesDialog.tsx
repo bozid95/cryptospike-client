@@ -60,6 +60,14 @@ export const RELEASE_NOTES_DATA: ReleaseNote[] = [
             headline: "Block LONG on BTC Bearish / Choppy",
             desc: "Proteksi cerdas berbasis analisis tren makro BTC dari server: menolak otomatis posisi LONG saat BTC melemah/sideway guna mencegah rugi koreksi pasar.",
           },
+          {
+            headline: "Binance Futures WebSocket Stream & Zero-Polling",
+            desc: "Pemantauan posisi real-time dan eksekusi Auto-BEP/Order Cleanup berbasis User Data Stream WebSocket dengan latensi 0 ms tanpa membebani limit rate REST API bursa.",
+          },
+          {
+            headline: "IP Ban Detection & Auto-Backoff Protection",
+            desc: "Pendeteksian otomatis batas penalti IP Ban bursa dan jeda rekoneksi terukur untuk mencegah perpanjangan sanksi WAF/Cloudflare.",
+          },
         ],
       },
       {
@@ -91,6 +99,10 @@ export const RELEASE_NOTES_DATA: ReleaseNote[] = [
           {
             headline: "Anti-Spam Idempotency Auto-BEP",
             desc: "Memastikan pemindahan Stop Loss ke BEP hanya dilakukan tepat satu kali per siklus trade.",
+          },
+          {
+            headline: "Eliminasi IP Ban 429 Terkait Polling REST",
+            desc: "Penyajian data posisi dari memori live stream WebSocket ke dashboard untuk menghentikan pemanggilan endpoint REST berulang yang menyebabkan rate-limit ban.",
           },
         ],
       },
