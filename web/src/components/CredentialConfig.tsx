@@ -1239,7 +1239,6 @@ export default function CredentialConfig({
                       htmlFor="trade-direction"
                       className="text-xs font-medium"
                     >
-                      Allowed Position Side (Arah Sinyal)
                       Allowed Position Side
                     </Label>
                     <span
@@ -1269,20 +1268,17 @@ export default function CredentialConfig({
                     className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="BOTH" className="text-black">
-                      Kedua Arah (LONG &amp; SHORT) - Default
-                      Both Sides (LONG &amp; SHORT) - Default
+                      Both Sides (Long &amp; Short)
                     </option>
                     <option value="LONG_ONLY" className="text-black">
-                      Hanya LONG (Bullish Sinyal Saja)
-                      Long Only (Bullish Signals Only)
+                      Long Only
                     </option>
                     <option value="SHORT_ONLY" className="text-black">
-                      Hanya SHORT (Bearish Sinyal Saja)
-                      Short Only (Bearish Signals Only)
+                      Short Only
                     </option>
                   </select>
                   <p className="text-[10px] text-muted-foreground">
-                    Automatically filter execution to Long, Short, or both signals on your Binance Futures account.
+                    Filter bot execution to Long, Short, or both positions on Binance Futures.
                   </p>
                 </div>
               </>
