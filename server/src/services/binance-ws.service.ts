@@ -1,3 +1,4 @@
+import WebSocket from "ws";
 import { prisma } from "../lib/db";
 import { addAppLog } from "../lib/logger";
 import {
@@ -386,7 +387,7 @@ export async function connectBinanceWs(): Promise<void> {
     const wsUrl = `${getWsBaseUrl(isTestnet)}${listenKey}`;
     wsClient = new WebSocket(wsUrl);
 
-    wsClient.onopen = () => {
+    wsClient.on("open", () => {
       isWsConnected = true;
       addAppLog(
         "SUCCESS",
@@ -406,26 +407,23 @@ export async function connectBinanceWs(): Promise<void> {
         },
         30 * 60 * 1000,
       );
-    };
+    });
 
-    wsClient.onmessage = (event) => {
-      const dataStr =
-        typeof event.data === "string"
-          ? event.data
-          : event.data?.toString() || "";
+    wsClient.on("message", (data: WebSocket.RawData) => {
+      const dataStr = data.toString();
       handleBinanceWsMessage(dataStr, apiKey, apiSecret, isTestnet);
-    };
+    });
 
-    wsClient.onerror = (err: any) => {
+    wsClient.on("error", (err: Error) => {
       isWsConnected = false;
       addAppLog(
         "WARN",
         "BinanceWS",
         `WebSocket error: ${err.message || "Connection error"}`,
       );
-    };
+    });
 
-    wsClient.onclose = () => {
+    wsClient.on("close", () => {
       isWsConnected = false;
       addAppLog(
         "WARN",
@@ -444,7 +442,7 @@ export async function connectBinanceWs(): Promise<void> {
           connectBinanceWs();
         }, 15000);
       }
-    };
+    });
   } catch (err: any) {
     isWsConnected = false;
     const msg = err.message || "";
