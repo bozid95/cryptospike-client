@@ -153,7 +153,9 @@ async function runDualTestOrder() {
     console.log(
       `Posisi SOLUSDT: ${lPos.side} ${lPos.positionAmt} SOL @ $${lPos.entryPrice}`,
     );
-    console.log(`Notional Value: $${(lPos.notionalValue || 0).toFixed(2)} USDT`);
+    console.log(
+      `Notional Value: $${(lPos.notionalValue || 0).toFixed(2)} USDT`,
+    );
     console.log(`Leverage      : ${lPos.leverage}x`);
     console.log(`Unrealized PnL: $${lPos.unRealizedProfit.toFixed(4)} USDT`);
     console.log(

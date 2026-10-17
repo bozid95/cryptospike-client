@@ -104,7 +104,22 @@ export async function placeOrder(
   if (params.closePosition) queryObj.closePosition = "true";
   if (params.timeInForce) queryObj.timeInForce = params.timeInForce;
   if (params.workingType) queryObj.workingType = params.workingType;
-  if (params.positionSide) queryObj.positionSide = params.positionSide;
+
+  // Deteksi Hedge Mode vs One-Way Mode otomatis
+  const isDual = await getPositionSideDual(apiKey, apiSecret, isTestnet);
+  if (isDual) {
+    if (params.positionSide) {
+      queryObj.positionSide = params.positionSide;
+    } else if (params.reduceOnly || params.closePosition) {
+      queryObj.positionSide = params.side === "BUY" ? "SHORT" : "LONG";
+    } else {
+      queryObj.positionSide = params.side === "BUY" ? "LONG" : "SHORT";
+    }
+    // Di Hedge Mode Binance Futures, parameter 'reduceOnly' dilarang pada semua order (Error -1106)
+    delete queryObj.reduceOnly;
+  } else {
+    delete queryObj.positionSide;
+  }
 
   const isAlgo =
     params.type === "STOP_MARKET" ||
@@ -629,6 +644,7 @@ export async function executeSignalOrder(
             {
               symbol,
               side: exitSide,
+              positionSide: side as "LONG" | "SHORT",
               type: "TRAILING_STOP_MARKET",
               quantity: qtyTP3,
               callbackRate: trailingCallback,
@@ -726,6 +742,7 @@ export async function executeSignalOrder(
         {
           symbol,
           side: exitSide,
+          positionSide: side as "LONG" | "SHORT",
           type: "STOP_MARKET",
           stopPrice: targetSlPrice,
           closePosition: true,
@@ -862,11 +879,50 @@ export async function moveSlToBreakEven(
           addAppLog(
             "INFO",
             "AutoBEP",
-            `[Auto-BEP] Canceled old SL order (${ord.orderId}) for ${symbol}`,
+            `[Auto-BEP] Canceled old regular SL (${ord.orderId}) for ${symbol}`,
           );
         } catch {}
       }
     }
+
+    // 1b. Batalkan STOP_MARKET lama di openAlgoOrders
+    try {
+      const timestamp = await getBinanceServerTime(baseUrl);
+      const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
+      const sig = createSignature(query, apiSecret);
+      const algoRes = await fetch(
+        `${baseUrl}/fapi/v1/openAlgoOrders?${query}&signature=${sig}`,
+        { headers: { "X-MBX-APIKEY": apiKey } },
+      );
+      if (algoRes.ok) {
+        const algoData = (await algoRes.json()) as any;
+        const algoOrders = Array.isArray(algoData?.orders)
+          ? algoData.orders
+          : Array.isArray(algoData)
+            ? algoData
+            : [];
+        for (const algo of algoOrders) {
+          if (
+            (algo.orderType === "STOP_MARKET" || algo.algoType === "CONDITIONAL") &&
+            algo.closePosition === true &&
+            algo.algoId
+          ) {
+            const delTs = await getBinanceServerTime(baseUrl);
+            const delQ = `symbol=${symbol}&algoId=${algo.algoId}&timestamp=${delTs}&recvWindow=60000`;
+            const delSig = createSignature(delQ, apiSecret);
+            await fetch(
+              `${baseUrl}/fapi/v1/algoOrder?${delQ}&signature=${delSig}`,
+              { method: "DELETE", headers: { "X-MBX-APIKEY": apiKey } },
+            );
+            addAppLog(
+              "INFO",
+              "AutoBEP",
+              `[Auto-BEP] Canceled old algo SL (${algo.algoId}) for ${symbol}`,
+            );
+          }
+        }
+      }
+    } catch {}
 
     // 2. Pasang SL baru di harga BEP
     await placeOrder(
@@ -875,6 +931,7 @@ export async function moveSlToBreakEven(
       {
         symbol,
         side: exitSide,
+        positionSide: side,
         type: "STOP_MARKET",
         stopPrice: bepPrice,
         closePosition: true,
