@@ -259,7 +259,7 @@ export async function closePositionDirect(
       positionSide: posSide,
       type: "MARKET",
       quantity: target.positionAmt,
-      reduceOnly: true,
+      reduceOnly: !isHedge,
     },
     isTestnet,
   );
@@ -903,7 +903,8 @@ export async function moveSlToBreakEven(
             : [];
         for (const algo of algoOrders) {
           if (
-            (algo.orderType === "STOP_MARKET" || algo.algoType === "CONDITIONAL") &&
+            (algo.orderType === "STOP_MARKET" ||
+              algo.algoType === "CONDITIONAL") &&
             algo.closePosition === true &&
             algo.algoId
           ) {
