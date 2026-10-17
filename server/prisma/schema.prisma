@@ -16,21 +16,51 @@ model AppConfig {
 
 // 2. Konfigurasi Mandiri Binance Futures (Single-row)
 model BinanceConfig {
-  id               Int      @id @default(1)
-  apiKey           String?  // API Key Binance
-  apiSecret        String?  // API Secret Binance
-  environment      String   @default("TESTNET") // TESTNET atau LIVE
-  autoExecute      Boolean  @default(false)
-  tradeDirection        String   @default("BOTH") // "BOTH", "LONG_ONLY", atau "SHORT_ONLY"
-  minScore              Int      @default(0) // Minimum Signal Score (0 - 100)
-  blockLongOnBtcBearish Boolean  @default(true) // Tolak sinyal LONG jika BTC Bearish/Choppy
+  id                    Int      @id @default(1)
+
+  // 🧪 KONFIGURASI MANDIRI BINANCE TESTNET (DEMO)
+  testnetApiKey               String?  // API Key Binance Testnet
+  testnetApiSecret            String?  // API Secret Binance Testnet
+  testnetAutoExecute          Boolean  @default(false)
+  testnetTradeDirection       String   @default("BOTH")       // "BOTH", "LONG_ONLY", "SHORT_ONLY"
+  testnetMinScore             Int      @default(0)            // Ambang batas skor (0 - 100)
+  testnetBlockLongOnBtcBearish Boolean @default(true)         // Proteksi tren makro BTC
+  testnetLeverage             Int      @default(10)           // Leverage 1x - 125x
+  testnetMarginType           String   @default("ISOLATED")   // ISOLATED atau CROSSED
+  testnetRiskPerTradePct      Float    @default(2.0)          // Risiko per trade (%)
+  testnetMaxOpenPositions     Int      @default(3)            // Maksimal posisi terbuka
+  testnetCoinFilterMode       String   @default("ALL")        // ALL, WHITELIST, BLACKLIST
+  testnetTargetCoins          String?  @default("")           // Daftar koin target
+
+  // 🚀 KONFIGURASI MANDIRI BINANCE LIVE (RIIL)
+  liveApiKey                  String?  // API Key Binance Live
+  liveApiSecret               String?  // API Secret Binance Live
+  liveAutoExecute             Boolean  @default(false)
+  liveTradeDirection          String   @default("BOTH")       // "BOTH", "LONG_ONLY", "SHORT_ONLY"
+  liveMinScore                Int      @default(0)            // Ambang batas skor (0 - 100)
+  liveBlockLongOnBtcBearish   Boolean  @default(true)         // Proteksi tren makro BTC
+  liveLeverage                Int      @default(10)           // Leverage 1x - 125x
+  liveMarginType              String   @default("ISOLATED")   // ISOLATED atau CROSSED
+  liveRiskPerTradePct         Float    @default(2.0)          // Risiko per trade (%)
+  liveMaxOpenPositions        Int      @default(3)            // Maksimal posisi terbuka
+  liveCoinFilterMode          String   @default("ALL")        // ALL, WHITELIST, BLACKLIST
+  liveTargetCoins             String?  @default("")           // Daftar koin target
+
+  // 🔄 KOLOM LEGACY (Kompatibilitas & Fallback)
+  apiKey                String?  // API Key Binance Legacy
+  apiSecret             String?  // API Secret Binance Legacy
+  environment           String   @default("TESTNET") // TESTNET atau LIVE
+  autoExecute           Boolean  @default(false)
+  tradeDirection        String   @default("BOTH")
+  minScore              Int      @default(0)
+  blockLongOnBtcBearish Boolean  @default(true)
   leverage              Int      @default(10)
-  marginType       String   @default("ISOLATED") // ISOLATED atau CROSSED
-  riskPerTradePct  Float    @default(2.0)
-  maxOpenPositions Int      @default(3)
-  coinFilterMode   String   @default("ALL") // ALL, WHITELIST, atau BLACKLIST
-  targetCoins      String?  @default("")
-  updatedAt        DateTime @updatedAt
+  marginType            String   @default("ISOLATED")
+  riskPerTradePct       Float    @default(2.0)
+  maxOpenPositions      Int      @default(3)
+  coinFilterMode        String   @default("ALL")
+  targetCoins           String?  @default("")
+  updatedAt             DateTime @updatedAt
 }
 
 // 3. Konfigurasi Mandiri Tokocrypto Spot (Single-row)

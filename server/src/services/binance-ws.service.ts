@@ -19,156 +19,10 @@ interface MonitoredWsPosition {
   openedAt: number;
 }
 
-// State Internal WebSocket
-let wsClient: WebSocket | null = null;
-let marketWsClient: WebSocket | null = null;
-let currentListenKey: string | null = null;
-let keepAliveTimer: NodeJS.Timeout | null = null;
-let reconnectTimer: NodeJS.Timeout | null = null;
-let marketReconnectTimer: NodeJS.Timeout | null = null;
-let isReconnecting = false;
-let bannedUntilTimestamp: number = 0;
-let isWsConnected = false;
-
-// In-Memory Live State (untuk akses instan tanpa request ke bursa)
-const livePositions = new Map<string, PositionRiskItem>();
-let liveAccount: AccountOverview = {
-  totalWalletBalance: 0,
-  totalUnrealizedProfit: 0,
-  openPositionsCount: 0,
-  totalExposureUsd: 0,
-  quoteAsset: "USDT",
-};
-let lastCacheUpdate = 0;
-
-// Posisi yang sedang dipantau untuk siklus Auto-BEP & Clean-up
-const monitoredWsPositions = new Map<string, MonitoredWsPosition>();
-
-export function isBinanceWsConnected(): boolean {
-  return isWsConnected && wsClient?.readyState === WebSocket.OPEN;
-}
-
-export function getLiveBinancePositions(): PositionRiskItem[] {
-  return Array.from(livePositions.values());
-}
-
-export function getLiveBinanceAccount(): AccountOverview {
-  return {
-    ...liveAccount,
-    openPositionsCount: livePositions.size,
-  };
-}
-
-export function getLiveCacheLastUpdated(): number {
-  return lastCacheUpdate;
-}
-
-/**
- * Mendaftarkan posisi yang baru dibuka agar dipantau Auto-BEP & Cleanup-nya oleh WebSocket
- */
-export function registerPositionForWsMonitoring(params: {
-  symbol: string;
-  side: "LONG" | "SHORT";
-  entryPrice: number;
-  quantity: number;
-}): void {
-  monitoredWsPositions.set(params.symbol, {
-    symbol: params.symbol,
-    side: params.side,
-    entryPrice: params.entryPrice,
-    initialQty: params.quantity,
-    bepMoved: false,
-    openedAt: Date.now(),
-  });
-}
-
 function getWsBaseUrl(isTestnet: boolean): string {
   return isTestnet
     ? "wss://stream.binancefuture.com/ws/"
     : "wss://fstream.binance.com/ws/";
-}
-
-/**
- * Menghubungkan ke Public Mark Price Stream (!markPrice@arr@1s)
- * untuk memperbarui markPrice, unRealizedProfit, dan roiPct posisi terbuka secara live setiap detik di memori
- */
-export function connectBinanceMarketWs(isTestnet: boolean): void {
-  if (marketWsClient) {
-    try {
-      marketWsClient.close();
-    } catch {}
-    marketWsClient = null;
-  }
-  if (marketReconnectTimer) {
-    clearTimeout(marketReconnectTimer);
-    marketReconnectTimer = null;
-  }
-
-  const baseWs = getWsBaseUrl(isTestnet);
-  const marketUrl = `${baseWs}!markPrice@arr@1s`;
-
-  try {
-    marketWsClient = new WebSocket(marketUrl);
-
-    marketWsClient.on("open", () => {
-      addAppLog(
-        "INFO",
-        "BinanceWS",
-        `Public Mark Price stream connected (${isTestnet ? "Testnet" : "Live"}). Real-time pricing active.`,
-      );
-    });
-
-    marketWsClient.on("message", (data: WebSocket.RawData) => {
-      try {
-        const rawStr = data.toString();
-        const items = JSON.parse(rawStr);
-        if (Array.isArray(items) && livePositions.size > 0) {
-          let hasUpdated = false;
-          for (const item of items) {
-            if (item && item.s && item.p && livePositions.has(item.s)) {
-              const pos = livePositions.get(item.s);
-              if (pos) {
-                const markPrice = parseFloat(item.p);
-                pos.markPrice = markPrice;
-                const isLong = pos.side === "LONG";
-                const pnl = isLong
-                  ? (markPrice - pos.entryPrice) * pos.positionAmt
-                  : (pos.entryPrice - markPrice) * pos.positionAmt;
-                pos.unRealizedProfit = pnl;
-                const initialMargin =
-                  (pos.entryPrice * pos.positionAmt) / (pos.leverage || 1);
-                pos.roiPct =
-                  initialMargin > 0 ? (pnl / initialMargin) * 100 : 0;
-                pos.notionalValue = pos.positionAmt * markPrice;
-                hasUpdated = true;
-              }
-            }
-          }
-          if (hasUpdated) {
-            let totalUpnl = 0;
-            for (const p of livePositions.values()) {
-              totalUpnl += p.unRealizedProfit || 0;
-            }
-            liveAccount.totalUnrealizedProfit = totalUpnl;
-            lastCacheUpdate = Date.now();
-          }
-        }
-      } catch {}
-    });
-
-    marketWsClient.on("error", () => {
-      // Abaikan error public stream, onclose akan memicu rekoneksi
-    });
-
-    marketWsClient.on("close", () => {
-      if (!marketReconnectTimer) {
-        marketReconnectTimer = setTimeout(() => {
-          marketReconnectTimer = null;
-          connectBinanceMarketWs(isTestnet);
-        }, 10000);
-      }
-    });
-  } catch {}
 }
 
 /**
@@ -187,14 +41,10 @@ async function createListenKey(
   });
 
   const data = (await res.json()) as any;
-
   if (!res.ok || !data.listenKey) {
-    const errorMsg = data.msg || `HTTP ${res.status}`;
-    // Deteksi jika IP sedang di-ban
-    const banMatch = errorMsg.match(/banned until (\d+)/i);
-    if (banMatch && banMatch[1]) {
-      bannedUntilTimestamp = parseInt(banMatch[1], 10);
-    }
+    const errorMsg =
+      data.msg ||
+      `Failed to create listenKey (HTTP ${res.status}): ${JSON.stringify(data)}`;
     throw new Error(errorMsg);
   }
 
@@ -249,424 +99,689 @@ async function closeListenKey(
 }
 
 /**
- * Handler parsing event real-time dari Binance WebSocket
+ * Kelas pengelola stream Binance Futures per environment (Testnet vs Live)
  */
-export async function handleBinanceWsMessage(
-  rawMessage: string,
-  apiKey: string,
-  apiSecret: string,
-  isTestnet: boolean,
-): Promise<void> {
-  try {
-    const event = JSON.parse(rawMessage);
-    const eventType = event.e;
+class BinanceEnvironmentStream {
+  public readonly environment: "TESTNET" | "LIVE";
+  public readonly isTestnet: boolean;
+  private readonly logTag: string;
 
-    // ── 1. EVENT: ACCOUNT_UPDATE ───────────────────────────────────────
-    if (eventType === "ACCOUNT_UPDATE") {
-      const updateData = event.a;
+  private wsClient: WebSocket | null = null;
+  private marketWsClient: WebSocket | null = null;
+  private currentListenKey: string | null = null;
+  private keepAliveTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private marketReconnectTimer: NodeJS.Timeout | null = null;
+  private resyncTimer: NodeJS.Timeout | null = null;
+  private isReconnecting = false;
+  private bannedUntilTimestamp = 0;
+  private isWsConnected = false;
 
-      // Update Saldo
-      if (Array.isArray(updateData?.B)) {
-        for (const bal of updateData.B) {
-          if (bal.a === "USDT") {
-            liveAccount.totalWalletBalance = parseFloat(bal.wb || "0");
-          }
-        }
-      }
+  private readonly livePositions = new Map<string, PositionRiskItem>();
+  private liveAccount: AccountOverview = {
+    totalWalletBalance: 0,
+    totalUnrealizedProfit: 0,
+    openPositionsCount: 0,
+    totalExposureUsd: 0,
+    quoteAsset: "USDT",
+  };
+  private lastCacheUpdate = 0;
+  private readonly monitoredWsPositions = new Map<
+    string,
+    MonitoredWsPosition
+  >();
 
-      // Update Posisi
-      if (Array.isArray(updateData?.P)) {
-        for (const p of updateData.P) {
-          const symbol = p.s;
-          const posAmt = parseFloat(p.pa || "0");
-          const absAmt = Math.abs(posAmt);
-          const entryPrice = parseFloat(p.ep || "0");
-          const unRealizedProfit = parseFloat(p.up || "0");
+  constructor(environment: "TESTNET" | "LIVE") {
+    this.environment = environment;
+    this.isTestnet = environment === "TESTNET";
+    this.logTag = `BinanceWS[${environment}]`;
+  }
 
-          if (absAmt > 0) {
-            // Posisi Terbuka / Berubah
-            const side: "LONG" | "SHORT" = posAmt > 0 ? "LONG" : "SHORT";
-            const existing = livePositions.get(symbol);
-            const markPrice = existing?.markPrice || entryPrice;
-            const leverage = existing?.leverage || 10;
-            const notional = absAmt * markPrice;
-            const initialMargin = (entryPrice * absAmt) / leverage;
-            const roiPct =
-              initialMargin > 0 ? (unRealizedProfit / initialMargin) * 100 : 0;
+  public isConnected(): boolean {
+    return this.isWsConnected && this.wsClient?.readyState === WebSocket.OPEN;
+  }
 
-            livePositions.set(symbol, {
-              symbol,
-              side,
-              entryPrice,
-              markPrice,
-              positionAmt: absAmt,
-              leverage,
-              unRealizedProfit,
-              liquidationPrice: existing?.liquidationPrice || 0,
-              isolatedMargin: existing?.isolatedMargin || 0,
-              notionalValue: notional,
-              roiPct,
-              distanceToLiqPct: existing?.distanceToLiqPct || 0,
-              marginType: (
-                p.mt ||
-                existing?.marginType ||
-                "ISOLATED"
-              ).toUpperCase(),
-            });
+  public getPositions(): PositionRiskItem[] {
+    return Array.from(this.livePositions.values());
+  }
 
-            // Sinkronkan ke monitoredWsPositions jika belum ada
-            if (!monitoredWsPositions.has(symbol)) {
-              monitoredWsPositions.set(symbol, {
-                symbol,
-                side,
-                entryPrice,
-                initialQty: absAmt,
-                bepMoved: false,
-                openedAt: Date.now(),
-              });
-            }
-          } else {
-            // Posisi Menjadi 0 (CLOSED / LIKUIDASI / SELESAI)
-            livePositions.delete(symbol);
+  public getAccount(): AccountOverview {
+    return {
+      ...this.liveAccount,
+      openPositionsCount: this.livePositions.size,
+    };
+  }
 
-            const tracked = monitoredWsPositions.get(symbol);
-            if (tracked) {
-              addAppLog(
-                "INFO",
-                "BinanceWS",
-                `[Realtime Cleanup] Position ${symbol} is now CLOSED (pa: 0). Cancelling leftover orders immediately...`,
-              );
-              monitoredWsPositions.delete(symbol);
+  public getLastUpdated(): number {
+    return this.lastCacheUpdate;
+  }
 
-              // ⚡ Eksekusi pembatalan massal order sisa seketika!
-              cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet).catch(
-                (err) => {
-                  addAppLog(
-                    "WARN",
-                    "BinanceWS",
-                    `Cleanup failed for ${symbol}: ${err.message}`,
-                  );
-                },
-              );
-            }
-          }
-        }
-      }
+  public registerPosition(params: {
+    symbol: string;
+    side: "LONG" | "SHORT";
+    entryPrice: number;
+    quantity: number;
+  }): void {
+    this.monitoredWsPositions.set(params.symbol, {
+      symbol: params.symbol,
+      side: params.side,
+      entryPrice: params.entryPrice,
+      initialQty: params.quantity,
+      bepMoved: false,
+      openedAt: Date.now(),
+    });
+  }
 
-      lastCacheUpdate = Date.now();
+  /**
+   * Menghubungkan ke Public Mark Price Stream (!markPrice@arr@1s)
+   */
+  public connectMarketWs(): void {
+    if (this.marketWsClient) {
+      try {
+        this.marketWsClient.close();
+      } catch {}
+      this.marketWsClient = null;
+    }
+    if (this.marketReconnectTimer) {
+      clearTimeout(this.marketReconnectTimer);
+      this.marketReconnectTimer = null;
     }
 
-    // ── 2. EVENT: ORDER_TRADE_UPDATE ───────────────────────────────────
-    if (eventType === "ORDER_TRADE_UPDATE") {
-      const o = event.o;
-      const symbol = o.s;
-      const orderStatus = o.X; // FILLED, NEW, CANCELED, etc.
-      const isReduceOnly = Boolean(o.R);
-      const isExitOrder =
-        isReduceOnly || o.ot === "TAKE_PROFIT_MARKET" || o.ot === "LIMIT";
+    const baseWs = getWsBaseUrl(this.isTestnet);
+    const marketUrl = `${baseWs}!markPrice@arr@1s`;
 
-      // Jika ada order exit yang berstatus FILLED (misal TP1 terpenuhi)
-      if (orderStatus === "FILLED" && isExitOrder) {
-        const tracked = monitoredWsPositions.get(symbol);
-        const autoBepEnabled = process.env.BINANCE_AUTO_BEP !== "false";
-        const bepBufferPct = parseFloat(
-          process.env.BINANCE_BEP_BUFFER_PCT || "0.2",
+    try {
+      this.marketWsClient = new WebSocket(marketUrl);
+
+      this.marketWsClient.on("open", () => {
+        addAppLog(
+          "INFO",
+          this.logTag,
+          `Public Mark Price stream connected (${this.environment}). Real-time pricing active.`,
+        );
+      });
+
+      this.marketWsClient.on("message", (data: WebSocket.RawData) => {
+        try {
+          const rawStr = data.toString();
+          const items = JSON.parse(rawStr);
+          if (Array.isArray(items) && this.livePositions.size > 0) {
+            let hasUpdated = false;
+            for (const item of items) {
+              if (item && item.s && item.p && this.livePositions.has(item.s)) {
+                const pos = this.livePositions.get(item.s);
+                if (pos) {
+                  const markPrice = parseFloat(item.p);
+                  pos.markPrice = markPrice;
+                  const isLong = pos.side === "LONG";
+                  const pnl = isLong
+                    ? (markPrice - pos.entryPrice) * pos.positionAmt
+                    : (pos.entryPrice - markPrice) * pos.positionAmt;
+                  pos.unRealizedProfit = pnl;
+                  const initialMargin =
+                    (pos.entryPrice * pos.positionAmt) / (pos.leverage || 1);
+                  pos.roiPct =
+                    initialMargin > 0 ? (pnl / initialMargin) * 100 : 0;
+                  pos.notionalValue = pos.positionAmt * markPrice;
+                  hasUpdated = true;
+                }
+              }
+            }
+            if (hasUpdated) {
+              let totalUpnl = 0;
+              for (const p of this.livePositions.values()) {
+                totalUpnl += p.unRealizedProfit || 0;
+              }
+              this.liveAccount.totalUnrealizedProfit = totalUpnl;
+              this.lastCacheUpdate = Date.now();
+            }
+          }
+        } catch {}
+      });
+
+      this.marketWsClient.on("error", () => {});
+
+      this.marketWsClient.on("close", () => {
+        if (!this.marketReconnectTimer) {
+          this.marketReconnectTimer = setTimeout(() => {
+            this.marketReconnectTimer = null;
+            this.connectMarketWs();
+          }, 10000);
+        }
+      });
+    } catch {}
+  }
+
+  /**
+   * Menghubungkan WebSocket ke User Data Stream
+   */
+  public async connect(): Promise<void> {
+    if (this.isReconnecting) return;
+    this.isReconnecting = true;
+
+    try {
+      const now = Date.now();
+      if (this.bannedUntilTimestamp > now) {
+        const waitMinutes = Math.ceil(
+          (this.bannedUntilTimestamp - now) / 60000,
+        );
+        addAppLog(
+          "WARN",
+          this.logTag,
+          `[Rate-Limit Pause] IP banned on ${this.environment} until ${new Date(
+            this.bannedUntilTimestamp,
+          ).toLocaleTimeString()} (~${waitMinutes} min). WS paused.`,
         );
 
-        if (tracked && !tracked.bepMoved && autoBepEnabled) {
-          addAppLog(
-            "INFO",
-            "BinanceWS",
-            `[Realtime Auto-BEP] Exit order filled for ${symbol}. Moving SL to Break-Even immediately...`,
-          );
-
-          tracked.bepMoved = true;
-          moveSlToBreakEven(
-            apiKey,
-            apiSecret,
-            symbol,
-            tracked.side,
-            tracked.entryPrice,
-            isTestnet,
-            bepBufferPct,
-          ).catch((err) => {
-            addAppLog(
-              "WARN",
-              "BinanceWS",
-              `Auto-BEP move failed for ${symbol}: ${err.message}`,
-            );
-          });
+        if (!this.reconnectTimer) {
+          const delayMs = this.bannedUntilTimestamp - now + 5000;
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.bannedUntilTimestamp = 0;
+            this.connect();
+          }, delayMs);
         }
-      }
-    }
-
-    // ── 3. EVENT: listenKeyExpired ─────────────────────────────────────
-    if (eventType === "listenKeyExpired") {
-      addAppLog(
-        "WARN",
-        "BinanceWS",
-        "Binance listenKey expired. Reconnecting...",
-      );
-      restartBinanceWsService();
-    }
-  } catch (err: any) {
-    addAppLog("WARN", "BinanceWS", `Error parsing WS message: ${err.message}`);
-  }
-}
-
-/**
- * Menghubungkan WebSocket ke Binance Futures User Data Stream
- */
-export async function connectBinanceWs(): Promise<void> {
-  if (isReconnecting) return;
-  isReconnecting = true;
-
-  try {
-    // 1. Cek apakah IP sedang di-ban oleh Binance
-    const now = Date.now();
-    if (bannedUntilTimestamp > now) {
-      const waitMinutes = Math.ceil((bannedUntilTimestamp - now) / 60000);
-      addAppLog(
-        "WARN",
-        "BinanceWS",
-        `[Rate-Limit Pause] IP is banned by Binance until ${new Date(
-          bannedUntilTimestamp,
-        ).toLocaleTimeString()} (~${waitMinutes} min). WS connection paused to prevent ban extension.`,
-      );
-
-      // Jadwalkan reconnect otomatis setelah ban berakhir
-      if (!reconnectTimer) {
-        const delayMs = bannedUntilTimestamp - now + 5000;
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          bannedUntilTimestamp = 0;
-          connectBinanceWs();
-        }, delayMs);
-      }
-      isReconnecting = false;
-      return;
-    }
-
-    // 2. Ambil kredensial dari database
-    const config = await prisma.binanceConfig.findUnique({
-      where: { id: 1 },
-    });
-
-    if (!config?.apiKey || !config?.apiSecret) {
-      isReconnecting = false;
-      return;
-    }
-
-    const apiKey = config.apiKey.trim();
-    const apiSecret = config.apiSecret.trim();
-    const isTestnet = config.environment === "TESTNET";
-
-    // 3. Minta listenKey baru
-    const listenKey = await createListenKey(apiKey, isTestnet);
-    currentListenKey = listenKey;
-
-    // Inisialisasi snapshot akun sekali di awal via REST
-    try {
-      const snapshot = await getAccountAndPositions(
-        apiKey,
-        apiSecret,
-        config.environment || "TESTNET",
-      );
-      liveAccount = snapshot.account;
-      livePositions.clear();
-      for (const p of snapshot.positions) {
-        livePositions.set(p.symbol, p);
-      }
-      lastCacheUpdate = Date.now();
-    } catch {}
-
-    // 4. Buka koneksi WebSocket Stream
-    const wsUrl = `${getWsBaseUrl(isTestnet)}${listenKey}`;
-    wsClient = new WebSocket(wsUrl);
-
-    wsClient.on("open", () => {
-      isWsConnected = true;
-      addAppLog(
-        "SUCCESS",
-        "BinanceWS",
-        `Connected to Binance Futures User Data Stream (WebSocket: ${
-          isTestnet ? "Testnet" : "Live"
-        })! Zero-polling active.`,
-      );
-
-      // Mulai Keep-Alive Timer tiap 30 menit
-      if (keepAliveTimer) clearInterval(keepAliveTimer);
-      keepAliveTimer = setInterval(
-        () => {
-          if (currentListenKey) {
-            keepAliveListenKey(apiKey, isTestnet, currentListenKey);
-          }
-        },
-        30 * 60 * 1000,
-      );
-
-      // Mulai Public Mark Price Stream agar harga dan PnL posisi live setiap detik
-      connectBinanceMarketWs(isTestnet);
-    });
-
-    wsClient.on("message", (data: WebSocket.RawData) => {
-      const dataStr = data.toString();
-      handleBinanceWsMessage(dataStr, apiKey, apiSecret, isTestnet);
-    });
-
-    wsClient.on("error", (err: Error) => {
-      isWsConnected = false;
-      addAppLog(
-        "WARN",
-        "BinanceWS",
-        `WebSocket error: ${err.message || "Connection error"}`,
-      );
-    });
-
-    wsClient.on("close", () => {
-      isWsConnected = false;
-      addAppLog(
-        "WARN",
-        "BinanceWS",
-        "WebSocket disconnected. Reconnecting in 15 seconds...",
-      );
-
-      if (keepAliveTimer) {
-        clearInterval(keepAliveTimer);
-        keepAliveTimer = null;
+        this.isReconnecting = false;
+        return;
       }
 
-      if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          connectBinanceWs();
-        }, 15000);
-      }
-    });
-  } catch (err: any) {
-    isWsConnected = false;
-    const msg = err.message || "";
-    const banMatch = msg.match(/banned until (\d+)/i);
-    if (banMatch && banMatch[1]) {
-      bannedUntilTimestamp = parseInt(banMatch[1], 10);
-      const waitMinutes = Math.ceil(
-        (bannedUntilTimestamp - Date.now()) / 60000,
-      );
-      addAppLog(
-        "WARN",
-        "BinanceWS",
-        `[Rate-Limit Guard] Binance IP ban active until ${new Date(
-          bannedUntilTimestamp,
-        ).toLocaleTimeString()} (~${waitMinutes} min). Will auto-resume when unbanned.`,
-      );
-
-      if (!reconnectTimer) {
-        const delayMs = Math.max(
-          5000,
-          bannedUntilTimestamp - Date.now() + 5000,
-        );
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          bannedUntilTimestamp = 0;
-          connectBinanceWs();
-        }, delayMs);
-      }
-    } else {
-      addAppLog(
-        "WARN",
-        "BinanceWS",
-        `Failed to establish Binance WebSocket: ${msg}. Retrying in 30s...`,
-      );
-      if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          connectBinanceWs();
-        }, 30000);
-      }
-    }
-  } finally {
-    isReconnecting = false;
-  }
-}
-
-/**
- * Memulai layanan Binance WebSocket Stream
- */
-export function startBinanceWsService(): void {
-  connectBinanceWs();
-}
-
-/**
- * Restart koneksi WebSocket (misal saat konfigurasi berganti)
- */
-export function restartBinanceWsService(): void {
-  if (wsClient) {
-    try {
-      wsClient.close();
-    } catch {}
-    wsClient = null;
-  }
-  if (marketWsClient) {
-    try {
-      marketWsClient.close();
-    } catch {}
-    marketWsClient = null;
-  }
-  isWsConnected = false;
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
-  if (marketReconnectTimer) {
-    clearTimeout(marketReconnectTimer);
-    marketReconnectTimer = null;
-  }
-  connectBinanceWs();
-}
-
-/**
- * Menghentikan layanan WebSocket secara total
- */
-export async function stopBinanceWsService(): Promise<void> {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
-  if (marketReconnectTimer) {
-    clearTimeout(marketReconnectTimer);
-    marketReconnectTimer = null;
-  }
-  if (keepAliveTimer) {
-    clearInterval(keepAliveTimer);
-    keepAliveTimer = null;
-  }
-
-  if (wsClient) {
-    try {
-      wsClient.close();
-    } catch {}
-    wsClient = null;
-  }
-  if (marketWsClient) {
-    try {
-      marketWsClient.close();
-    } catch {}
-    marketWsClient = null;
-  }
-  isWsConnected = false;
-
-  if (currentListenKey) {
-    try {
       const config = await prisma.binanceConfig.findUnique({
         where: { id: 1 },
       });
-      if (config?.apiKey) {
-        const isTestnet = config.environment === "TESTNET";
-        await closeListenKey(config.apiKey.trim(), isTestnet, currentListenKey);
+
+      // Tentukan kredensial berdasarkan environment
+      const apiKey = this.isTestnet
+        ? config?.testnetApiKey ||
+          (config?.environment === "TESTNET" ? config?.apiKey : null)
+        : config?.liveApiKey ||
+          (config?.environment === "LIVE" ? config?.apiKey : null);
+
+      const apiSecret = this.isTestnet
+        ? config?.testnetApiSecret ||
+          (config?.environment === "TESTNET" ? config?.apiSecret : null)
+        : config?.liveApiSecret ||
+          (config?.environment === "LIVE" ? config?.apiSecret : null);
+
+      if (!apiKey || !apiSecret) {
+        this.isReconnecting = false;
+        // Buka market stream agar data harga tetap tersedia meski belum ada kredensial user
+        this.connectMarketWs();
+        return;
       }
-    } catch {}
-    currentListenKey = null;
+
+      const trimmedKey = apiKey.trim();
+      const trimmedSecret = apiSecret.trim();
+
+      // Minta listenKey baru
+      const listenKey = await createListenKey(trimmedKey, this.isTestnet);
+      this.currentListenKey = listenKey;
+
+      // Inisialisasi snapshot akun via REST
+      try {
+        const snapshot = await getAccountAndPositions(
+          trimmedKey,
+          trimmedSecret,
+          this.environment,
+        );
+        this.liveAccount = snapshot.account;
+        this.livePositions.clear();
+        for (const p of snapshot.positions) {
+          this.livePositions.set(p.symbol, p);
+        }
+        this.lastCacheUpdate = Date.now();
+      } catch {}
+
+      // Buka koneksi WebSocket Stream
+      const wsUrl = `${getWsBaseUrl(this.isTestnet)}${listenKey}`;
+      this.wsClient = new WebSocket(wsUrl);
+
+      this.wsClient.on("open", () => {
+        this.isWsConnected = true;
+        addAppLog(
+          "SUCCESS",
+          this.logTag,
+          `Connected to Binance Futures User Data Stream (${this.environment})! Zero-polling active.`,
+        );
+
+        if (this.keepAliveTimer) clearInterval(this.keepAliveTimer);
+        this.keepAliveTimer = setInterval(
+          () => {
+            if (this.currentListenKey) {
+              keepAliveListenKey(
+                trimmedKey,
+                this.isTestnet,
+                this.currentListenKey,
+              );
+            }
+          },
+          30 * 60 * 1000,
+        );
+
+        // Buka Public Mark Price Stream
+        this.connectMarketWs();
+
+        // Inisialisasi background reconciliation setiap 20 detik
+        if (this.resyncTimer) clearInterval(this.resyncTimer);
+        this.resyncTimer = setInterval(async () => {
+          try {
+            const snapshot = await getAccountAndPositions(
+              trimmedKey,
+              trimmedSecret,
+              this.environment,
+            );
+            this.liveAccount = snapshot.account;
+            const activeSymbols = new Set<string>();
+            for (const p of snapshot.positions) {
+              activeSymbols.add(p.symbol);
+              this.livePositions.set(p.symbol, p);
+            }
+            for (const sym of Array.from(this.livePositions.keys())) {
+              if (!activeSymbols.has(sym)) {
+                this.livePositions.delete(sym);
+              }
+            }
+            this.lastCacheUpdate = Date.now();
+          } catch {}
+        }, 20000);
+      });
+
+      this.wsClient.on("message", (data: WebSocket.RawData) => {
+        const dataStr = data.toString();
+        this.handleWsMessage(dataStr, trimmedKey, trimmedSecret);
+      });
+
+      this.wsClient.on("error", (err: Error) => {
+        this.isWsConnected = false;
+        addAppLog(
+          "WARN",
+          this.logTag,
+          `WebSocket error: ${err.message || "Connection error"}`,
+        );
+      });
+
+      this.wsClient.on("close", () => {
+        this.isWsConnected = false;
+        addAppLog(
+          "WARN",
+          this.logTag,
+          `WebSocket disconnected. Reconnecting in 15 seconds...`,
+        );
+
+        if (this.keepAliveTimer) {
+          clearInterval(this.keepAliveTimer);
+          this.keepAliveTimer = null;
+        }
+
+        if (this.resyncTimer) {
+          clearInterval(this.resyncTimer);
+          this.resyncTimer = null;
+        }
+
+        if (!this.reconnectTimer) {
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.connect();
+          }, 15000);
+        }
+      });
+    } catch (err: any) {
+      this.isWsConnected = false;
+      const msg = err.message || "";
+      const banMatch = msg.match(/banned until (\d+)/i);
+      if (banMatch && banMatch[1]) {
+        this.bannedUntilTimestamp = parseInt(banMatch[1], 10);
+        const waitMinutes = Math.ceil(
+          (this.bannedUntilTimestamp - Date.now()) / 60000,
+        );
+        addAppLog(
+          "WARN",
+          this.logTag,
+          `[Rate-Limit Guard] IP ban active until ${new Date(
+            this.bannedUntilTimestamp,
+          ).toLocaleTimeString()} (~${waitMinutes} min). Will auto-resume.`,
+        );
+
+        if (!this.reconnectTimer) {
+          const delayMs = Math.max(
+            5000,
+            this.bannedUntilTimestamp - Date.now() + 5000,
+          );
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.bannedUntilTimestamp = 0;
+            this.connect();
+          }, delayMs);
+        }
+      } else {
+        addAppLog(
+          "WARN",
+          this.logTag,
+          `Failed to establish WebSocket: ${msg}. Retrying in 30s...`,
+        );
+        if (!this.reconnectTimer) {
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.connect();
+          }, 30000);
+        }
+      }
+    } finally {
+      this.isReconnecting = false;
+    }
   }
 
-  addAppLog("INFO", "BinanceWS", "Binance WebSocket Stream stopped.");
+  /**
+   * Handler event real-time dari Binance WebSocket
+   */
+  public handleWsMessage(
+    rawMessage: string,
+    apiKey: string,
+    apiSecret: string,
+  ): void {
+    try {
+      const event = JSON.parse(rawMessage);
+      const eventType = event.e;
+
+      // 1. ACCOUNT_UPDATE
+      if (eventType === "ACCOUNT_UPDATE") {
+        const updateData = event.a;
+
+        if (Array.isArray(updateData?.B)) {
+          for (const bal of updateData.B) {
+            if (bal.a === "USDT") {
+              this.liveAccount.totalWalletBalance = parseFloat(bal.wb || "0");
+            }
+          }
+        }
+
+        if (Array.isArray(updateData?.P)) {
+          for (const p of updateData.P) {
+            const symbol = p.s;
+            const posAmt = parseFloat(p.pa || "0");
+            const absAmt = Math.abs(posAmt);
+            const entryPrice = parseFloat(p.ep || "0");
+            const unRealizedProfit = parseFloat(p.up || "0");
+
+            if (absAmt > 0) {
+              const side: "LONG" | "SHORT" = posAmt > 0 ? "LONG" : "SHORT";
+              const existing = this.livePositions.get(symbol);
+              const markPrice = existing?.markPrice || entryPrice;
+              const leverage = existing?.leverage || 10;
+              const notional = absAmt * markPrice;
+              const initialMargin = (entryPrice * absAmt) / leverage;
+              const roiPct =
+                initialMargin > 0
+                  ? (unRealizedProfit / initialMargin) * 100
+                  : 0;
+
+              this.livePositions.set(symbol, {
+                symbol,
+                side,
+                entryPrice,
+                markPrice,
+                positionAmt: absAmt,
+                leverage,
+                unRealizedProfit,
+                liquidationPrice: existing?.liquidationPrice || 0,
+                isolatedMargin: existing?.isolatedMargin || 0,
+                notionalValue: notional,
+                roiPct,
+                distanceToLiqPct: existing?.distanceToLiqPct || 0,
+                marginType: (
+                  p.mt ||
+                  existing?.marginType ||
+                  "ISOLATED"
+                ).toUpperCase(),
+              });
+
+              if (!this.monitoredWsPositions.has(symbol)) {
+                this.monitoredWsPositions.set(symbol, {
+                  symbol,
+                  side,
+                  entryPrice,
+                  initialQty: absAmt,
+                  bepMoved: false,
+                  openedAt: Date.now(),
+                });
+              }
+            } else {
+              // Posisi CLOSED (hanya hapus jika sisi yang 0 sesuai dengan sisi posisi yang aktif di memori)
+              const existing = this.livePositions.get(symbol);
+              const pSide =
+                p.ps === "LONG" ? "LONG" : p.ps === "SHORT" ? "SHORT" : "BOTH";
+              if (existing && (pSide === "BOTH" || pSide === existing.side)) {
+                this.livePositions.delete(symbol);
+
+                const tracked = this.monitoredWsPositions.get(symbol);
+                if (tracked) {
+                  addAppLog(
+                    "INFO",
+                    this.logTag,
+                    `[Realtime Cleanup] Position ${symbol} is now CLOSED. Cancelling leftover orders...`,
+                  );
+                  this.monitoredWsPositions.delete(symbol);
+
+                  cancelAllOpenOrders(
+                    apiKey,
+                    apiSecret,
+                    symbol,
+                    this.isTestnet,
+                  ).catch((err) => {
+                    addAppLog(
+                      "WARN",
+                      this.logTag,
+                      `Cleanup failed for ${symbol}: ${err.message}`,
+                    );
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        this.lastCacheUpdate = Date.now();
+      }
+
+      // 2. ORDER_TRADE_UPDATE
+      if (eventType === "ORDER_TRADE_UPDATE") {
+        const o = event.o;
+        const symbol = o.s;
+        const orderStatus = o.X;
+        const isReduceOnly = Boolean(o.R);
+        const isExitOrder =
+          isReduceOnly || o.ot === "TAKE_PROFIT_MARKET" || o.ot === "LIMIT";
+
+        if (orderStatus === "FILLED" && isExitOrder) {
+          const tracked = this.monitoredWsPositions.get(symbol);
+          const autoBepEnabled = process.env.BINANCE_AUTO_BEP !== "false";
+          const bepBufferPct = parseFloat(
+            process.env.BINANCE_BEP_BUFFER_PCT || "0.2",
+          );
+
+          if (tracked && !tracked.bepMoved && autoBepEnabled) {
+            addAppLog(
+              "INFO",
+              this.logTag,
+              `[Realtime Auto-BEP] Exit order filled for ${symbol}. Moving SL to Break-Even immediately...`,
+            );
+
+            tracked.bepMoved = true;
+            moveSlToBreakEven(
+              apiKey,
+              apiSecret,
+              symbol,
+              tracked.side,
+              tracked.entryPrice,
+              this.isTestnet,
+              bepBufferPct,
+            ).catch((err) => {
+              addAppLog(
+                "WARN",
+                this.logTag,
+                `Auto-BEP move failed for ${symbol}: ${err.message}`,
+              );
+            });
+          }
+        }
+      }
+
+      // 3. listenKeyExpired
+      if (eventType === "listenKeyExpired") {
+        addAppLog("WARN", this.logTag, "listenKey expired. Reconnecting...");
+        this.restart();
+      }
+    } catch (err: any) {
+      addAppLog(
+        "WARN",
+        this.logTag,
+        `Error parsing WS message: ${err.message}`,
+      );
+    }
+  }
+
+  public restart(): void {
+    if (this.wsClient) {
+      try {
+        this.wsClient.close();
+      } catch {}
+      this.wsClient = null;
+    }
+    if (this.marketWsClient) {
+      try {
+        this.marketWsClient.close();
+      } catch {}
+      this.marketWsClient = null;
+    }
+    this.isWsConnected = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.marketReconnectTimer) {
+      clearTimeout(this.marketReconnectTimer);
+      this.marketReconnectTimer = null;
+    }
+    this.connect();
+  }
+
+  public async stop(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.marketReconnectTimer) {
+      clearTimeout(this.marketReconnectTimer);
+      this.marketReconnectTimer = null;
+    }
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+    if (this.resyncTimer) {
+      clearInterval(this.resyncTimer);
+      this.resyncTimer = null;
+    }
+
+    if (this.wsClient) {
+      try {
+        this.wsClient.close();
+      } catch {}
+      this.wsClient = null;
+    }
+    if (this.marketWsClient) {
+      try {
+        this.marketWsClient.close();
+      } catch {}
+      this.marketWsClient = null;
+    }
+    this.isWsConnected = false;
+
+    if (this.currentListenKey) {
+      try {
+        const config = await prisma.binanceConfig.findUnique({
+          where: { id: 1 },
+        });
+        const apiKey = this.isTestnet
+          ? config?.testnetApiKey ||
+            (config?.environment === "TESTNET" ? config?.apiKey : null)
+          : config?.liveApiKey ||
+            (config?.environment === "LIVE" ? config?.apiKey : null);
+
+        if (apiKey) {
+          await closeListenKey(
+            apiKey.trim(),
+            this.isTestnet,
+            this.currentListenKey,
+          );
+        }
+      } catch {}
+      this.currentListenKey = null;
+    }
+
+    addAppLog("INFO", this.logTag, `WebSocket stream stopped.`);
+  }
+}
+
+// ── INSTANCE MANAGER GANDA (TESTNET & LIVE) ─────────────────────────
+const testnetStream = new BinanceEnvironmentStream("TESTNET");
+const liveStream = new BinanceEnvironmentStream("LIVE");
+
+export function isBinanceWsConnected(env?: "TESTNET" | "LIVE"): boolean {
+  if (env === "TESTNET") return testnetStream.isConnected();
+  if (env === "LIVE") return liveStream.isConnected();
+  return testnetStream.isConnected() || liveStream.isConnected();
+}
+
+export function getLiveBinancePositions(
+  env: "TESTNET" | "LIVE" = "LIVE",
+): PositionRiskItem[] {
+  return env === "TESTNET"
+    ? testnetStream.getPositions()
+    : liveStream.getPositions();
+}
+
+export function getLiveBinanceAccount(
+  env: "TESTNET" | "LIVE" = "LIVE",
+): AccountOverview {
+  return env === "TESTNET"
+    ? testnetStream.getAccount()
+    : liveStream.getAccount();
+}
+
+export function getLiveCacheLastUpdated(
+  env: "TESTNET" | "LIVE" = "LIVE",
+): number {
+  return env === "TESTNET"
+    ? testnetStream.getLastUpdated()
+    : liveStream.getLastUpdated();
+}
+
+export function registerPositionForWsMonitoring(
+  params: {
+    symbol: string;
+    side: "LONG" | "SHORT";
+    entryPrice: number;
+    quantity: number;
+  },
+  env: "TESTNET" | "LIVE" = "LIVE",
+): void {
+  if (env === "TESTNET") {
+    testnetStream.registerPosition(params);
+  } else {
+    liveStream.registerPosition(params);
+  }
+}
+
+export function startBinanceWsService(): void {
+  testnetStream.connect();
+  liveStream.connect();
+}
+
+export function restartBinanceWsService(): void {
+  testnetStream.restart();
+  liveStream.restart();
+}
+
+export async function stopBinanceWsService(): Promise<void> {
+  await Promise.all([testnetStream.stop(), liveStream.stop()]);
 }

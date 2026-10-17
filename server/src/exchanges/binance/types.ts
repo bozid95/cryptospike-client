@@ -40,6 +40,7 @@ export interface PlaceOrderParams {
   closePosition?: boolean | undefined;
   timeInForce?: "GTC" | "IOC" | "FOK" | undefined;
   workingType?: "MARK_PRICE" | "CONTRACT_PRICE" | undefined;
+  positionSide?: "BOTH" | "LONG" | "SHORT" | undefined;
 }
 
 export interface BinanceExecutionConfig {

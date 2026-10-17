@@ -29,7 +29,37 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
     const mergedData = {
       targetExchange,
       clientToken,
-      // Binance Dedicated Fields
+      // 🧪 Binance Testnet Dedicated Fields
+      testnetApiKey: binanceConfig?.testnetApiKey || "",
+      testnetApiSecret: binanceConfig?.testnetApiSecret || "",
+      testnetAutoExecute: Boolean(binanceConfig?.testnetAutoExecute),
+      testnetTradeDirection: binanceConfig?.testnetTradeDirection || "BOTH",
+      testnetMinScore: binanceConfig?.testnetMinScore ?? 0,
+      testnetBlockLongOnBtcBearish:
+        binanceConfig?.testnetBlockLongOnBtcBearish ?? true,
+      testnetLeverage: binanceConfig?.testnetLeverage || 10,
+      testnetMarginType: binanceConfig?.testnetMarginType || "ISOLATED",
+      testnetRiskPerTradePct: binanceConfig?.testnetRiskPerTradePct ?? 2.0,
+      testnetMaxOpenPositions: binanceConfig?.testnetMaxOpenPositions ?? 3,
+      testnetCoinFilterMode: binanceConfig?.testnetCoinFilterMode || "ALL",
+      testnetTargetCoins: binanceConfig?.testnetTargetCoins || "",
+
+      // 🚀 Binance Live Dedicated Fields
+      liveApiKey: binanceConfig?.liveApiKey || "",
+      liveApiSecret: binanceConfig?.liveApiSecret || "",
+      liveAutoExecute: Boolean(binanceConfig?.liveAutoExecute),
+      liveTradeDirection: binanceConfig?.liveTradeDirection || "BOTH",
+      liveMinScore: binanceConfig?.liveMinScore ?? 0,
+      liveBlockLongOnBtcBearish:
+        binanceConfig?.liveBlockLongOnBtcBearish ?? true,
+      liveLeverage: binanceConfig?.liveLeverage || 10,
+      liveMarginType: binanceConfig?.liveMarginType || "ISOLATED",
+      liveRiskPerTradePct: binanceConfig?.liveRiskPerTradePct ?? 2.0,
+      liveMaxOpenPositions: binanceConfig?.liveMaxOpenPositions ?? 3,
+      liveCoinFilterMode: binanceConfig?.liveCoinFilterMode || "ALL",
+      liveTargetCoins: binanceConfig?.liveTargetCoins || "",
+
+      // Legacy Binance Fields
       binanceApiKey: binanceConfig?.apiKey || "",
       binanceApiSecret: binanceConfig?.apiSecret || "",
       environment: binanceConfig?.environment || "TESTNET",
@@ -47,6 +77,7 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       binanceBlockLongOnBtcBearish:
         binanceConfig?.blockLongOnBtcBearish ?? true,
       blockLongOnBtcBearish: binanceConfig?.blockLongOnBtcBearish ?? true,
+
       // Tokocrypto Dedicated Fields
       tokocryptoApiKey: tokocryptoConfig?.apiKey || "",
       tokocryptoApiSecret: tokocryptoConfig?.apiSecret || "",
@@ -85,7 +116,33 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     const {
       targetExchange,
       clientToken,
-      // Binance
+      // 🧪 Testnet Dedicated
+      testnetApiKey,
+      testnetApiSecret,
+      testnetAutoExecute,
+      testnetTradeDirection,
+      testnetMinScore,
+      testnetBlockLongOnBtcBearish,
+      testnetLeverage,
+      testnetMarginType,
+      testnetRiskPerTradePct,
+      testnetMaxOpenPositions,
+      testnetCoinFilterMode,
+      testnetTargetCoins,
+      // 🚀 Live Dedicated
+      liveApiKey,
+      liveApiSecret,
+      liveAutoExecute,
+      liveTradeDirection,
+      liveMinScore,
+      liveBlockLongOnBtcBearish,
+      liveLeverage,
+      liveMarginType,
+      liveRiskPerTradePct,
+      liveMaxOpenPositions,
+      liveCoinFilterMode,
+      liveTargetCoins,
+      // Legacy Binance
       binanceApiKey,
       binanceApiSecret,
       environment,
@@ -142,8 +199,104 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       },
     });
 
-    // 2. Simpan ke BinanceConfig
+    // 2. Simpan ke BinanceConfig (Dual Configurations)
     const binanceUpdate: any = {};
+
+    // 🧪 Testnet Fields
+    if (testnetApiKey !== undefined) {
+      binanceUpdate.testnetApiKey = testnetApiKey ? testnetApiKey.trim() : null;
+    }
+    if (testnetApiSecret !== undefined) {
+      binanceUpdate.testnetApiSecret = testnetApiSecret
+        ? testnetApiSecret.trim()
+        : null;
+    }
+    if (testnetAutoExecute !== undefined) {
+      binanceUpdate.testnetAutoExecute = Boolean(testnetAutoExecute);
+    }
+    if (testnetTradeDirection !== undefined) {
+      const dir = String(testnetTradeDirection).trim().toUpperCase();
+      binanceUpdate.testnetTradeDirection =
+        dir === "LONG_ONLY" || dir === "SHORT_ONLY" ? dir : "BOTH";
+    }
+    if (testnetMinScore !== undefined) {
+      binanceUpdate.testnetMinScore = Math.max(
+        0,
+        Math.min(100, Number(testnetMinScore) || 0),
+      );
+    }
+    if (testnetBlockLongOnBtcBearish !== undefined) {
+      binanceUpdate.testnetBlockLongOnBtcBearish = Boolean(
+        testnetBlockLongOnBtcBearish,
+      );
+    }
+    if (testnetLeverage !== undefined) {
+      binanceUpdate.testnetLeverage = Number(testnetLeverage);
+    }
+    if (testnetMarginType !== undefined) {
+      binanceUpdate.testnetMarginType = testnetMarginType;
+    }
+    if (testnetRiskPerTradePct !== undefined) {
+      binanceUpdate.testnetRiskPerTradePct = Number(testnetRiskPerTradePct);
+    }
+    if (testnetMaxOpenPositions !== undefined) {
+      binanceUpdate.testnetMaxOpenPositions = Number(testnetMaxOpenPositions);
+    }
+    if (testnetCoinFilterMode !== undefined) {
+      binanceUpdate.testnetCoinFilterMode = testnetCoinFilterMode;
+    }
+    if (testnetTargetCoins !== undefined) {
+      binanceUpdate.testnetTargetCoins =
+        typeof testnetTargetCoins === "string" ? testnetTargetCoins.trim() : "";
+    }
+
+    // 🚀 Live Fields
+    if (liveApiKey !== undefined) {
+      binanceUpdate.liveApiKey = liveApiKey ? liveApiKey.trim() : null;
+    }
+    if (liveApiSecret !== undefined) {
+      binanceUpdate.liveApiSecret = liveApiSecret ? liveApiSecret.trim() : null;
+    }
+    if (liveAutoExecute !== undefined) {
+      binanceUpdate.liveAutoExecute = Boolean(liveAutoExecute);
+    }
+    if (liveTradeDirection !== undefined) {
+      const dir = String(liveTradeDirection).trim().toUpperCase();
+      binanceUpdate.liveTradeDirection =
+        dir === "LONG_ONLY" || dir === "SHORT_ONLY" ? dir : "BOTH";
+    }
+    if (liveMinScore !== undefined) {
+      binanceUpdate.liveMinScore = Math.max(
+        0,
+        Math.min(100, Number(liveMinScore) || 0),
+      );
+    }
+    if (liveBlockLongOnBtcBearish !== undefined) {
+      binanceUpdate.liveBlockLongOnBtcBearish = Boolean(
+        liveBlockLongOnBtcBearish,
+      );
+    }
+    if (liveLeverage !== undefined) {
+      binanceUpdate.liveLeverage = Number(liveLeverage);
+    }
+    if (liveMarginType !== undefined) {
+      binanceUpdate.liveMarginType = liveMarginType;
+    }
+    if (liveRiskPerTradePct !== undefined) {
+      binanceUpdate.liveRiskPerTradePct = Number(liveRiskPerTradePct);
+    }
+    if (liveMaxOpenPositions !== undefined) {
+      binanceUpdate.liveMaxOpenPositions = Number(liveMaxOpenPositions);
+    }
+    if (liveCoinFilterMode !== undefined) {
+      binanceUpdate.liveCoinFilterMode = liveCoinFilterMode;
+    }
+    if (liveTargetCoins !== undefined) {
+      binanceUpdate.liveTargetCoins =
+        typeof liveTargetCoins === "string" ? liveTargetCoins.trim() : "";
+    }
+
+    // Legacy sync
     if (binanceApiKey !== undefined)
       binanceUpdate.apiKey = binanceApiKey ? binanceApiKey.trim() : null;
     if (binanceApiSecret !== undefined)
@@ -221,6 +374,35 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       update: binanceUpdate,
       create: {
         id: 1,
+        // Testnet
+        testnetApiKey: binanceUpdate.testnetApiKey || null,
+        testnetApiSecret: binanceUpdate.testnetApiSecret || null,
+        testnetAutoExecute: binanceUpdate.testnetAutoExecute ?? false,
+        testnetTradeDirection: binanceUpdate.testnetTradeDirection || "BOTH",
+        testnetMinScore: binanceUpdate.testnetMinScore ?? 0,
+        testnetBlockLongOnBtcBearish:
+          binanceUpdate.testnetBlockLongOnBtcBearish ?? true,
+        testnetLeverage: binanceUpdate.testnetLeverage ?? 10,
+        testnetMarginType: binanceUpdate.testnetMarginType || "ISOLATED",
+        testnetRiskPerTradePct: binanceUpdate.testnetRiskPerTradePct ?? 2.0,
+        testnetMaxOpenPositions: binanceUpdate.testnetMaxOpenPositions ?? 3,
+        testnetCoinFilterMode: binanceUpdate.testnetCoinFilterMode || "ALL",
+        testnetTargetCoins: binanceUpdate.testnetTargetCoins || "",
+        // Live
+        liveApiKey: binanceUpdate.liveApiKey || null,
+        liveApiSecret: binanceUpdate.liveApiSecret || null,
+        liveAutoExecute: binanceUpdate.liveAutoExecute ?? false,
+        liveTradeDirection: binanceUpdate.liveTradeDirection || "BOTH",
+        liveMinScore: binanceUpdate.liveMinScore ?? 0,
+        liveBlockLongOnBtcBearish:
+          binanceUpdate.liveBlockLongOnBtcBearish ?? true,
+        liveLeverage: binanceUpdate.liveLeverage ?? 10,
+        liveMarginType: binanceUpdate.liveMarginType || "ISOLATED",
+        liveRiskPerTradePct: binanceUpdate.liveRiskPerTradePct ?? 2.0,
+        liveMaxOpenPositions: binanceUpdate.liveMaxOpenPositions ?? 3,
+        liveCoinFilterMode: binanceUpdate.liveCoinFilterMode || "ALL",
+        liveTargetCoins: binanceUpdate.liveTargetCoins || "",
+        // Legacy
         apiKey: binanceUpdate.apiKey || null,
         apiSecret: binanceUpdate.apiSecret || null,
         environment: binanceUpdate.environment || "TESTNET",
@@ -301,7 +483,36 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     const mergedSaved = {
       targetExchange: savedApp.targetExchange,
       clientToken: savedApp.clientToken || "",
-      // Binance
+      // 🧪 Testnet
+      testnetApiKey: savedBinance.testnetApiKey || "",
+      testnetApiSecret: savedBinance.testnetApiSecret || "",
+      testnetAutoExecute: Boolean(savedBinance.testnetAutoExecute),
+      testnetTradeDirection: savedBinance.testnetTradeDirection || "BOTH",
+      testnetMinScore: savedBinance.testnetMinScore ?? 0,
+      testnetBlockLongOnBtcBearish:
+        savedBinance.testnetBlockLongOnBtcBearish ?? true,
+      testnetLeverage: savedBinance.testnetLeverage || 10,
+      testnetMarginType: savedBinance.testnetMarginType || "ISOLATED",
+      testnetRiskPerTradePct: savedBinance.testnetRiskPerTradePct ?? 2.0,
+      testnetMaxOpenPositions: savedBinance.testnetMaxOpenPositions ?? 3,
+      testnetCoinFilterMode: savedBinance.testnetCoinFilterMode || "ALL",
+      testnetTargetCoins: savedBinance.testnetTargetCoins || "",
+
+      // 🚀 Live
+      liveApiKey: savedBinance.liveApiKey || "",
+      liveApiSecret: savedBinance.liveApiSecret || "",
+      liveAutoExecute: Boolean(savedBinance.liveAutoExecute),
+      liveTradeDirection: savedBinance.liveTradeDirection || "BOTH",
+      liveMinScore: savedBinance.liveMinScore ?? 0,
+      liveBlockLongOnBtcBearish: savedBinance.liveBlockLongOnBtcBearish ?? true,
+      liveLeverage: savedBinance.liveLeverage || 10,
+      liveMarginType: savedBinance.liveMarginType || "ISOLATED",
+      liveRiskPerTradePct: savedBinance.liveRiskPerTradePct ?? 2.0,
+      liveMaxOpenPositions: savedBinance.liveMaxOpenPositions ?? 3,
+      liveCoinFilterMode: savedBinance.liveCoinFilterMode || "ALL",
+      liveTargetCoins: savedBinance.liveTargetCoins || "",
+
+      // Binance Legacy
       binanceApiKey: savedBinance.apiKey || "",
       binanceApiSecret: savedBinance.apiSecret || "",
       environment: savedBinance.environment || "TESTNET",

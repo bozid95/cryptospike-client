@@ -1,4 +1,9 @@
-import { getBaseUrl, getBinanceServerTime, createSignature } from "./client";
+import {
+  getBaseUrl,
+  getBinanceServerTime,
+  createSignature,
+  getPositionSideDual,
+} from "./client";
 import { getSymbolFilters, roundStep, roundTick } from "./market";
 import { getAccountAndPositions, testBinanceConnection } from "./account";
 import { BinanceExecutionConfig, PlaceOrderParams } from "./types";
@@ -99,6 +104,7 @@ export async function placeOrder(
   if (params.closePosition) queryObj.closePosition = "true";
   if (params.timeInForce) queryObj.timeInForce = params.timeInForce;
   if (params.workingType) queryObj.workingType = params.workingType;
+  if (params.positionSide) queryObj.positionSide = params.positionSide;
 
   const isAlgo =
     params.type === "STOP_MARKET" ||
@@ -227,12 +233,15 @@ export async function closePositionDirect(
   await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
 
   const exitSide = target.side === "LONG" ? "SELL" : "BUY";
+  const isHedge = await getPositionSideDual(apiKey, apiSecret, isTestnet);
+  const posSide = isHedge ? target.side : undefined;
   return await placeOrder(
     apiKey,
     apiSecret,
     {
       symbol,
       side: exitSide,
+      positionSide: posSide,
       type: "MARKET",
       quantity: target.positionAmt,
       reduceOnly: true,

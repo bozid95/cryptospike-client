@@ -11,6 +11,8 @@ import {
   Layers,
   ArrowUpRight,
   ArrowDownRight,
+  FlaskConical,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -85,6 +87,11 @@ export default function ActivePosition({
   const [activeExchange, setActiveExchange] = useState<
     "BINANCE" | "TOKOCRYPTO"
   >(forcedExchange || "BINANCE");
+  const [binanceSubTab, setBinanceSubTab] = useState<"TESTNET" | "LIVE">(
+    "TESTNET",
+  );
+  const [testnetCount, setTestnetCount] = useState<number>(0);
+  const [liveCount, setLiveCount] = useState<number>(0);
   const [quoteAsset, setQuoteAsset] = useState<string>("USDT");
   const [positions, setPositions] = useState<PositionItem[]>([]);
   const [account, setAccount] = useState<AccountOverview | null>(null);
@@ -92,9 +99,6 @@ export default function ActivePosition({
   const [isClosingSymbol, setIsClosingSymbol] = useState<string | null>(null);
   const [itemToClose, setItemToClose] = useState<PositionItem | null>(null);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
-  const [binanceEnvironment, setBinanceEnvironment] = useState<
-    "TESTNET" | "LIVE"
-  >("TESTNET");
 
   useEffect(() => {
     if (forcedExchange) {
@@ -102,36 +106,43 @@ export default function ActivePosition({
     }
   }, [forcedExchange]);
 
-  // Ambil data posisi & ringkasan akun live dari bursa aktif
+  const currentTargetExchange =
+    activeExchange === "TOKOCRYPTO"
+      ? "TOKOCRYPTO"
+      : binanceSubTab === "LIVE"
+        ? "BINANCE_LIVE"
+        : "BINANCE_TESTNET";
+
+  const handleSwitchBinanceSubTab = (tab: "TESTNET" | "LIVE") => {
+    if (tab === binanceSubTab) return;
+    setBinanceSubTab(tab);
+    setPositions([]);
+    setLivePrices({});
+    setAccount(null);
+    setIsLoadingPositions(true);
+  };
+
+  // Ambil data posisi & ringkasan akun live dari bursa dan lingkungan aktif
   const fetchPositions = async () => {
     try {
-      const url = forcedExchange
-        ? `/api/positions?exchange=${forcedExchange}`
-        : "/api/positions";
+      const url = `/api/positions?exchange=${currentTargetExchange}`;
       const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          if (forcedExchange) {
-            setActiveExchange(forcedExchange);
-          } else if (data.exchange) {
-            setActiveExchange(
-              data.exchange.toUpperCase() === "TOKOCRYPTO"
-                ? "TOKOCRYPTO"
-                : "BINANCE",
-            );
-          }
-          if (data.environment) {
-            setBinanceEnvironment(
-              data.environment.toUpperCase() === "LIVE" ? "LIVE" : "TESTNET",
-            );
-          }
           if (data.account?.quoteAsset) {
             setQuoteAsset(data.account.quoteAsset);
           }
           if (Array.isArray(data.positions)) {
             setPositions(data.positions);
             onPositionsCountChange?.(data.positions.length);
+            if (activeExchange === "BINANCE") {
+              if (binanceSubTab === "TESTNET") {
+                setTestnetCount(data.positions.length);
+              } else {
+                setLiveCount(data.positions.length);
+              }
+            }
           }
           if (data.account) {
             setAccount(data.account);
@@ -151,13 +162,40 @@ export default function ActivePosition({
       fetchPositions();
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentTargetExchange]);
 
-  // Live WebSocket untuk Mark Price Binance Futures
+  // Update counterpart counts in the background
   useEffect(() => {
     if (activeExchange !== "BINANCE") return;
 
-    const isTestnet = binanceEnvironment === "TESTNET";
+    const fetchOtherCount = async () => {
+      try {
+        const otherParam =
+          binanceSubTab === "LIVE" ? "BINANCE_TESTNET" : "BINANCE_LIVE";
+        const res = await authFetch(`/api/positions?exchange=${otherParam}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.positions)) {
+            if (binanceSubTab === "LIVE") {
+              setTestnetCount(data.positions.length);
+            } else {
+              setLiveCount(data.positions.length);
+            }
+          }
+        }
+      } catch {}
+    };
+
+    fetchOtherCount();
+    const interval = setInterval(fetchOtherCount, 6000);
+    return () => clearInterval(interval);
+  }, [activeExchange, binanceSubTab]);
+
+  // Live WebSocket untuk Mark Price Binance Futures (beralih dinamis sesuai sub-tab)
+  useEffect(() => {
+    if (activeExchange !== "BINANCE") return;
+
+    const isTestnet = binanceSubTab === "TESTNET";
     const wsBase = isTestnet
       ? "wss://stream.binancefuture.com/ws/"
       : "wss://fstream.binance.com/ws/";
@@ -168,7 +206,10 @@ export default function ActivePosition({
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log("🟢 Binance WebSocket Connected:", wsUrl);
+        console.log(
+          `🟢 Binance WebSocket Connected (${binanceSubTab}):`,
+          wsUrl,
+        );
       };
 
       ws.onmessage = (event) => {
@@ -192,12 +233,12 @@ export default function ActivePosition({
 
       ws.onerror = () => {
         console.warn(
-          "🟡 Binance direct browser WebSocket unavailable, relying on backend real-time cache.",
+          `🟡 Binance direct browser WebSocket unavailable (${binanceSubTab}), relying on backend real-time cache.`,
         );
       };
 
       ws.onclose = () => {
-        console.log("⚪ Binance WebSocket Disconnected");
+        console.log(`⚪ Binance WebSocket Disconnected (${binanceSubTab})`);
       };
     } catch (err) {
       console.warn(
@@ -212,7 +253,7 @@ export default function ActivePosition({
         } catch {}
       }
     };
-  }, [activeExchange, binanceEnvironment]);
+  }, [activeExchange, binanceSubTab]);
 
   const [isCloseAllModalOpen, setIsCloseAllModalOpen] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
@@ -222,6 +263,8 @@ export default function ActivePosition({
       setIsClosingAll(true);
       const res = await authFetch("/api/positions/close-all", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exchange: currentTargetExchange }),
       });
       const data = await res.json();
 
@@ -250,7 +293,11 @@ export default function ActivePosition({
       const res = await authFetch("/api/positions/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol, tradeId: id }),
+        body: JSON.stringify({
+          symbol,
+          tradeId: id,
+          exchange: currentTargetExchange,
+        }),
       });
       const data = await res.json();
 
@@ -339,6 +386,144 @@ export default function ActivePosition({
 
   return (
     <div className="space-y-6">
+      {/* 0. EXCHANGE & ENVIRONMENT SUB-TAB SELECTOR */}
+      {forcedExchange ? (
+        activeExchange === "BINANCE" && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={binanceSubTab === "TESTNET" ? "default" : "outline"}
+                onClick={() => handleSwitchBinanceSubTab("TESTNET")}
+                className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
+                  binanceSubTab === "TESTNET"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
+                    : "border-border"
+                }`}
+              >
+                <FlaskConical className="size-3.5 text-amber-500" />
+                Binance Testnet (Demo)
+                <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
+                  {testnetCount} Open
+                </Badge>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={binanceSubTab === "LIVE" ? "default" : "outline"}
+                onClick={() => handleSwitchBinanceSubTab("LIVE")}
+                className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
+                  binanceSubTab === "LIVE"
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                    : "border-border"
+                }`}
+              >
+                <Globe className="size-3.5 text-emerald-500" />
+                Binance Live (Real Funds)
+                <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
+                  {liveCount} Open
+                </Badge>
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={`text-[11px] px-2.5 py-1 gap-1.5 font-mono ${
+                  binanceSubTab === "LIVE"
+                    ? "border-red-500/40 text-red-500 bg-red-500/10 font-bold"
+                    : "border-amber-500/40 text-amber-500 bg-amber-500/10"
+                }`}
+              >
+                {binanceSubTab === "LIVE" ? (
+                  <>
+                    <span className="size-2 rounded-full bg-red-500 animate-pulse" />
+                    REAL FUNDS PRODUCTION
+                  </>
+                ) : (
+                  <>
+                    <span className="size-2 rounded-full bg-amber-500" />
+                    TESTNET DEMO ENVIRONMENT
+                  </>
+                )}
+              </Badge>
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border bg-card text-card-foreground shadow-sm">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              variant={
+                activeExchange === "BINANCE" && binanceSubTab === "TESTNET"
+                  ? "default"
+                  : "outline"
+              }
+              onClick={() => {
+                setActiveExchange("BINANCE");
+                handleSwitchBinanceSubTab("TESTNET");
+              }}
+              className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
+                activeExchange === "BINANCE" && binanceSubTab === "TESTNET"
+                  ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
+                  : "border-border"
+              }`}
+            >
+              <FlaskConical className="size-3.5 text-amber-500" />
+              Binance Testnet
+              <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
+                {testnetCount}
+              </Badge>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant={
+                activeExchange === "BINANCE" && binanceSubTab === "LIVE"
+                  ? "default"
+                  : "outline"
+              }
+              onClick={() => {
+                setActiveExchange("BINANCE");
+                handleSwitchBinanceSubTab("LIVE");
+              }}
+              className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
+                activeExchange === "BINANCE" && binanceSubTab === "LIVE"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                  : "border-border"
+              }`}
+            >
+              <Globe className="size-3.5 text-emerald-500" />
+              Binance Live
+              <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
+                {liveCount}
+              </Badge>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant={activeExchange === "TOKOCRYPTO" ? "default" : "outline"}
+              onClick={() => {
+                setActiveExchange("TOKOCRYPTO");
+                setPositions([]);
+                setLivePrices({});
+                setAccount(null);
+                setIsLoadingPositions(true);
+              }}
+              className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Coins className="size-3.5 text-amber-500" />
+              Tokocrypto Spot
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 1. KARTU ANALITIK & METRIK (ADAPTIF UNTUK FUTURES / SPOT) */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Saldo Dompet */}
@@ -347,7 +532,7 @@ export default function ActivePosition({
             <CardTitle className="text-xs font-medium text-muted-foreground">
               {activeExchange === "TOKOCRYPTO"
                 ? `Wallet Balance (${quoteAsset})`
-                : "Total Wallet Balance"}
+                : `Total Wallet Balance (${binanceSubTab === "LIVE" ? "Real" : "Testnet"})`}
             </CardTitle>
             <Wallet className="size-4 text-emerald-500" />
           </CardHeader>
@@ -530,14 +715,18 @@ export default function ActivePosition({
               >
                 {activeExchange === "TOKOCRYPTO"
                   ? "Tokocrypto Spot"
-                  : "Binance Futures"}{" "}
+                  : binanceSubTab === "LIVE"
+                    ? "Binance Futures (Real Funds)"
+                    : "Binance Futures (Testnet Demo)"}{" "}
                 • {positions.length} Open
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground hidden sm:block">
               {activeExchange === "TOKOCRYPTO"
                 ? "List of active Tokocrypto Spot coin holdings with Multi-Stage TP (50/30/20) and SL monitoring."
-                : "List of open Binance Futures positions with real-time entry, liquidation, and PnL."}
+                : binanceSubTab === "LIVE"
+                  ? "List of open Binance Futures positions trading on LIVE PRODUCTION capital."
+                  : "List of open Binance Futures positions trading on TESTNET DEMO capital."}
             </p>
           </div>
 
@@ -553,7 +742,9 @@ export default function ActivePosition({
                 <Trash2Icon className="mr-1.5 size-3.5" />
                 {activeExchange === "TOKOCRYPTO"
                   ? "Sell All Coins"
-                  : "Close All"}
+                  : binanceSubTab === "LIVE"
+                    ? "Close All (Live Funds)"
+                    : "Close All (Testnet)"}
               </Button>
             )}
             <Button
@@ -579,7 +770,9 @@ export default function ActivePosition({
               Loading position data from{" "}
               {activeExchange === "TOKOCRYPTO"
                 ? "Tokocrypto Spot"
-                : "Binance Futures"}
+                : binanceSubTab === "LIVE"
+                  ? "Binance Futures (Live Real Funds)"
+                  : "Binance Futures (Testnet Demo)"}
               ...
             </span>
           </div>
@@ -589,7 +782,9 @@ export default function ActivePosition({
             <p className="text-xs">
               {activeExchange === "TOKOCRYPTO"
                 ? "There are currently no open spot coin positions on Tokocrypto."
-                : "There are currently no open positions on Binance Futures."}
+                : binanceSubTab === "LIVE"
+                  ? "There are currently no open positions on Binance Futures (Live Real Funds)."
+                  : "There are currently no open positions on Binance Futures (Testnet Demo)."}
             </p>
           </div>
         ) : (
@@ -952,7 +1147,7 @@ export default function ActivePosition({
             <DialogTitle className="text-base font-semibold">
               {activeExchange === "TOKOCRYPTO"
                 ? "Sell Spot Position Confirmation"
-                : "Close Position Confirmation"}
+                : `Close Position Confirmation (${binanceSubTab === "LIVE" ? "REAL FUNDS" : "TESTNET DEMO"})`}
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
               {activeExchange === "TOKOCRYPTO" ? (
@@ -970,8 +1165,19 @@ export default function ActivePosition({
                   <span className="font-mono font-bold text-foreground">
                     {itemToClose?.symbol}
                   </span>{" "}
-                  position on Binance Futures? This action will execute
-                  immediately.
+                  position on Binance Futures (
+                  <strong
+                    className={
+                      binanceSubTab === "LIVE"
+                        ? "text-red-500"
+                        : "text-amber-500"
+                    }
+                  >
+                    {binanceSubTab === "LIVE"
+                      ? "REAL FUNDS PRODUCTION"
+                      : "TESTNET DEMO"}
+                  </strong>
+                  )? This action will execute immediately.
                 </span>
               )}
             </DialogDescription>
@@ -1027,7 +1233,7 @@ export default function ActivePosition({
             <DialogTitle className="text-base font-semibold text-red-600 dark:text-red-500">
               {activeExchange === "TOKOCRYPTO"
                 ? "Sell ALL Spot Positions Confirmation"
-                : "Close ALL Positions Confirmation"}
+                : `Close ALL Positions Confirmation (${binanceSubTab === "LIVE" ? "REAL FUNDS PRODUCTION" : "TESTNET DEMO"})`}
             </DialogTitle>
             <DialogDescription className="text-xs pt-1">
               {activeExchange === "TOKOCRYPTO" ? (
@@ -1041,8 +1247,20 @@ export default function ActivePosition({
                 <span>
                   Are you sure you want to market close{" "}
                   <strong>ALL {positions.length} open positions</strong> on
-                  Binance Futures? This action will execute immediately and
-                  cannot be undone.
+                  Binance Futures (
+                  <strong
+                    className={
+                      binanceSubTab === "LIVE"
+                        ? "text-red-500 font-bold"
+                        : "text-amber-500"
+                    }
+                  >
+                    {binanceSubTab === "LIVE"
+                      ? "REAL FUNDS PRODUCTION"
+                      : "TESTNET DEMO"}
+                  </strong>
+                  )? This action will execute immediately on this environment
+                  only.
                 </span>
               )}
             </DialogDescription>

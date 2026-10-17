@@ -1,3 +1,6 @@
+import { initDohResolver } from "./lib/doh-resolver";
+initDohResolver();
+
 import { app } from "./app";
 import { connectToNestJS } from "./services/socket.service";
 import { startSpotMonitor } from "./services/spot-monitor.service";

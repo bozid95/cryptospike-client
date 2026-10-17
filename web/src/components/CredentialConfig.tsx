@@ -28,7 +28,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -191,7 +190,9 @@ export default function CredentialConfig({
   const [activeExchangeForm, setActiveExchangeForm] = useState<
     "BINANCE" | "TOKOCRYPTO"
   >(forcedExchange || "BINANCE");
-  const [environment, setEnvironment] = useState<"TESTNET" | "LIVE">("TESTNET");
+  const [binanceSubTab, setBinanceSubTab] = useState<"TESTNET" | "LIVE">(
+    "TESTNET",
+  );
 
   // Sync with forcedExchange prop when tab changes
   useEffect(() => {
@@ -200,43 +201,57 @@ export default function CredentialConfig({
     }
   }, [forcedExchange]);
 
-  // Binance Credentials
+  // 🧪 Binance Testnet Dedicated Settings
   const [testnetApiKey, setTestnetApiKey] = useState("");
   const [testnetApiSecret, setTestnetApiSecret] = useState("");
   const [showTestnetSecret, setShowTestnetSecret] = useState(false);
+  const [testnetAutoExecute, setTestnetAutoExecute] = useState(false);
+  const [testnetMarginType, setTestnetMarginType] = useState<
+    "ISOLATED" | "CROSSED"
+  >("ISOLATED");
+  const [testnetLeverage, setTestnetLeverage] = useState(10);
+  const [testnetRiskPerTradePct, setTestnetRiskPerTradePct] = useState(2.0);
+  const [testnetMaxOpenPositions, setTestnetMaxOpenPositions] = useState(3);
+  const [testnetCoinFilterMode, setTestnetCoinFilterMode] = useState<
+    "ALL" | "WHITELIST" | "BLACKLIST"
+  >("ALL");
+  const [testnetTargetCoins, setTestnetTargetCoins] = useState("");
+  const [testnetTradeDirection, setTestnetTradeDirection] = useState<
+    "BOTH" | "LONG_ONLY" | "SHORT_ONLY"
+  >("BOTH");
+  const [testnetMinScore, setTestnetMinScore] = useState<number>(0);
+  const [testnetBlockLongOnBtcBearish, setTestnetBlockLongOnBtcBearish] =
+    useState<boolean>(true);
 
+  // 🚀 Binance Live Dedicated Settings
   const [liveApiKey, setLiveApiKey] = useState("");
   const [liveApiSecret, setLiveApiSecret] = useState("");
   const [showLiveSecret, setShowLiveSecret] = useState(false);
+  const [liveAutoExecute, setLiveAutoExecute] = useState(false);
+  const [liveMarginType, setLiveMarginType] = useState<"ISOLATED" | "CROSSED">(
+    "ISOLATED",
+  );
+  const [liveLeverage, setLiveLeverage] = useState(10);
+  const [liveRiskPerTradePct, setLiveRiskPerTradePct] = useState(2.0);
+  const [liveMaxOpenPositions, setLiveMaxOpenPositions] = useState(3);
+  const [liveCoinFilterMode, setLiveCoinFilterMode] = useState<
+    "ALL" | "WHITELIST" | "BLACKLIST"
+  >("ALL");
+  const [liveTargetCoins, setLiveTargetCoins] = useState("");
+  const [liveTradeDirection, setLiveTradeDirection] = useState<
+    "BOTH" | "LONG_ONLY" | "SHORT_ONLY"
+  >("BOTH");
+  const [liveMinScore, setLiveMinScore] = useState<number>(0);
+  const [liveBlockLongOnBtcBearish, setLiveBlockLongOnBtcBearish] =
+    useState<boolean>(true);
 
-  // Tokocrypto Credentials
+  // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoApiKey, setTokocryptoApiKey] = useState("");
   const [tokocryptoApiSecret, setTokocryptoApiSecret] = useState("");
   const [showTokocryptoSecret, setShowTokocryptoSecret] = useState(false);
   const [tokocryptoQuoteAsset, setTokocryptoQuoteAsset] = useState<
     "USDT" | "BIDR"
   >("USDT");
-
-  // Binance Dedicated Risk & Execution
-  const [binanceAutoExecute, setBinanceAutoExecute] = useState(false);
-  const [marginType, setMarginType] = useState<"ISOLATED" | "CROSSED">(
-    "ISOLATED",
-  );
-  const [leverage, setLeverage] = useState(10);
-  const [binanceRiskPerTradePct, setBinanceRiskPerTradePct] = useState(2.0);
-  const [binanceMaxOpenPositions, setBinanceMaxOpenPositions] = useState(3);
-  const [binanceCoinFilterMode, setBinanceCoinFilterMode] = useState<
-    "ALL" | "WHITELIST" | "BLACKLIST"
-  >("ALL");
-  const [binanceTargetCoins, setBinanceTargetCoins] = useState("");
-  const [binanceTradeDirection, setBinanceTradeDirection] = useState<
-    "BOTH" | "LONG_ONLY" | "SHORT_ONLY"
-  >("BOTH");
-  const [binanceMinScore, setBinanceMinScore] = useState<number>(0);
-  const [binanceBlockLongOnBtcBearish, setBinanceBlockLongOnBtcBearish] =
-    useState<boolean>(true);
-
-  // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoAutoExecute, setTokocryptoAutoExecute] = useState(false);
   const [tokocryptoDryRun, setTokocryptoDryRun] = useState(false);
   const [tokocryptoRiskPerTradePct, setTokocryptoRiskPerTradePct] =
@@ -263,50 +278,106 @@ export default function CredentialConfig({
     quoteAsset?: string;
   };
 
-  const [binanceTestResult, setBinanceTestResult] =
+  const [testnetTestResult, setTestnetTestResult] =
     useState<TestResultType | null>(null);
+  const [liveTestResult, setLiveTestResult] = useState<TestResultType | null>(
+    null,
+  );
   const [tokocryptoTestResult, setTokocryptoTestResult] =
     useState<TestResultType | null>(null);
 
   // Active form getters and setters
   const isTokoForm = activeExchangeForm === "TOKOCRYPTO";
-  const autoExecute = isTokoForm ? tokocryptoAutoExecute : binanceAutoExecute;
+  const isLiveBinance = !isTokoForm && binanceSubTab === "LIVE";
+
+  const autoExecute = isTokoForm
+    ? tokocryptoAutoExecute
+    : isLiveBinance
+      ? liveAutoExecute
+      : testnetAutoExecute;
   const setAutoExecute = isTokoForm
     ? setTokocryptoAutoExecute
-    : setBinanceAutoExecute;
+    : isLiveBinance
+      ? setLiveAutoExecute
+      : setTestnetAutoExecute;
+
+  const marginType = isLiveBinance ? liveMarginType : testnetMarginType;
+  const setMarginType = isLiveBinance
+    ? setLiveMarginType
+    : setTestnetMarginType;
+
+  const leverage = isLiveBinance ? liveLeverage : testnetLeverage;
+  const setLeverage = isLiveBinance ? setLiveLeverage : setTestnetLeverage;
+
+  const tradeDirection = isLiveBinance
+    ? liveTradeDirection
+    : testnetTradeDirection;
+  const setTradeDirection = isLiveBinance
+    ? setLiveTradeDirection
+    : setTestnetTradeDirection;
+
+  const minScore = isLiveBinance ? liveMinScore : testnetMinScore;
+  const setMinScore = isLiveBinance ? setLiveMinScore : setTestnetMinScore;
+
+  const blockLongOnBtcBearish = isLiveBinance
+    ? liveBlockLongOnBtcBearish
+    : testnetBlockLongOnBtcBearish;
+  const setBlockLongOnBtcBearish = isLiveBinance
+    ? setLiveBlockLongOnBtcBearish
+    : setTestnetBlockLongOnBtcBearish;
 
   const riskPerTradePct = isTokoForm
     ? tokocryptoRiskPerTradePct
-    : binanceRiskPerTradePct;
+    : isLiveBinance
+      ? liveRiskPerTradePct
+      : testnetRiskPerTradePct;
   const setRiskPerTradePct = isTokoForm
     ? setTokocryptoRiskPerTradePct
-    : setBinanceRiskPerTradePct;
+    : isLiveBinance
+      ? setLiveRiskPerTradePct
+      : setTestnetRiskPerTradePct;
 
   const maxOpenPositions = isTokoForm
     ? tokocryptoMaxOpenPositions
-    : binanceMaxOpenPositions;
+    : isLiveBinance
+      ? liveMaxOpenPositions
+      : testnetMaxOpenPositions;
   const setMaxOpenPositions = isTokoForm
     ? setTokocryptoMaxOpenPositions
-    : setBinanceMaxOpenPositions;
+    : isLiveBinance
+      ? setLiveMaxOpenPositions
+      : setTestnetMaxOpenPositions;
 
   const coinFilterMode = isTokoForm
     ? tokocryptoCoinFilterMode
-    : binanceCoinFilterMode;
+    : isLiveBinance
+      ? liveCoinFilterMode
+      : testnetCoinFilterMode;
   const setCoinFilterMode = isTokoForm
     ? setTokocryptoCoinFilterMode
-    : setBinanceCoinFilterMode;
+    : isLiveBinance
+      ? setLiveCoinFilterMode
+      : setTestnetCoinFilterMode;
 
-  const targetCoins = isTokoForm ? tokocryptoTargetCoins : binanceTargetCoins;
+  const targetCoins = isTokoForm
+    ? tokocryptoTargetCoins
+    : isLiveBinance
+      ? liveTargetCoins
+      : testnetTargetCoins;
   const setTargetCoins = isTokoForm
     ? setTokocryptoTargetCoins
-    : setBinanceTargetCoins;
+    : isLiveBinance
+      ? setLiveTargetCoins
+      : setTestnetTargetCoins;
 
   const dryRun = tokocryptoDryRun;
   const setDryRun = setTokocryptoDryRun;
 
   const activeTestResult = isTokoForm
     ? tokocryptoTestResult
-    : binanceTestResult;
+    : isLiveBinance
+      ? liveTestResult
+      : testnetTestResult;
 
   // 1. Muat konfigurasi dari database lokal SQLite
   useEffect(() => {
@@ -330,52 +401,108 @@ export default function CredentialConfig({
                 loadedExchange === "TOKOCRYPTO" ? "TOKOCRYPTO" : "BINANCE",
               );
             }
-            const env = d.environment === "LIVE" ? "LIVE" : "TESTNET";
-            setEnvironment(env);
-            if (env === "TESTNET") {
-              setTestnetApiKey(d.binanceApiKey || "");
-              setTestnetApiSecret(d.binanceApiSecret || "");
+            if (d.environment === "LIVE") {
+              setBinanceSubTab("LIVE");
             } else {
-              setLiveApiKey(d.binanceApiKey || "");
-              setLiveApiSecret(d.binanceApiSecret || "");
+              setBinanceSubTab("TESTNET");
             }
 
-            // Binance Config
-            setBinanceAutoExecute(
-              d.binanceAutoExecute === 1 ||
-                d.binanceAutoExecute === true ||
-                d.autoExecute === 1 ||
-                d.autoExecute === true,
+            // 🧪 Binance Testnet Settings
+            setTestnetApiKey(
+              d.testnetApiKey ||
+                (d.environment === "TESTNET" ? d.binanceApiKey : "") ||
+                "",
             );
-            setMarginType(d.marginType || "ISOLATED");
-            setLeverage(d.leverage || 10);
-            setBinanceRiskPerTradePct(
-              d.binanceRiskPerTradePct ?? d.riskPerTradePct ?? 2.0,
+            setTestnetApiSecret(
+              d.testnetApiSecret ||
+                (d.environment === "TESTNET" ? d.binanceApiSecret : "") ||
+                "",
             );
-            setBinanceMaxOpenPositions(
-              d.binanceMaxOpenPositions ?? d.maxOpenPositions ?? 3,
+            setTestnetAutoExecute(
+              Boolean(
+                d.testnetAutoExecute ??
+                (d.environment === "TESTNET" ? d.binanceAutoExecute : false),
+              ),
             );
-            setBinanceCoinFilterMode(
-              d.binanceCoinFilterMode || d.coinFilterMode || "ALL",
+            setTestnetMarginType(
+              d.testnetMarginType || d.marginType || "ISOLATED",
             );
-            setBinanceTargetCoins(d.binanceTargetCoins || d.targetCoins || "");
-            const loadedDir = (
+            setTestnetLeverage(d.testnetLeverage || d.leverage || 10);
+            setTestnetRiskPerTradePct(
+              d.testnetRiskPerTradePct ?? d.binanceRiskPerTradePct ?? 2.0,
+            );
+            setTestnetMaxOpenPositions(
+              d.testnetMaxOpenPositions ?? d.binanceMaxOpenPositions ?? 3,
+            );
+            setTestnetCoinFilterMode(
+              d.testnetCoinFilterMode || d.binanceCoinFilterMode || "ALL",
+            );
+            setTestnetTargetCoins(
+              d.testnetTargetCoins || d.binanceTargetCoins || "",
+            );
+            const loadedTestDir = (
+              d.testnetTradeDirection ||
               d.binanceTradeDirection ||
-              d.tradeDirection ||
               "BOTH"
             ).toUpperCase();
-            setBinanceTradeDirection(
-              loadedDir === "LONG_ONLY" || loadedDir === "SHORT_ONLY"
-                ? loadedDir
+            setTestnetTradeDirection(
+              loadedTestDir === "LONG_ONLY" || loadedTestDir === "SHORT_ONLY"
+                ? loadedTestDir
                 : "BOTH",
             );
-            setBinanceMinScore(Number(d.binanceMinScore ?? d.minScore ?? 0));
-            setBinanceBlockLongOnBtcBearish(
-              d.binanceBlockLongOnBtcBearish !== undefined
-                ? Boolean(d.binanceBlockLongOnBtcBearish)
-                : d.blockLongOnBtcBearish !== undefined
-                  ? Boolean(d.blockLongOnBtcBearish)
-                  : true,
+            setTestnetMinScore(
+              Number(d.testnetMinScore ?? d.binanceMinScore ?? 0),
+            );
+            setTestnetBlockLongOnBtcBearish(
+              d.testnetBlockLongOnBtcBearish !== undefined
+                ? Boolean(d.testnetBlockLongOnBtcBearish)
+                : Boolean(d.binanceBlockLongOnBtcBearish ?? true),
+            );
+
+            // 🚀 Binance Live Settings
+            setLiveApiKey(
+              d.liveApiKey ||
+                (d.environment === "LIVE" ? d.binanceApiKey : "") ||
+                "",
+            );
+            setLiveApiSecret(
+              d.liveApiSecret ||
+                (d.environment === "LIVE" ? d.binanceApiSecret : "") ||
+                "",
+            );
+            setLiveAutoExecute(
+              Boolean(
+                d.liveAutoExecute ??
+                (d.environment === "LIVE" ? d.binanceAutoExecute : false),
+              ),
+            );
+            setLiveMarginType(d.liveMarginType || d.marginType || "ISOLATED");
+            setLiveLeverage(d.liveLeverage || d.leverage || 10);
+            setLiveRiskPerTradePct(
+              d.liveRiskPerTradePct ?? d.binanceRiskPerTradePct ?? 2.0,
+            );
+            setLiveMaxOpenPositions(
+              d.liveMaxOpenPositions ?? d.binanceMaxOpenPositions ?? 3,
+            );
+            setLiveCoinFilterMode(
+              d.liveCoinFilterMode || d.binanceCoinFilterMode || "ALL",
+            );
+            setLiveTargetCoins(d.liveTargetCoins || d.binanceTargetCoins || "");
+            const loadedLiveDir = (
+              d.liveTradeDirection ||
+              d.binanceTradeDirection ||
+              "BOTH"
+            ).toUpperCase();
+            setLiveTradeDirection(
+              loadedLiveDir === "LONG_ONLY" || loadedLiveDir === "SHORT_ONLY"
+                ? loadedLiveDir
+                : "BOTH",
+            );
+            setLiveMinScore(Number(d.liveMinScore ?? d.binanceMinScore ?? 0));
+            setLiveBlockLongOnBtcBearish(
+              d.liveBlockLongOnBtcBearish !== undefined
+                ? Boolean(d.liveBlockLongOnBtcBearish)
+                : Boolean(d.binanceBlockLongOnBtcBearish ?? true),
             );
 
             // Tokocrypto Config
@@ -400,28 +527,49 @@ export default function CredentialConfig({
 
             // Auto-fetch balances if credentials exist
             try {
-              const [resB, resT] = await Promise.all([
-                authFetch("/api/positions?exchange=BINANCE"),
+              const [resTestnet, resLive, resToko] = await Promise.all([
+                authFetch("/api/positions?exchange=BINANCE_TESTNET"),
+                authFetch("/api/positions?exchange=BINANCE_LIVE"),
                 authFetch("/api/positions?exchange=TOKOCRYPTO"),
               ]);
-              if (resB.ok) {
-                const jB = await resB.json();
-                if (jB.success && typeof jB.totalWalletBalance === "number") {
-                  setBinanceTestResult({
+              if (resTestnet.ok) {
+                const j = await resTestnet.json();
+                if (
+                  j.success &&
+                  typeof j.account?.totalWalletBalance === "number"
+                ) {
+                  setTestnetTestResult({
                     success: true,
-                    message: "Current Binance Futures Balance",
-                    balance: jB.totalWalletBalance,
+                    message: "Current Binance Testnet Balance",
+                    balance: j.account.totalWalletBalance,
                     quoteAsset: "USDT",
                   });
                 }
               }
-              if (resT.ok) {
-                const jT = await resT.json();
-                if (jT.success && typeof jT.totalWalletBalance === "number") {
+              if (resLive.ok) {
+                const j = await resLive.json();
+                if (
+                  j.success &&
+                  typeof j.account?.totalWalletBalance === "number"
+                ) {
+                  setLiveTestResult({
+                    success: true,
+                    message: "Current Binance Live Balance",
+                    balance: j.account.totalWalletBalance,
+                    quoteAsset: "USDT",
+                  });
+                }
+              }
+              if (resToko.ok) {
+                const j = await resToko.json();
+                if (
+                  j.success &&
+                  typeof j.account?.totalWalletBalance === "number"
+                ) {
                   setTokocryptoTestResult({
                     success: true,
                     message: "Current Tokocrypto Spot Balance",
-                    balance: jT.totalWalletBalance,
+                    balance: j.account.totalWalletBalance,
                     quoteAsset: tokoQuote,
                   });
                 }
@@ -492,8 +640,8 @@ export default function CredentialConfig({
       return;
     }
 
-    // Default: Binance Futures
-    const isTestnet = environment === "TESTNET";
+    // Default: Binance Futures (Testnet vs Live based on binanceSubTab)
+    const isTestnet = binanceSubTab === "TESTNET";
     const currentKey = isTestnet ? testnetApiKey : liveApiKey;
     const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
 
@@ -506,7 +654,8 @@ export default function CredentialConfig({
 
     try {
       setTestingConnection(true);
-      setBinanceTestResult(null);
+      if (isTestnet) setTestnetTestResult(null);
+      else setLiveTestResult(null);
 
       const res = await authFetch("/api/config/test-connection", {
         method: "POST",
@@ -514,24 +663,26 @@ export default function CredentialConfig({
         body: JSON.stringify({
           apiKey: currentKey.trim(),
           apiSecret: currentSecret.trim(),
-          environment,
+          environment: binanceSubTab,
         }),
       });
 
       const data = await res.json();
       const bal = typeof data.balance === "number" ? data.balance : undefined;
-      setBinanceTestResult({
+      const resObj = {
         ...data,
         balance: bal,
         quoteAsset: "USDT",
-      });
+      };
+      if (isTestnet) setTestnetTestResult(resObj);
+      else setLiveTestResult(resObj);
 
       if (data.success) {
-        toast.success("Connection Successful!", {
+        toast.success(`Binance ${binanceSubTab} Connection Successful!`, {
           description: data.message,
         });
       } else {
-        toast.error("Binance Connection Failed", {
+        toast.error(`Binance ${binanceSubTab} Connection Failed`, {
           description: data.message,
         });
       }
@@ -549,9 +700,6 @@ export default function CredentialConfig({
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const isTestnet = environment === "TESTNET";
-      const currentKey = isTestnet ? testnetApiKey : liveApiKey;
-      const currentSecret = isTestnet ? testnetApiSecret : liveApiSecret;
 
       let finalTargetCoins = targetCoins.trim();
       if (coinInput.trim()) {
@@ -581,25 +729,55 @@ export default function CredentialConfig({
         setCoinInput("");
       }
 
+      const activeBinanceKey =
+        binanceSubTab === "LIVE" ? liveApiKey : testnetApiKey;
+      const activeBinanceSecret =
+        binanceSubTab === "LIVE" ? liveApiSecret : testnetApiSecret;
+
       const payload = {
         targetExchange,
         clientToken: token.trim(),
-        // Binance Dedicated Fields
-        binanceApiKey: currentKey.trim(),
-        binanceApiSecret: currentSecret.trim(),
-        environment,
-        binanceAutoExecute,
-        marginType,
-        leverage: Number(leverage),
-        binanceTradeDirection,
-        binanceMinScore: Number(binanceMinScore),
-        binanceBlockLongOnBtcBearish: Boolean(binanceBlockLongOnBtcBearish),
-        binanceRiskPerTradePct: Number(binanceRiskPerTradePct),
-        binanceMaxOpenPositions: Number(binanceMaxOpenPositions),
-        binanceCoinFilterMode: isTokoForm
-          ? binanceCoinFilterMode
-          : coinFilterMode,
-        binanceTargetCoins: isTokoForm ? binanceTargetCoins : finalTargetCoins,
+
+        // 🧪 Binance Testnet Dedicated Fields
+        testnetApiKey: testnetApiKey.trim(),
+        testnetApiSecret: testnetApiSecret.trim(),
+        testnetAutoExecute,
+        testnetMarginType,
+        testnetLeverage: Number(testnetLeverage),
+        testnetTradeDirection,
+        testnetMinScore: Number(testnetMinScore),
+        testnetBlockLongOnBtcBearish: Boolean(testnetBlockLongOnBtcBearish),
+        testnetRiskPerTradePct: Number(testnetRiskPerTradePct),
+        testnetMaxOpenPositions: Number(testnetMaxOpenPositions),
+        testnetCoinFilterMode:
+          !isTokoForm && binanceSubTab === "TESTNET"
+            ? coinFilterMode
+            : testnetCoinFilterMode,
+        testnetTargetCoins:
+          !isTokoForm && binanceSubTab === "TESTNET"
+            ? finalTargetCoins
+            : testnetTargetCoins,
+
+        // 🚀 Binance Live Dedicated Fields
+        liveApiKey: liveApiKey.trim(),
+        liveApiSecret: liveApiSecret.trim(),
+        liveAutoExecute,
+        liveMarginType,
+        liveLeverage: Number(liveLeverage),
+        liveTradeDirection,
+        liveMinScore: Number(liveMinScore),
+        liveBlockLongOnBtcBearish: Boolean(liveBlockLongOnBtcBearish),
+        liveRiskPerTradePct: Number(liveRiskPerTradePct),
+        liveMaxOpenPositions: Number(liveMaxOpenPositions),
+        liveCoinFilterMode:
+          !isTokoForm && binanceSubTab === "LIVE"
+            ? coinFilterMode
+            : liveCoinFilterMode,
+        liveTargetCoins:
+          !isTokoForm && binanceSubTab === "LIVE"
+            ? finalTargetCoins
+            : liveTargetCoins,
+
         // Tokocrypto Dedicated Fields
         tokocryptoApiKey: tokocryptoApiKey.trim(),
         tokocryptoApiSecret: tokocryptoApiSecret.trim(),
@@ -614,6 +792,22 @@ export default function CredentialConfig({
         tokocryptoTargetCoins: isTokoForm
           ? finalTargetCoins
           : tokocryptoTargetCoins,
+
+        // Legacy Binance Sync
+        environment: binanceSubTab,
+        binanceApiKey: activeBinanceKey.trim(),
+        binanceApiSecret: activeBinanceSecret.trim(),
+        binanceAutoExecute:
+          binanceSubTab === "LIVE" ? liveAutoExecute : testnetAutoExecute,
+        marginType,
+        leverage: Number(leverage),
+        binanceTradeDirection: tradeDirection,
+        binanceMinScore: Number(minScore),
+        binanceBlockLongOnBtcBearish: Boolean(blockLongOnBtcBearish),
+        binanceRiskPerTradePct: Number(riskPerTradePct),
+        binanceMaxOpenPositions: Number(maxOpenPositions),
+        binanceCoinFilterMode: coinFilterMode,
+        binanceTargetCoins: finalTargetCoins,
       };
 
       const res = await authFetch("/api/config", {
@@ -665,7 +859,7 @@ export default function CredentialConfig({
   };
 
   const binanceTotalRiskPct =
-    Number(binanceRiskPerTradePct) * Number(binanceMaxOpenPositions);
+    Number(riskPerTradePct) * Number(maxOpenPositions);
   const binanceRiskInfo = getRiskLevel(binanceTotalRiskPct);
 
   const tokoTotalCapital =
@@ -801,6 +995,69 @@ export default function CredentialConfig({
         )}
       </div>
 
+      {/* Binance Sub-Tab Switcher (Testnet vs Live) */}
+      {activeExchangeForm === "BINANCE" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-xl border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={binanceSubTab === "TESTNET" ? "default" : "outline"}
+              onClick={() => setBinanceSubTab("TESTNET")}
+              className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
+                binanceSubTab === "TESTNET"
+                  ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
+                  : "border-border"
+              }`}
+            >
+              <FlaskConicalIcon className="size-3.5 text-amber-500" />
+              Binance Testnet (Demo)
+              {testnetAutoExecute && (
+                <Badge className="bg-emerald-500 text-white text-[9px] px-1 py-0 h-3.5 ml-1">
+                  AUTO ON
+                </Badge>
+              )}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={binanceSubTab === "LIVE" ? "default" : "outline"}
+              onClick={() => setBinanceSubTab("LIVE")}
+              className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
+                binanceSubTab === "LIVE"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                  : "border-border"
+              }`}
+            >
+              <GlobeIcon className="size-3.5 text-emerald-500" />
+              Binance Live (Real Funds)
+              {liveAutoExecute && (
+                <Badge className="bg-red-500 text-white text-[9px] px-1 py-0 h-3.5 ml-1">
+                  AUTO LIVE
+                </Badge>
+              )}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className="font-medium text-foreground">
+              Active Configuration:
+            </span>
+            <Badge
+              variant="outline"
+              className={
+                binanceSubTab === "LIVE"
+                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10 font-mono text-[10px]"
+                  : "border-amber-500/40 text-amber-600 bg-amber-500/10 font-mono text-[10px]"
+              }
+            >
+              {binanceSubTab === "LIVE"
+                ? "🚀 LIVE REAL TRADING"
+                : "🧪 TESTNET DEMO"}
+            </Badge>
+          </div>
+        </div>
+      )}
+
       {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-stretch">
         {/* Card 1: Kredensial Exchange Aktif */}
@@ -810,18 +1067,26 @@ export default function CredentialConfig({
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <KeyIcon className="size-4 text-primary" />
-                  Binance Futures Credentials
+                  Binance {binanceSubTab === "LIVE" ? "Live" : "Testnet"}{" "}
+                  Credentials
                 </CardTitle>
                 <Badge
                   variant="outline"
-                  className="text-[10px] text-primary border-primary/30"
+                  className={`text-[10px] ${
+                    binanceSubTab === "LIVE"
+                      ? "border-emerald-500/30 text-emerald-600 bg-emerald-500/5"
+                      : "border-amber-500/30 text-amber-600 bg-amber-500/5"
+                  }`}
                 >
-                  Futures Market
+                  {binanceSubTab === "LIVE"
+                    ? "Futures Real Funds"
+                    : "Futures Testnet Demo"}
                 </Badge>
               </div>
               <CardDescription className="text-xs hidden sm:block">
-                API keys are stored and encrypted locally in the SQLite
-                database.
+                {binanceSubTab === "LIVE"
+                  ? "Binance Futures Live API credentials with futures trading permissions."
+                  : "Binance Futures Testnet API credentials from testnet.binancefuture.com."}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 sm:space-y-5 flex-1">
@@ -852,131 +1117,120 @@ export default function CredentialConfig({
                 />
               </div>
 
-              <div className="border-t pt-4" />
-
-              {/* Environment Tabs */}
-              <Tabs
-                value={environment.toLowerCase()}
-                onValueChange={(val) =>
-                  setEnvironment(val.toUpperCase() as "TESTNET" | "LIVE")
-                }
-                className="w-full"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                  <Label className="text-xs font-semibold text-muted-foreground">
-                    Select API Environment
-                  </Label>
-                  <TabsList className="grid w-full sm:w-[220px] grid-cols-2">
-                    <TabsTrigger value="testnet" className="text-xs gap-1.5">
-                      <FlaskConicalIcon className="size-3.5 text-amber-500" />
-                      Testnet
-                    </TabsTrigger>
-                    <TabsTrigger value="live" className="text-xs gap-1.5">
-                      <GlobeIcon className="size-3.5 text-emerald-500" />
-                      Live
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                {/* Tab Testnet */}
-                <TabsContent value="testnet" className="space-y-4 pt-1">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                      Binance Testnet API Key
-                    </Label>
-                    <Input
-                      value={testnetApiKey}
-                      onChange={(e) => setTestnetApiKey(e.target.value)}
-                      placeholder="Enter Binance Testnet API Key..."
-                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
+              <div className="border-t pt-4 space-y-4">
+                {binanceSubTab === "TESTNET" ? (
+                  <>
+                    <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                        Binance Testnet API Secret
+                        Binance Testnet API Key
                       </Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
-                        onClick={() => setShowTestnetSecret(!showTestnetSecret)}
-                      >
-                        {showTestnetSecret ? "Hide" : "Show"}
-                      </Button>
+                      <Input
+                        value={testnetApiKey}
+                        onChange={(e) => setTestnetApiKey(e.target.value)}
+                        placeholder="Enter Binance Testnet API Key..."
+                        className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                      />
                     </div>
-                    <Input
-                      type={showTestnetSecret ? "text" : "password"}
-                      value={testnetApiSecret}
-                      onChange={(e) => setTestnetApiSecret(e.target.value)}
-                      placeholder="Enter Binance Testnet API Secret..."
-                      className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
-                    />
-                  </div>
-                </TabsContent>
-
-                {/* Tab Live */}
-                <TabsContent value="live" className="space-y-4 pt-1">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                      Binance Live API Key
-                    </Label>
-                    <Input
-                      value={liveApiKey}
-                      onChange={(e) => setLiveApiKey(e.target.value)}
-                      placeholder="Enter Binance Live API Key..."
-                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                          Binance Testnet API Secret
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                          onClick={() =>
+                            setShowTestnetSecret(!showTestnetSecret)
+                          }
+                        >
+                          {showTestnetSecret ? "Hide" : "Show"}
+                        </Button>
+                      </div>
+                      <Input
+                        type={showTestnetSecret ? "text" : "password"}
+                        value={testnetApiSecret}
+                        onChange={(e) => setTestnetApiSecret(e.target.value)}
+                        placeholder="Enter Binance Testnet API Secret..."
+                        className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                        Binance Live API Secret
+                        Binance Live API Key
                       </Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
-                        onClick={() => setShowLiveSecret(!showLiveSecret)}
-                      >
-                        {showLiveSecret ? "Hide" : "Show"}
-                      </Button>
+                      <Input
+                        value={liveApiKey}
+                        onChange={(e) => setLiveApiKey(e.target.value)}
+                        placeholder="Enter Binance Live API Key..."
+                        className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                      />
                     </div>
-                    <Input
-                      type={showLiveSecret ? "text" : "password"}
-                      value={liveApiSecret}
-                      onChange={(e) => setLiveApiSecret(e.target.value)}
-                      placeholder="Enter Binance Live API Secret..."
-                      className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+                          Binance Live API Secret
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
+                          onClick={() => setShowLiveSecret(!showLiveSecret)}
+                        >
+                          {showLiveSecret ? "Hide" : "Show"}
+                        </Button>
+                      </div>
+                      <Input
+                        type={showLiveSecret ? "text" : "password"}
+                        value={liveApiSecret}
+                        onChange={(e) => setLiveApiSecret(e.target.value)}
+                        placeholder="Enter Binance Live API Secret..."
+                        className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Feedback Hasil Test Connection */}
-              {binanceTestResult && (
+              {(binanceSubTab === "LIVE"
+                ? liveTestResult
+                : testnetTestResult) && (
                 <div
                   className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
-                    binanceTestResult.success
+                    (binanceSubTab === "LIVE"
+                      ? liveTestResult
+                      : testnetTestResult)!.success
                       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
                       : "border-destructive/30 bg-destructive/10 text-destructive"
                   }`}
                 >
-                  {binanceTestResult.success ? (
+                  {(binanceSubTab === "LIVE"
+                    ? liveTestResult
+                    : testnetTestResult)!.success ? (
                     <ShieldCheck className="size-4 shrink-0 mt-0.5" />
                   ) : (
                     <ShieldAlert className="size-4 shrink-0 mt-0.5" />
                   )}
                   <div className="space-y-0.5">
                     <p className="font-semibold">
-                      {binanceTestResult.success
-                        ? "Status Verified"
+                      {(binanceSubTab === "LIVE"
+                        ? liveTestResult
+                        : testnetTestResult)!.success
+                        ? `Binance ${binanceSubTab} Verified`
                         : "Verification Failed"}
                     </p>
                     <p className="text-[11px] leading-relaxed opacity-90">
-                      {binanceTestResult.message}
+                      {
+                        (binanceSubTab === "LIVE"
+                          ? liveTestResult
+                          : testnetTestResult)!.message
+                      }
                     </p>
                   </div>
                 </div>
@@ -1256,25 +1510,25 @@ export default function CredentialConfig({
                     </Label>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ${
-                        binanceTradeDirection === "LONG_ONLY"
+                        tradeDirection === "LONG_ONLY"
                           ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                          : binanceTradeDirection === "SHORT_ONLY"
+                          : tradeDirection === "SHORT_ONLY"
                             ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
                             : "bg-primary/10 text-primary border border-primary/20"
                       }`}
                     >
-                      {binanceTradeDirection === "LONG_ONLY"
+                      {tradeDirection === "LONG_ONLY"
                         ? "LONG ONLY"
-                        : binanceTradeDirection === "SHORT_ONLY"
+                        : tradeDirection === "SHORT_ONLY"
                           ? "SHORT ONLY"
                           : "BOTH SIDES"}
                     </span>
                   </div>
                   <select
                     id="trade-direction"
-                    value={binanceTradeDirection}
+                    value={tradeDirection}
                     onChange={(e) =>
-                      setBinanceTradeDirection(
+                      setTradeDirection(
                         e.target.value as "BOTH" | "LONG_ONLY" | "SHORT_ONLY",
                       )
                     }
@@ -1292,7 +1546,7 @@ export default function CredentialConfig({
                   </select>
                   <p className="text-[10px] text-muted-foreground">
                     Filter bot execution to Long, Short, or both positions on
-                    Binance Futures.
+                    Binance {binanceSubTab === "LIVE" ? "Live" : "Testnet"}.
                   </p>
                 </div>
 
@@ -1303,15 +1557,13 @@ export default function CredentialConfig({
                       Minimum Signal Score
                     </Label>
                     <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
-                      {binanceMinScore > 0
-                        ? `>= ${binanceMinScore}`
-                        : "ALL SIGNALS"}
+                      {minScore > 0 ? `>= ${minScore}` : "ALL SIGNALS"}
                     </span>
                   </div>
                   <select
                     id="min-score"
-                    value={binanceMinScore}
-                    onChange={(e) => setBinanceMinScore(Number(e.target.value))}
+                    value={minScore}
+                    onChange={(e) => setMinScore(Number(e.target.value))}
                     className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value={0} className="text-black">
@@ -1348,8 +1600,8 @@ export default function CredentialConfig({
                     </Label>
                     <Switch
                       id="btc-trend-guard"
-                      checked={binanceBlockLongOnBtcBearish}
-                      onCheckedChange={setBinanceBlockLongOnBtcBearish}
+                      checked={blockLongOnBtcBearish}
+                      onCheckedChange={setBlockLongOnBtcBearish}
                     />
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
@@ -1512,13 +1764,12 @@ export default function CredentialConfig({
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        Margin per Trade ({binanceRiskPerTradePct}%):
+                        Margin per Trade ({riskPerTradePct}%):
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         ~
                         {(
-                          (activeTestResult.balance *
-                            Number(binanceRiskPerTradePct)) /
+                          (activeTestResult.balance * Number(riskPerTradePct)) /
                           100
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -1534,7 +1785,7 @@ export default function CredentialConfig({
                         ~
                         {(
                           ((activeTestResult.balance *
-                            Number(binanceRiskPerTradePct)) /
+                            Number(riskPerTradePct)) /
                             100) *
                           leverage
                         ).toLocaleString(undefined, {
@@ -1545,7 +1796,7 @@ export default function CredentialConfig({
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-current/10">
                       <span className="text-muted-foreground">
-                        Worst Case ({binanceMaxOpenPositions} Pos):
+                        Worst Case ({maxOpenPositions} Pos):
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         ~
@@ -1601,7 +1852,12 @@ export default function CredentialConfig({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <FilterIcon className="size-4 text-primary" />
-            Coin Filter (Scope)
+            Coin Filter (Scope) —{" "}
+            {activeExchangeForm === "TOKOCRYPTO"
+              ? "Tokocrypto Spot"
+              : binanceSubTab === "LIVE"
+                ? "Binance Live (Real)"
+                : "Binance Testnet (Demo)"}
           </CardTitle>
           <CardDescription className="text-xs hidden sm:block">
             Filter which coins your bot is allowed to execute.
@@ -1905,7 +2161,7 @@ export default function CredentialConfig({
               <>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-muted-foreground">Environment:</span>
-                  <span className="font-semibold">{environment}</span>
+                  <span className="font-semibold">{binanceSubTab}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-muted-foreground">
@@ -2002,8 +2258,7 @@ export default function CredentialConfig({
                       <strong>
                         ~
                         {(
-                          (activeTestResult.balance *
-                            Number(binanceRiskPerTradePct)) /
+                          (activeTestResult.balance * Number(riskPerTradePct)) /
                           100
                         ).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -2012,8 +2267,7 @@ export default function CredentialConfig({
                       </strong>{" "}
                       (Position Size ~
                       {(
-                        ((activeTestResult.balance *
-                          Number(binanceRiskPerTradePct)) /
+                        ((activeTestResult.balance * Number(riskPerTradePct)) /
                           100) *
                         leverage
                       ).toLocaleString(undefined, {

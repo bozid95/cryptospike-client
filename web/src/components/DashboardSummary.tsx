@@ -6,10 +6,9 @@ import {
   Terminal,
   ArrowRight,
   ShieldCheck,
-  SlidersIcon,
   RefreshCw,
-  CheckCircle2,
-  AlertCircle,
+  Globe,
+  FlaskConical,
 } from "lucide-react";
 import { authFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -33,7 +32,11 @@ export function DashboardSummary({
   botConnected,
 }: DashboardSummaryProps) {
   const [config, setConfig] = useState<any>(null);
-  const [binanceData, setBinanceData] = useState<{
+  const [binanceLiveData, setBinanceLiveData] = useState<{
+    account?: any;
+    positions: any[];
+  }>({ positions: [] });
+  const [binanceTestnetData, setBinanceTestnetData] = useState<{
     account?: any;
     positions: any[];
   }>({ positions: [] });
@@ -55,14 +58,26 @@ export function DashboardSummary({
         }
       }
 
-      // 2. Fetch Binance Positions & Balance
-      const binanceRes = await authFetch("/api/positions?exchange=BINANCE");
-      if (binanceRes.ok) {
-        const bJson = await binanceRes.json();
-        if (bJson.success) {
-          setBinanceData({
-            account: bJson.account,
-            positions: bJson.positions || [],
+      // 2. Fetch Binance Positions (Testnet & Live)
+      const [testnetRes, liveRes] = await Promise.all([
+        authFetch("/api/positions?exchange=BINANCE_TESTNET"),
+        authFetch("/api/positions?exchange=BINANCE_LIVE"),
+      ]);
+      if (testnetRes.ok) {
+        const tJson = await testnetRes.json();
+        if (tJson.success) {
+          setBinanceTestnetData({
+            account: tJson.account,
+            positions: tJson.positions || [],
+          });
+        }
+      }
+      if (liveRes.ok) {
+        const lJson = await liveRes.json();
+        if (lJson.success) {
+          setBinanceLiveData({
+            account: lJson.account,
+            positions: lJson.positions || [],
           });
         }
       }
@@ -103,18 +118,12 @@ export function DashboardSummary({
   const targetExchange = (config?.targetExchange || "BINANCE").toUpperCase();
   const isTokocrypto = targetExchange === "TOKOCRYPTO";
   const isDual = targetExchange === "BOTH";
-  const binanceAuto = Boolean(
-    config?.binanceAutoExecute ?? config?.autoExecute,
-  );
-  const tokocryptoAuto = Boolean(config?.tokocryptoAutoExecute);
-  const autoTrade = isDual
-    ? binanceAuto || tokocryptoAuto
-    : isTokocrypto
-      ? tokocryptoAuto
-      : binanceAuto;
-  const isDryRun = Boolean(config?.tokocryptoDryRun ?? config?.dryRun);
 
-  const binancePnl = binanceData.positions.reduce(
+  const binanceLivePnl = binanceLiveData.positions.reduce(
+    (acc, p) => acc + (p.unRealizedProfit || 0),
+    0,
+  );
+  const binanceTestnetPnl = binanceTestnetData.positions.reduce(
     (acc, p) => acc + (p.unRealizedProfit || 0),
     0,
   );
@@ -122,6 +131,43 @@ export function DashboardSummary({
     (acc, p) => acc + (p.unRealizedProfit || 0),
     0,
   );
+
+  const activeFuturesPositions =
+    binanceLiveData.positions.length > 0
+      ? binanceLiveData.positions
+      : binanceTestnetData.positions;
+
+  // Computed values untuk Compact Engine Status Bar
+  const liveAuto = Boolean(config?.liveAutoExecute ?? config?.autoExecute);
+  const liveDirection = (
+    config?.liveTradeDirection || "SHORT_ONLY"
+  ).toUpperCase();
+  const liveFilter = (config?.liveCoinFilterMode || "WHITELIST").toUpperCase();
+  const liveMinScore = Number(config?.liveMinScore ?? 99);
+  const liveBtcGuard = Boolean(config?.liveBlockLongOnBtcBearish ?? true);
+  const liveMaxPos = Number(config?.liveMaxOpenPositions ?? 1);
+  const livePositionsCount = binanceLiveData.positions.length;
+  const isLiveFull = livePositionsCount >= liveMaxPos;
+
+  const testnetAuto = Boolean(
+    config?.testnetAutoExecute ?? config?.autoExecute,
+  );
+  const testnetDirection = (
+    config?.testnetTradeDirection || "BOTH"
+  ).toUpperCase();
+  const testnetFilter = (config?.testnetCoinFilterMode || "ALL").toUpperCase();
+  const testnetMinScore = Number(config?.testnetMinScore ?? 0);
+  const testnetBtcGuard = Boolean(
+    config?.testnetBlockLongOnBtcBearish ?? false,
+  );
+  const testnetPositionsCount = binanceTestnetData.positions.length;
+
+  const tokoAuto = Boolean(config?.tokocryptoAutoExecute);
+  const tokoDryRun = Boolean(config?.tokocryptoDryRun ?? config?.dryRun);
+  const tokoFilter = (config?.tokocryptoCoinFilterMode || "ALL").toUpperCase();
+  const tokoQuote = config?.tokocryptoQuoteAsset || "USDT";
+  const tokoMaxPos = Number(config?.tokocryptoMaxOpenPositions ?? 5);
+  const tokoPositionsCount = tokocryptoData.positions.length;
 
   const [isUpdatingMode, setIsUpdatingMode] = useState(false);
 
@@ -176,59 +222,7 @@ export function DashboardSummary({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge
-            variant="outline"
-            className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
-              botConnected
-                ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
-                : "border-red-500/40 text-red-600 bg-red-500/10"
-            }`}
-          >
-            <span
-              className={`size-2 rounded-full ${
-                botConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
-              }`}
-            />
-            Socket: {botConnected ? "Connected" : "Disconnected"}
-          </Badge>
-
-          {isDual ? (
-            <>
-              <Badge
-                variant="outline"
-                className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
-                  binanceAuto
-                    ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
-                    : "border-amber-500/40 text-amber-600 bg-amber-500/10"
-                }`}
-              >
-                Binance: {binanceAuto ? "ACTIVE" : "PAUSED"}
-              </Badge>
-              <Badge
-                variant="outline"
-                className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
-                  tokocryptoAuto
-                    ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
-                    : "border-amber-500/40 text-amber-600 bg-amber-500/10"
-                }`}
-              >
-                Tokocrypto: {tokocryptoAuto ? "ACTIVE" : "PAUSED"}
-              </Badge>
-            </>
-          ) : (
-            <Badge
-              variant="outline"
-              className={`text-xs px-2.5 py-1 gap-1.5 font-medium ${
-                autoTrade
-                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
-                  : "border-amber-500/40 text-amber-600 bg-amber-500/10"
-              }`}
-            >
-              Auto-Trade: {autoTrade ? "ACTIVE" : "PAUSED"}
-            </Badge>
-          )}
-
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -327,82 +321,241 @@ export function DashboardSummary({
         </CardContent>
       </Card>
 
-      {/* 3. KARTU METRIK UTAMA (4 METRICS) */}
-      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Active Routing Target */}
-        <Card className="shadow-sm border-primary/20 bg-primary/5 flex flex-col justify-between p-3 sm:p-4">
-          <div>
-            <div className="flex items-center justify-between pb-1.5">
-              <span className="text-[11px] sm:text-xs font-semibold text-primary truncate">
-                Active Target
-              </span>
-              <BotIcon className="size-3.5 sm:size-4 text-primary shrink-0" />
-            </div>
-            <div className="text-base sm:text-xl font-bold tracking-tight truncate">
-              {isDual
-                ? "Dual Mode"
-                : isTokocrypto
-                  ? "Tokocrypto Spot"
-                  : "Binance Futures"}
-            </div>
-            <div className="text-[11px] sm:text-xs text-muted-foreground pt-1 truncate">
-              <span>Mode: </span>
-              <span className="font-semibold text-foreground">
-                {isDual
-                  ? `Dual (${isDryRun ? "Dry-Run" : "Live"})`
-                  : isTokocrypto
-                    ? isDryRun
-                      ? "Dry-Run"
-                      : "Live Spot"
-                    : config?.environment || "TESTNET"}
-              </span>
-            </div>
-          </div>
-          <div className="pt-2">
-            <Button
+      {/* 2.5 COMPACT & INFORMATIVE ENGINE STATUS BAR (ACTIVE VS OFF) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+        {/* Box 1: Binance Live Production */}
+        <div className="p-2.5 sm:p-3 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between space-y-2">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="font-semibold text-xs flex items-center gap-1.5 truncate">
+              <Globe className="size-3.5 text-red-500 shrink-0" />
+              <span className="truncate">Binance Live (Real)</span>
+            </span>
+            <Badge
               variant="outline"
-              size="sm"
-              onClick={() =>
-                onNavigate(
-                  isTokocrypto ? "tokocrypto-config" : "binance-config",
-                )
-              }
-              className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer bg-background"
+              className={`text-[10px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
+                liveAuto
+                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
+                  : "border-muted-foreground/30 text-muted-foreground bg-muted/20"
+              }`}
             >
-              <SlidersIcon className="size-3" />
-              <span>Configure</span>
-            </Button>
+              Auto: {liveAuto ? "ON" : "OFF"}
+            </Badge>
           </div>
-        </Card>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            <span>
+              Direction:{" "}
+              <strong className="text-foreground">
+                {liveDirection === "SHORT_ONLY"
+                  ? "SHORT Only"
+                  : liveDirection === "LONG_ONLY"
+                    ? "LONG Only"
+                    : "BOTH"}
+              </strong>
+            </span>
+            <span>
+              Filter: <strong className="text-foreground">{liveFilter}</strong>
+            </span>
+            <span>
+              Min Score:{" "}
+              <strong className="text-foreground">
+                {liveMinScore > 0 ? `≥${liveMinScore}` : "OFF"}
+              </strong>
+            </span>
+            <span>
+              BTC Guard:{" "}
+              <strong
+                className={
+                  liveBtcGuard ? "text-emerald-600" : "text-muted-foreground"
+                }
+              >
+                {liveBtcGuard ? "ON" : "OFF"}
+              </strong>
+            </span>
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+              <span>Position Limit:</span>
+              <strong
+                className={
+                  isLiveFull
+                    ? "text-amber-500 font-mono"
+                    : "text-emerald-600 font-mono"
+                }
+              >
+                {livePositionsCount}/{liveMaxPos}{" "}
+                {isLiveFull ? "(FULL)" : "(Available)"}
+              </strong>
+            </span>
+          </div>
+        </div>
 
-        {/* Card 2: Binance Futures Overview */}
-        <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
+        {/* Box 2: Binance Testnet Demo */}
+        <div className="p-2.5 sm:p-3 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between space-y-2">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="font-semibold text-xs flex items-center gap-1.5 truncate">
+              <FlaskConical className="size-3.5 text-amber-500 shrink-0" />
+              <span className="truncate">Binance Testnet (Demo)</span>
+            </span>
+            <Badge
+              variant="outline"
+              className={`text-[10px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
+                testnetAuto
+                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
+                  : "border-muted-foreground/30 text-muted-foreground bg-muted/20"
+              }`}
+            >
+              Auto: {testnetAuto ? "ON" : "OFF"}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            <span>
+              Direction:{" "}
+              <strong className="text-foreground">{testnetDirection}</strong>
+            </span>
+            <span>
+              Filter:{" "}
+              <strong className="text-foreground">{testnetFilter}</strong>
+            </span>
+            <span>
+              Min Score:{" "}
+              <strong className="text-foreground">
+                {testnetMinScore > 0 ? `≥${testnetMinScore}` : "OFF (0)"}
+              </strong>
+            </span>
+            <span>
+              BTC Guard:{" "}
+              <strong
+                className={
+                  testnetBtcGuard ? "text-emerald-600" : "text-muted-foreground"
+                }
+              >
+                {testnetBtcGuard ? "ON" : "OFF"}
+              </strong>
+            </span>
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+              <span>Active Contracts:</span>
+              <strong className="text-amber-500 font-mono">
+                {testnetPositionsCount} Open Pos
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Box 3: Tokocrypto Spot */}
+        <div className="p-2.5 sm:p-3 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between space-y-2">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="font-semibold text-xs flex items-center gap-1.5 truncate">
+              <Coins className="size-3.5 text-amber-500 shrink-0" />
+              <span className="truncate">Tokocrypto Spot</span>
+            </span>
+            <Badge
+              variant="outline"
+              className={`text-[10px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
+                tokoAuto
+                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
+                  : "border-muted-foreground/30 text-muted-foreground bg-muted/20"
+              }`}
+            >
+              Auto: {tokoAuto ? "ON" : "OFF"}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            <span>
+              Mode:{" "}
+              <strong
+                className={tokoDryRun ? "text-amber-500" : "text-emerald-600"}
+              >
+                {tokoDryRun ? "SIMULATION" : "LIVE CASH"}
+              </strong>
+            </span>
+            <span>
+              Direction: <strong className="text-foreground">LONG (1x)</strong>
+            </span>
+            <span>
+              Filter: <strong className="text-foreground">{tokoFilter}</strong>
+            </span>
+            <span>
+              Asset: <strong className="text-foreground">{tokoQuote}</strong>
+            </span>
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+              <span>Coin Holdings:</span>
+              <strong className="text-foreground font-mono">
+                {tokoPositionsCount}/{tokoMaxPos} Coins
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Box 4: System Protection & Network */}
+        <div className="p-2.5 sm:p-3 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between space-y-2">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="font-semibold text-xs flex items-center gap-1.5 truncate">
+              <ShieldCheck className="size-3.5 text-emerald-500 shrink-0" />
+              <span className="truncate">Protection & Network</span>
+            </span>
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-4 font-mono font-bold border-emerald-500/40 text-emerald-600 bg-emerald-500/10 shrink-0"
+            >
+              ACTIVE
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            <span>
+              Auto-BEP: <strong className="text-emerald-600">ON (TP1)</strong>
+            </span>
+            <span>
+              Trailing Stop:{" "}
+              <strong className="text-emerald-600">ON (2.5%)</strong>
+            </span>
+            <span>
+              DoH Bypass:{" "}
+              <strong className="text-emerald-600">ON (Active)</strong>
+            </span>
+            <span>
+              Data Stream:{" "}
+              <strong className="text-emerald-600">Zero-Poll</strong>
+            </span>
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+              <span>Signal Server:</span>
+              <strong
+                className={botConnected ? "text-emerald-600" : "text-red-500"}
+              >
+                {botConnected ? "CONNECTED" : "DISCONNECTED"}
+              </strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. FINANCIAL PORTFOLIO OVERVIEW */}
+      <div className="grid gap-2.5 sm:gap-4 grid-cols-1 md:grid-cols-3">
+        {/* Card 1: Binance Live Production Portfolio */}
+        <Card className="shadow-sm border-red-500/20 bg-card flex flex-col justify-between p-3 sm:p-4">
           <div>
             <div className="flex items-center justify-between pb-1.5">
-              <span className="text-[11px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
-                <Layers className="size-3 text-primary shrink-0" />
-                <span className="truncate">Binance</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
+                <Globe className="size-3.5 text-red-500 shrink-0" />
+                <span className="truncate">Binance Live (Real Funds)</span>
               </span>
               <Badge
                 variant="outline"
-                className="text-[9px] sm:text-[10px] font-mono px-1 py-0 h-4 shrink-0"
+                className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0 h-4 border-red-500/30 text-red-600 bg-red-500/10 shrink-0 font-bold"
               >
-                {binanceData.positions.length} Pos
+                {binanceLiveData.positions.length} Live Pos
               </Badge>
             </div>
             <div className="text-base sm:text-xl font-bold font-mono tracking-tight truncate">
-              {binanceData.account
-                ? `$${(binanceData.account.totalWalletBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              {binanceLiveData.account
+                ? `$${(binanceLiveData.account.totalWalletBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "$0.00"}
             </div>
             <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground pt-1">
-              <span>PnL:</span>
+              <span>Live PnL:</span>
               <span
                 className={`font-mono font-medium truncate ${
-                  binancePnl >= 0 ? "text-emerald-500" : "text-red-500"
+                  binanceLivePnl >= 0 ? "text-emerald-500" : "text-red-500"
                 }`}
               >
-                {binancePnl >= 0 ? "+" : ""}${binancePnl.toFixed(2)}
+                {binanceLivePnl >= 0 ? "+" : ""}${binanceLivePnl.toFixed(2)}
               </span>
             </div>
           </div>
@@ -413,23 +566,68 @@ export function DashboardSummary({
               onClick={() => onNavigate("binance-positions")}
               className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
             >
-              <span>View Positions</span>
+              <span>View Live Positions</span>
               <ArrowRight className="size-3" />
             </Button>
           </div>
         </Card>
 
-        {/* Card 3: Tokocrypto Spot Overview */}
-        <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
+        {/* Card 2: Binance Testnet Demo Portfolio */}
+        <Card className="shadow-sm border-amber-500/20 bg-card flex flex-col justify-between p-3 sm:p-4">
           <div>
             <div className="flex items-center justify-between pb-1.5">
-              <span className="text-[11px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
-                <Coins className="size-3 text-amber-500 shrink-0" />
-                <span className="truncate">Tokocrypto</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
+                <FlaskConical className="size-3.5 text-amber-500 shrink-0" />
+                <span className="truncate">Binance Testnet (Demo)</span>
               </span>
               <Badge
                 variant="outline"
-                className="text-[9px] sm:text-[10px] font-mono px-1 py-0 h-4 shrink-0"
+                className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/10 shrink-0 font-bold"
+              >
+                {binanceTestnetData.positions.length} Demo Pos
+              </Badge>
+            </div>
+            <div className="text-base sm:text-xl font-bold font-mono tracking-tight truncate">
+              {binanceTestnetData.account
+                ? `$${(binanceTestnetData.account.totalWalletBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "$0.00"}
+            </div>
+            <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground pt-1">
+              <span>Demo PnL:</span>
+              <span
+                className={`font-mono font-medium truncate ${
+                  binanceTestnetPnl >= 0 ? "text-emerald-500" : "text-red-500"
+                }`}
+              >
+                {binanceTestnetPnl >= 0 ? "+" : ""}$
+                {binanceTestnetPnl.toFixed(2)}
+              </span>
+            </div>
+          </div>
+          <div className="pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate("binance-positions")}
+              className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
+            >
+              <span>View Testnet Positions</span>
+              <ArrowRight className="size-3" />
+            </Button>
+          </div>
+        </Card>
+
+        {/* Card 3: Tokocrypto Spot Portfolio */}
+        <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
+          <div>
+            <div className="flex items-center justify-between pb-1.5">
+              <span className="text-[11px] sm:text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
+                <Coins className="size-3.5 text-amber-500 shrink-0" />
+                <span className="truncate">Tokocrypto Spot</span>
+              </span>
+              <Badge
+                variant="outline"
+                className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/10 shrink-0 font-bold"
               >
                 {tokocryptoData.positions.length} Coins
               </Badge>
@@ -464,55 +662,9 @@ export function DashboardSummary({
             </Button>
           </div>
         </Card>
-
-        {/* Card 4: Signal Receiver & License */}
-        <Card className="shadow-sm flex flex-col justify-between p-3 sm:p-4">
-          <div>
-            <div className="flex items-center justify-between pb-1.5">
-              <span className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                License
-              </span>
-              <ShieldCheck className="size-3.5 sm:size-4 text-emerald-500 shrink-0" />
-            </div>
-            <div className="text-sm sm:text-base font-semibold truncate flex items-center gap-1">
-              {config?.clientToken ? (
-                <>
-                  <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate">Active</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="size-3.5 text-amber-500 shrink-0" />
-                  <span className="text-amber-500 truncate">No Token</span>
-                </>
-              )}
-            </div>
-            <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground pt-1">
-              <span>Filter:</span>
-              <span className="font-semibold text-foreground truncate max-w-[80px] sm:max-w-none text-right">
-                {isDual
-                  ? `${config?.binanceCoinFilterMode || "ALL"}/${config?.tokocryptoCoinFilterMode || "ALL"}`
-                  : isTokocrypto
-                    ? `${config?.tokocryptoCoinFilterMode || "ALL"}`
-                    : `${config?.binanceCoinFilterMode || "ALL"}`}
-              </span>
-            </div>
-          </div>
-          <div className="pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onNavigate("logs")}
-              className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
-            >
-              <span>View Logs</span>
-              <ArrowRight className="size-3" />
-            </Button>
-          </div>
-        </Card>
       </div>
 
-      {/* 3. SNAPSHOT DUA BURSA (SIDE-BY-SIDE SNAPSHOT) */}
+      {/* 4. SNAPSHOT DUA BURSA (SIDE-BY-SIDE SNAPSHOT) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Binance Futures Snapshot */}
         <Card className="shadow-sm flex flex-col justify-between">
@@ -520,7 +672,12 @@ export function DashboardSummary({
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm sm:text-base flex items-center gap-1.5 sm:gap-2 truncate">
                 <Layers className="size-4 text-primary shrink-0" />
-                <span className="truncate">Binance Futures</span>
+                <span className="truncate">
+                  Binance Futures{" "}
+                  {binanceLiveData.positions.length > 0
+                    ? "(Live Real)"
+                    : "(Testnet Demo)"}
+                </span>
               </CardTitle>
               <Button
                 variant="outline"
@@ -537,7 +694,7 @@ export function DashboardSummary({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 p-3.5 sm:p-6 pt-0 sm:pt-0">
-            {binanceData.positions.length === 0 ? (
+            {activeFuturesPositions.length === 0 ? (
               <div className="h-28 sm:h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground text-xs p-4 text-center">
                 <p className="font-medium text-foreground">
                   No Active Futures Positions
@@ -548,7 +705,7 @@ export function DashboardSummary({
               </div>
             ) : (
               <div className="space-y-2">
-                {binanceData.positions.slice(0, 3).map((pos) => {
+                {activeFuturesPositions.slice(0, 3).map((pos) => {
                   const isProfit = (pos.unRealizedProfit || 0) >= 0;
                   return (
                     <div
@@ -586,9 +743,9 @@ export function DashboardSummary({
                     </div>
                   );
                 })}
-                {binanceData.positions.length > 3 && (
+                {activeFuturesPositions.length > 3 && (
                   <p className="text-[11px] text-muted-foreground text-center pt-1">
-                    +{binanceData.positions.length - 3} more open positions...
+                    +{activeFuturesPositions.length - 3} more open positions...
                   </p>
                 )}
               </div>
@@ -654,7 +811,7 @@ export function DashboardSummary({
                               variant="outline"
                               className="text-[9px] px-1 py-0 h-3.5 text-amber-500 border-amber-500/40"
                             >
-                              SIMULASI
+                              SIMULATION
                             </Badge>
                           )}
                         </div>

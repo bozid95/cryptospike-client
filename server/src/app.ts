@@ -1,5 +1,10 @@
 import express from "express";
 import dotenv from "dotenv";
+import { initDohResolver } from "./lib/doh-resolver";
+
+// Inisialisasi DoH Bypass untuk menangkal DNS Hijacking / Internet Positif ISP lokal
+initDohResolver();
+
 import { corsMiddleware } from "./middlewares/cors";
 import { authRouter } from "./routes/auth.routes";
 import { configRouter } from "./routes/config.routes";

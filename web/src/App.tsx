@@ -109,14 +109,26 @@ export default function App() {
 
     const fetchCounts = async () => {
       try {
-        // Binance count
-        const bRes = await authFetch("/api/positions?exchange=BINANCE");
-        if (bRes.ok) {
-          const bData = await bRes.json();
-          if (bData.success && Array.isArray(bData.positions)) {
-            setBinancePositionsCount(bData.positions.length);
+        // Binance Testnet & Live counts
+        let totalBinance = 0;
+        const [btRes, blRes] = await Promise.allSettled([
+          authFetch("/api/positions?exchange=BINANCE_TESTNET"),
+          authFetch("/api/positions?exchange=BINANCE_LIVE"),
+        ]);
+
+        if (btRes.status === "fulfilled" && btRes.value.ok) {
+          const btData = await btRes.value.json();
+          if (btData.success && Array.isArray(btData.positions)) {
+            totalBinance += btData.positions.length;
           }
         }
+        if (blRes.status === "fulfilled" && blRes.value.ok) {
+          const blData = await blRes.value.json();
+          if (blData.success && Array.isArray(blData.positions)) {
+            totalBinance += blData.positions.length;
+          }
+        }
+        setBinancePositionsCount(totalBinance);
 
         // Tokocrypto count
         const tRes = await authFetch("/api/positions?exchange=TOKOCRYPTO");

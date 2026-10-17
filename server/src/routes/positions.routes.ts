@@ -12,13 +12,22 @@ import {
 import { addAppLog } from "../lib/logger";
 import { requireAuth } from "../middlewares/auth";
 
-// Cache jangka pendek untuk fallback REST agar tidak spam bursa
-let lastRestPositionsFetch = 0;
-let lastRestPositionsData: { account: any; positions: any[] } | null = null;
+// Cache jangka pendek untuk fallback REST per environment agar tidak spam bursa
+const lastRestPositionsFetch: Record<"TESTNET" | "LIVE", number> = {
+  TESTNET: 0,
+  LIVE: 0,
+};
+const lastRestPositionsData: Record<
+  "TESTNET" | "LIVE",
+  { account: any; positions: any[] } | null
+> = {
+  TESTNET: null,
+  LIVE: null,
+};
 
 export const positionsRouter = Router();
 
-// 1. Ambil Akun & Posisi Terbuka (Multi-Exchange: Binance Futures atau Tokocrypto Spot)
+// 1. Ambil Akun & Posisi Terbuka (Multi-Exchange: Binance Live, Binance Testnet, Tokocrypto Spot)
 positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
     const [appConfig, binanceConfig, tokocryptoConfig] = await Promise.all([
@@ -28,7 +37,10 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
     ]);
     const requestedExchange = (req.query.exchange as string)?.toUpperCase();
     const targetExchange =
-      requestedExchange === "BINANCE" || requestedExchange === "TOKOCRYPTO"
+      requestedExchange === "BINANCE_TESTNET" ||
+      requestedExchange === "BINANCE_LIVE" ||
+      requestedExchange === "BINANCE" ||
+      requestedExchange === "TOKOCRYPTO"
         ? requestedExchange
         : (appConfig?.targetExchange || "BINANCE").toUpperCase();
 
@@ -128,68 +140,108 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    // JALUR 2: BINANCE FUTURES (Default)
-    if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
+    // JALUR 2: BINANCE FUTURES (TESTNET atau LIVE)
+    const isLive =
+      targetExchange === "BINANCE_LIVE" ||
+      (targetExchange !== "BINANCE_TESTNET" &&
+        binanceConfig?.environment === "LIVE");
+    const targetEnv: "TESTNET" | "LIVE" = isLive ? "LIVE" : "TESTNET";
+
+    const apiKey = isLive
+      ? binanceConfig?.liveApiKey ||
+        (binanceConfig?.environment === "LIVE" ? binanceConfig?.apiKey : null)
+      : binanceConfig?.testnetApiKey ||
+        (binanceConfig?.environment === "TESTNET"
+          ? binanceConfig?.apiKey
+          : null);
+
+    const apiSecret = isLive
+      ? binanceConfig?.liveApiSecret ||
+        (binanceConfig?.environment === "LIVE"
+          ? binanceConfig?.apiSecret
+          : null)
+      : binanceConfig?.testnetApiSecret ||
+        (binanceConfig?.environment === "TESTNET"
+          ? binanceConfig?.apiSecret
+          : null);
+
+    const responseExchange =
+      targetExchange === "BINANCE_TESTNET"
+        ? "BINANCE_TESTNET"
+        : targetExchange === "BINANCE_LIVE"
+          ? "BINANCE_LIVE"
+          : "BINANCE";
+
+    if (!apiKey || !apiSecret) {
       return res.json({
         success: true,
-        exchange: "BINANCE",
+        exchange: responseExchange,
+        environment: targetEnv,
         account: null,
         positions: [],
       });
     }
 
-    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream aktif
-    if (isBinanceWsConnected() && getLiveCacheLastUpdated() > 0) {
+    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream aktif & berisi posisi
+    const wsPositions = getLiveBinancePositions(targetEnv);
+    if (
+      isBinanceWsConnected(targetEnv) &&
+      getLiveCacheLastUpdated(targetEnv) > 0 &&
+      wsPositions.length > 0
+    ) {
       return res.json({
         success: true,
-        exchange: "BINANCE",
-        account: getLiveBinanceAccount(),
-        positions: getLiveBinancePositions(),
-        environment: binanceConfig.environment || "TESTNET",
+        exchange: responseExchange,
+        account: getLiveBinanceAccount(targetEnv),
+        positions: wsPositions,
+        environment: targetEnv,
         source: "WEBSOCKET_STREAM",
       });
     }
 
-    // 2. Fallback REST dengan Caching 5 Detik (Mencegah Rate-Limit Ban)
+    // 2. Fallback REST dengan Caching 5 Detik per environment
     const now = Date.now();
-    if (now - lastRestPositionsFetch < 5000 && lastRestPositionsData) {
+    if (
+      now - lastRestPositionsFetch[targetEnv] < 5000 &&
+      lastRestPositionsData[targetEnv]
+    ) {
       return res.json({
         success: true,
-        exchange: "BINANCE",
-        account: lastRestPositionsData.account,
-        positions: lastRestPositionsData.positions,
-        environment: binanceConfig.environment || "TESTNET",
+        exchange: responseExchange,
+        account: lastRestPositionsData[targetEnv]!.account,
+        positions: lastRestPositionsData[targetEnv]!.positions,
+        environment: targetEnv,
         source: "MEMORY_CACHE",
       });
     }
 
     try {
       const { account, positions } = await getAccountAndPositions(
-        binanceConfig.apiKey.trim(),
-        binanceConfig.apiSecret.trim(),
-        binanceConfig.environment || "TESTNET",
+        apiKey.trim(),
+        apiSecret.trim(),
+        targetEnv,
       );
 
-      lastRestPositionsFetch = now;
-      lastRestPositionsData = { account, positions };
+      lastRestPositionsFetch[targetEnv] = now;
+      lastRestPositionsData[targetEnv] = { account, positions };
 
       res.json({
         success: true,
-        exchange: "BINANCE",
+        exchange: responseExchange,
         account,
         positions,
-        environment: binanceConfig.environment || "TESTNET",
+        environment: targetEnv,
         source: "REST_API",
       });
     } catch (apiErr: any) {
-      // Jika terjadi rate limit / ban pada REST, kembalikan data cache terakhir jika ada
-      if (lastRestPositionsData) {
+      // Jika terjadi error pada REST, kembalikan data cache terakhir jika ada
+      if (lastRestPositionsData[targetEnv]) {
         return res.json({
           success: true,
-          exchange: "BINANCE",
-          account: lastRestPositionsData.account,
-          positions: lastRestPositionsData.positions,
-          environment: binanceConfig.environment || "TESTNET",
+          exchange: responseExchange,
+          account: lastRestPositionsData[targetEnv]!.account,
+          positions: lastRestPositionsData[targetEnv]!.positions,
+          environment: targetEnv,
           source: "STALE_CACHE_FALLBACK",
         });
       }
@@ -251,29 +303,53 @@ positionsRouter.post(
         return res.json(result);
       }
 
-      // JALUR 2: Close Posisi Binance Futures
+      // JALUR 2: Close Posisi Binance Futures (LIVE atau TESTNET)
       if (!symbol) {
         return res
           .status(400)
           .json({ success: false, message: "Symbol wajib diisi." });
       }
 
-      if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
+      const isLive =
+        targetExchange === "BINANCE_LIVE" ||
+        (targetExchange !== "BINANCE_TESTNET" &&
+          binanceConfig?.environment === "LIVE");
+      const targetEnv = isLive ? "LIVE" : "TESTNET";
+
+      const apiKey = isLive
+        ? binanceConfig?.liveApiKey ||
+          (binanceConfig?.environment === "LIVE" ? binanceConfig?.apiKey : null)
+        : binanceConfig?.testnetApiKey ||
+          (binanceConfig?.environment === "TESTNET"
+            ? binanceConfig?.apiKey
+            : null);
+
+      const apiSecret = isLive
+        ? binanceConfig?.liveApiSecret ||
+          (binanceConfig?.environment === "LIVE"
+            ? binanceConfig?.apiSecret
+            : null)
+        : binanceConfig?.testnetApiSecret ||
+          (binanceConfig?.environment === "TESTNET"
+            ? binanceConfig?.apiSecret
+            : null);
+
+      if (!apiKey || !apiSecret) {
         return res.status(400).json({
           success: false,
-          message: "Binance API Key is not configured.",
+          message: `Binance (${targetEnv}) API Key is not configured.`,
         });
       }
 
       addAppLog(
         "INFO",
         "ManualAction",
-        `Closing manual Binance position for ${symbol}...`,
+        `Closing manual Binance (${targetEnv}) position for ${symbol}...`,
       );
-      const isTestnet = binanceConfig.environment === "TESTNET";
+      const isTestnet = !isLive;
       const result = await closePositionDirect(
-        binanceConfig.apiKey.trim(),
-        binanceConfig.apiSecret.trim(),
+        apiKey.trim(),
+        apiSecret.trim(),
         symbol.trim(),
         isTestnet,
       );
@@ -281,11 +357,11 @@ positionsRouter.post(
       addAppLog(
         "SUCCESS",
         "ManualAction",
-        `Position ${symbol} closed successfully!`,
+        `Binance (${targetEnv}) position ${symbol} closed successfully!`,
       );
       res.json({
         success: true,
-        message: `Position ${symbol} closed successfully!`,
+        message: `Binance (${targetEnv}) position ${symbol} closed successfully!`,
         result,
       });
     } catch (err: any) {
@@ -362,40 +438,66 @@ positionsRouter.post(
         });
       }
 
-      // JALUR 2: Close All Binance Futures
-      if (!binanceConfig?.apiKey || !binanceConfig?.apiSecret) {
+      // JALUR 2: Close All Binance Futures (LIVE atau TESTNET)
+      const isLive =
+        targetExchange === "BINANCE_LIVE" ||
+        (targetExchange !== "BINANCE_TESTNET" &&
+          binanceConfig?.environment === "LIVE");
+      const targetEnv = isLive ? "LIVE" : "TESTNET";
+
+      const apiKey = isLive
+        ? binanceConfig?.liveApiKey ||
+          (binanceConfig?.environment === "LIVE" ? binanceConfig?.apiKey : null)
+        : binanceConfig?.testnetApiKey ||
+          (binanceConfig?.environment === "TESTNET"
+            ? binanceConfig?.apiKey
+            : null);
+
+      const apiSecret = isLive
+        ? binanceConfig?.liveApiSecret ||
+          (binanceConfig?.environment === "LIVE"
+            ? binanceConfig?.apiSecret
+            : null)
+        : binanceConfig?.testnetApiSecret ||
+          (binanceConfig?.environment === "TESTNET"
+            ? binanceConfig?.apiSecret
+            : null);
+
+      if (!apiKey || !apiSecret) {
         return res.status(400).json({
           success: false,
-          message: "Binance API Key is not configured.",
+          message: `Binance (${targetEnv}) API Key is not configured.`,
         });
       }
 
-      const isTestnet = binanceConfig.environment === "TESTNET";
-      const apiKey = binanceConfig.apiKey.trim();
-      const apiSecret = binanceConfig.apiSecret.trim();
-
+      const isTestnet = !isLive;
       const { positions } = await getAccountAndPositions(
-        apiKey,
-        apiSecret,
-        binanceConfig.environment || "TESTNET",
+        apiKey.trim(),
+        apiSecret.trim(),
+        targetEnv,
       );
 
       if (positions.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "No active positions to close.",
+          message: `No active positions to close on Binance (${targetEnv}).`,
         });
       }
 
       addAppLog(
         "INFO",
         "ManualAction",
-        `Initiating Close All for ${positions.length} positions...`,
+        `Initiating Close All on Binance (${targetEnv}) for ${positions.length} positions...`,
       );
 
       const results = await Promise.allSettled(
         positions.map((pos) =>
-          closePositionDirect(apiKey, apiSecret, pos.symbol, isTestnet),
+          closePositionDirect(
+            apiKey.trim(),
+            apiSecret.trim(),
+            pos.symbol,
+            isTestnet,
+          ),
         ),
       );
 
@@ -407,12 +509,12 @@ positionsRouter.post(
       addAppLog(
         "SUCCESS",
         "ManualAction",
-        `Close All Completed. Success: ${successCount}, Failed: ${failCount}`,
+        `Close All on Binance (${targetEnv}) Completed. Success: ${successCount}, Failed: ${failCount}`,
       );
 
       res.json({
         success: true,
-        message: `Successfully closed ${successCount} positions. ${failCount > 0 ? `Failed to close ${failCount} positions.` : ""}`,
+        message: `Successfully closed ${successCount} Binance (${targetEnv}) positions. ${failCount > 0 ? `Failed to close ${failCount} positions.` : ""}`,
       });
     } catch (err: any) {
       addAppLog("ERROR", "ManualAction", `Failed to Close All: ${err.message}`);

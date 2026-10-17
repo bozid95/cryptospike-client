@@ -196,31 +196,129 @@ export async function handleIncomingSignal(data: any): Promise<void> {
       }
     }
 
-    // 2. Eksekusi Binance Futures jika target BINANCE atau BOTH
+    // 2. Eksekusi Binance Futures (Dual Runner: Testnet & Live Mandiri)
     if (shouldExecuteBinance && binanceConfig) {
-      try {
-        await executeSignalOrder(data, {
-          autoExecute: Boolean(binanceConfig.autoExecute),
-          binanceApiKey: binanceConfig.apiKey,
-          binanceApiSecret: binanceConfig.apiSecret,
-          environment: binanceConfig.environment || "TESTNET",
-          marginType: binanceConfig.marginType || "ISOLATED",
-          leverage: binanceConfig.leverage || 10,
-          riskPerTradePct: binanceConfig.riskPerTradePct ?? 2.0,
-          maxOpenPositions: binanceConfig.maxOpenPositions ?? 3,
-          coinFilterMode: binanceConfig.coinFilterMode || "ALL",
-          targetCoins: binanceConfig.targetCoins || "",
-          tradeDirection: binanceConfig.tradeDirection || "BOTH",
-          minScore: binanceConfig.minScore ?? 0,
-          blockLongOnBtcBearish: binanceConfig.blockLongOnBtcBearish ?? true,
-        });
-      } catch (binanceErr: any) {
-        addAppLog(
-          "ERROR",
-          "Binance",
-          `Failed to execute Binance signal: ${binanceErr.message}`,
-          binanceErr,
-        );
+      // 🧪 Jalur A: Binance Futures Testnet (Demo)
+      const testnetKey =
+        binanceConfig.testnetApiKey ||
+        (binanceConfig.environment === "TESTNET" ? binanceConfig.apiKey : null);
+      const testnetSecret =
+        binanceConfig.testnetApiSecret ||
+        (binanceConfig.environment === "TESTNET"
+          ? binanceConfig.apiSecret
+          : null);
+      const isTestnetAuto = Boolean(
+        binanceConfig.testnetAutoExecute ||
+        (binanceConfig.environment === "TESTNET" && binanceConfig.autoExecute),
+      );
+
+      if (testnetKey && testnetSecret && isTestnetAuto) {
+        try {
+          await executeSignalOrder(data, {
+            autoExecute: true,
+            binanceApiKey: testnetKey,
+            binanceApiSecret: testnetSecret,
+            environment: "TESTNET",
+            marginType:
+              binanceConfig.testnetMarginType ||
+              binanceConfig.marginType ||
+              "ISOLATED",
+            leverage:
+              binanceConfig.testnetLeverage || binanceConfig.leverage || 10,
+            riskPerTradePct:
+              binanceConfig.testnetRiskPerTradePct ??
+              binanceConfig.riskPerTradePct ??
+              2.0,
+            maxOpenPositions:
+              binanceConfig.testnetMaxOpenPositions ??
+              binanceConfig.maxOpenPositions ??
+              3,
+            coinFilterMode:
+              binanceConfig.testnetCoinFilterMode ||
+              binanceConfig.coinFilterMode ||
+              "ALL",
+            targetCoins:
+              binanceConfig.testnetTargetCoins ??
+              binanceConfig.targetCoins ??
+              "",
+            tradeDirection:
+              binanceConfig.testnetTradeDirection ||
+              binanceConfig.tradeDirection ||
+              "BOTH",
+            minScore:
+              binanceConfig.testnetMinScore ?? binanceConfig.minScore ?? 0,
+            blockLongOnBtcBearish:
+              binanceConfig.testnetBlockLongOnBtcBearish ??
+              binanceConfig.blockLongOnBtcBearish ??
+              true,
+          });
+        } catch (testnetErr: any) {
+          addAppLog(
+            "ERROR",
+            "BinanceTestnet",
+            `Failed to execute Binance Testnet signal: ${testnetErr.message}`,
+            testnetErr,
+          );
+        }
+      }
+
+      // 🚀 Jalur B: Binance Futures Live (Riil)
+      const liveKey =
+        binanceConfig.liveApiKey ||
+        (binanceConfig.environment === "LIVE" ? binanceConfig.apiKey : null);
+      const liveSecret =
+        binanceConfig.liveApiSecret ||
+        (binanceConfig.environment === "LIVE" ? binanceConfig.apiSecret : null);
+      const isLiveAuto = Boolean(
+        binanceConfig.liveAutoExecute ||
+        (binanceConfig.environment === "LIVE" && binanceConfig.autoExecute),
+      );
+
+      if (liveKey && liveSecret && isLiveAuto) {
+        try {
+          await executeSignalOrder(data, {
+            autoExecute: true,
+            binanceApiKey: liveKey,
+            binanceApiSecret: liveSecret,
+            environment: "LIVE",
+            marginType:
+              binanceConfig.liveMarginType ||
+              binanceConfig.marginType ||
+              "ISOLATED",
+            leverage:
+              binanceConfig.liveLeverage || binanceConfig.leverage || 10,
+            riskPerTradePct:
+              binanceConfig.liveRiskPerTradePct ??
+              binanceConfig.riskPerTradePct ??
+              2.0,
+            maxOpenPositions:
+              binanceConfig.liveMaxOpenPositions ??
+              binanceConfig.maxOpenPositions ??
+              3,
+            coinFilterMode:
+              binanceConfig.liveCoinFilterMode ||
+              binanceConfig.coinFilterMode ||
+              "ALL",
+            targetCoins:
+              binanceConfig.liveTargetCoins ?? binanceConfig.targetCoins ?? "",
+            tradeDirection:
+              binanceConfig.liveTradeDirection ||
+              binanceConfig.tradeDirection ||
+              "BOTH",
+            minScore: binanceConfig.liveMinScore ?? binanceConfig.minScore ?? 0,
+            blockLongOnBtcBearish:
+              binanceConfig.liveBlockLongOnBtcBearish ??
+              binanceConfig.blockLongOnBtcBearish ??
+              true,
+          });
+        } catch (liveErr: any) {
+          addAppLog(
+            "ERROR",
+            "BinanceLive",
+            `Failed to execute Binance Live signal: ${liveErr.message}`,
+            liveErr,
+          );
+        }
       }
     }
   } catch (err: any) {
