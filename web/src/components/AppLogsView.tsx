@@ -49,7 +49,7 @@ export function AppLogsView() {
   const fetchLogs = async () => {
     try {
       setIsLoading(true);
-      const res = await authFetch("/api/logs?limit=150");
+      const res = await authFetch("/api/logs?limit=1000");
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.logs)) {

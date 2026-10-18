@@ -177,6 +177,12 @@ class BinanceEnvironmentStream {
    */
   public connectMarketWs(): void {
     if (this.marketWsClient) {
+      if (
+        this.marketWsClient.readyState === WebSocket.OPEN ||
+        this.marketWsClient.readyState === WebSocket.CONNECTING
+      ) {
+        return;
+      }
       try {
         this.marketWsClient.close();
       } catch {}
@@ -194,10 +200,8 @@ class BinanceEnvironmentStream {
       this.marketWsClient = new WebSocket(marketUrl);
 
       this.marketWsClient.on("open", () => {
-        addAppLog(
-          "INFO",
-          this.logTag,
-          `Public Mark Price stream connected (${this.environment}). Real-time pricing active.`,
+        console.log(
+          `[${new Date().toLocaleTimeString()}] ℹ️ [${this.logTag}] Public Mark Price stream connected (${this.environment}). Real-time pricing active.`,
         );
       });
 
@@ -239,7 +243,11 @@ class BinanceEnvironmentStream {
         } catch {}
       });
 
-      this.marketWsClient.on("error", () => {});
+      this.marketWsClient.on("error", (err: Error) => {
+        console.error(
+          `[${new Date().toLocaleTimeString()}] ⚠️ [${this.logTag}] Public Mark Price stream error: ${err?.message || "Unknown error"}`,
+        );
+      });
 
       this.marketWsClient.on("close", () => {
         if (!this.marketReconnectTimer) {
