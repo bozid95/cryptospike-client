@@ -453,8 +453,25 @@ export async function executeSignalOrder(
 
     // 6. Hitung ukuran posisi (Margin & Quantity)
     const filters = await getSymbolFilters(symbol, isTestnet);
-    const riskPct = config.riskPerTradePct || 2.0;
-    const marginToRisk = (walletBalance * riskPct) / 100;
+    const riskMode = (config.riskMode || "PERCENTAGE").toUpperCase();
+    let marginToRisk: number;
+
+    if (riskMode === "FIXED_USD") {
+      marginToRisk = Math.max(0.1, Number(config.riskAmountUsd || 10.0));
+    } else {
+      const riskPct = config.riskPerTradePct || 2.0;
+      marginToRisk = (walletBalance * riskPct) / 100;
+    }
+
+    if (marginToRisk > walletBalance) {
+      addAppLog(
+        "WARN",
+        "Executor",
+        `Required margin ($${marginToRisk.toFixed(2)}) exceeds available wallet balance ($${walletBalance.toFixed(2)}). Execution for ${symbol} skipped.`,
+      );
+      return;
+    }
+
     const leverage = config.leverage || 10;
     const notionalValue = marginToRisk * leverage;
 

@@ -27,6 +27,8 @@ model BinanceConfig {
   testnetBlockLongOnBtcBearish Boolean @default(true)         // Proteksi tren makro BTC
   testnetLeverage             Int      @default(10)           // Leverage 1x - 125x
   testnetMarginType           String   @default("ISOLATED")   // ISOLATED atau CROSSED
+  testnetRiskMode             String   @default("PERCENTAGE") // "PERCENTAGE" atau "FIXED_USD"
+  testnetRiskAmountUsd        Float    @default(10.0)         // Nominal modal margin pasti ($)
   testnetRiskPerTradePct      Float    @default(2.0)          // Risiko per trade (%)
   testnetMaxOpenPositions     Int      @default(3)            // Maksimal posisi terbuka
   testnetCoinFilterMode       String   @default("ALL")        // ALL, WHITELIST, BLACKLIST
@@ -41,6 +43,8 @@ model BinanceConfig {
   liveBlockLongOnBtcBearish   Boolean  @default(true)         // Proteksi tren makro BTC
   liveLeverage                Int      @default(10)           // Leverage 1x - 125x
   liveMarginType              String   @default("ISOLATED")   // ISOLATED atau CROSSED
+  liveRiskMode                String   @default("PERCENTAGE") // "PERCENTAGE" atau "FIXED_USD"
+  liveRiskAmountUsd           Float    @default(10.0)         // Nominal modal margin pasti ($)
   liveRiskPerTradePct         Float    @default(2.0)          // Risiko per trade (%)
   liveMaxOpenPositions        Int      @default(3)            // Maksimal posisi terbuka
   liveCoinFilterMode          String   @default("ALL")        // ALL, WHITELIST, BLACKLIST
@@ -56,6 +60,8 @@ model BinanceConfig {
   blockLongOnBtcBearish Boolean  @default(true)
   leverage              Int      @default(10)
   marginType            String   @default("ISOLATED")
+  riskMode              String   @default("PERCENTAGE")
+  riskAmountUsd         Float    @default(10.0)
   riskPerTradePct       Float    @default(2.0)
   maxOpenPositions      Int      @default(3)
   coinFilterMode        String   @default("ALL")

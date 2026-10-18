@@ -50,6 +50,8 @@ export interface BinanceExecutionConfig {
   environment: string;
   marginType: string;
   leverage: number;
+  riskMode?: "PERCENTAGE" | "FIXED_USD" | string | undefined;
+  riskAmountUsd?: number | undefined;
   riskPerTradePct: number;
   maxOpenPositions: number;
   coinFilterMode?: string | undefined;

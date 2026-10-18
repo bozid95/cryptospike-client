@@ -210,6 +210,10 @@ export default function CredentialConfig({
     "ISOLATED" | "CROSSED"
   >("ISOLATED");
   const [testnetLeverage, setTestnetLeverage] = useState(10);
+  const [testnetRiskMode, setTestnetRiskMode] = useState<
+    "PERCENTAGE" | "FIXED_USD"
+  >("PERCENTAGE");
+  const [testnetRiskAmountUsd, setTestnetRiskAmountUsd] = useState(10.0);
   const [testnetRiskPerTradePct, setTestnetRiskPerTradePct] = useState(2.0);
   const [testnetMaxOpenPositions, setTestnetMaxOpenPositions] = useState(3);
   const [testnetCoinFilterMode, setTestnetCoinFilterMode] = useState<
@@ -232,6 +236,10 @@ export default function CredentialConfig({
     "ISOLATED",
   );
   const [liveLeverage, setLiveLeverage] = useState(10);
+  const [liveRiskMode, setLiveRiskMode] = useState<"PERCENTAGE" | "FIXED_USD">(
+    "PERCENTAGE",
+  );
+  const [liveRiskAmountUsd, setLiveRiskAmountUsd] = useState(10.0);
   const [liveRiskPerTradePct, setLiveRiskPerTradePct] = useState(2.0);
   const [liveMaxOpenPositions, setLiveMaxOpenPositions] = useState(3);
   const [liveCoinFilterMode, setLiveCoinFilterMode] = useState<
@@ -337,6 +345,16 @@ export default function CredentialConfig({
       ? setLiveRiskPerTradePct
       : setTestnetRiskPerTradePct;
 
+  const riskMode = isLiveBinance ? liveRiskMode : testnetRiskMode;
+  const setRiskMode = isLiveBinance ? setLiveRiskMode : setTestnetRiskMode;
+
+  const riskAmountUsd = isLiveBinance
+    ? liveRiskAmountUsd
+    : testnetRiskAmountUsd;
+  const setRiskAmountUsd = isLiveBinance
+    ? setLiveRiskAmountUsd
+    : setTestnetRiskAmountUsd;
+
   const maxOpenPositions = isTokoForm
     ? tokocryptoMaxOpenPositions
     : isLiveBinance
@@ -428,6 +446,24 @@ export default function CredentialConfig({
               d.testnetMarginType || d.marginType || "ISOLATED",
             );
             setTestnetLeverage(d.testnetLeverage || d.leverage || 10);
+            setTestnetRiskMode(
+              (
+                d.testnetRiskMode ||
+                d.binanceRiskMode ||
+                d.riskMode ||
+                "PERCENTAGE"
+              ).toUpperCase() === "FIXED_USD"
+                ? "FIXED_USD"
+                : "PERCENTAGE",
+            );
+            setTestnetRiskAmountUsd(
+              Number(
+                d.testnetRiskAmountUsd ??
+                  d.binanceRiskAmountUsd ??
+                  d.riskAmountUsd ??
+                  10.0,
+              ),
+            );
             setTestnetRiskPerTradePct(
               d.testnetRiskPerTradePct ?? d.binanceRiskPerTradePct ?? 2.0,
             );
@@ -478,6 +514,24 @@ export default function CredentialConfig({
             );
             setLiveMarginType(d.liveMarginType || d.marginType || "ISOLATED");
             setLiveLeverage(d.liveLeverage || d.leverage || 10);
+            setLiveRiskMode(
+              (
+                d.liveRiskMode ||
+                d.binanceRiskMode ||
+                d.riskMode ||
+                "PERCENTAGE"
+              ).toUpperCase() === "FIXED_USD"
+                ? "FIXED_USD"
+                : "PERCENTAGE",
+            );
+            setLiveRiskAmountUsd(
+              Number(
+                d.liveRiskAmountUsd ??
+                  d.binanceRiskAmountUsd ??
+                  d.riskAmountUsd ??
+                  10.0,
+              ),
+            );
             setLiveRiskPerTradePct(
               d.liveRiskPerTradePct ?? d.binanceRiskPerTradePct ?? 2.0,
             );
@@ -747,6 +801,14 @@ export default function CredentialConfig({
         testnetTradeDirection,
         testnetMinScore: Number(testnetMinScore),
         testnetBlockLongOnBtcBearish: Boolean(testnetBlockLongOnBtcBearish),
+        testnetRiskMode:
+          !isTokoForm && binanceSubTab === "TESTNET"
+            ? riskMode
+            : testnetRiskMode,
+        testnetRiskAmountUsd:
+          !isTokoForm && binanceSubTab === "TESTNET"
+            ? Number(riskAmountUsd)
+            : Number(testnetRiskAmountUsd),
         testnetRiskPerTradePct: Number(testnetRiskPerTradePct),
         testnetMaxOpenPositions: Number(testnetMaxOpenPositions),
         testnetCoinFilterMode:
@@ -767,6 +829,12 @@ export default function CredentialConfig({
         liveTradeDirection,
         liveMinScore: Number(liveMinScore),
         liveBlockLongOnBtcBearish: Boolean(liveBlockLongOnBtcBearish),
+        liveRiskMode:
+          !isTokoForm && binanceSubTab === "LIVE" ? riskMode : liveRiskMode,
+        liveRiskAmountUsd:
+          !isTokoForm && binanceSubTab === "LIVE"
+            ? Number(riskAmountUsd)
+            : Number(liveRiskAmountUsd),
         liveRiskPerTradePct: Number(liveRiskPerTradePct),
         liveMaxOpenPositions: Number(liveMaxOpenPositions),
         liveCoinFilterMode:
@@ -804,6 +872,8 @@ export default function CredentialConfig({
         binanceTradeDirection: tradeDirection,
         binanceMinScore: Number(minScore),
         binanceBlockLongOnBtcBearish: Boolean(blockLongOnBtcBearish),
+        binanceRiskMode: riskMode,
+        binanceRiskAmountUsd: Number(riskAmountUsd),
         binanceRiskPerTradePct: Number(riskPerTradePct),
         binanceMaxOpenPositions: Number(maxOpenPositions),
         binanceCoinFilterMode: coinFilterMode,
@@ -859,7 +929,13 @@ export default function CredentialConfig({
   };
 
   const binanceTotalRiskPct =
-    Number(riskPerTradePct) * Number(maxOpenPositions);
+    riskMode === "FIXED_USD" &&
+    typeof activeTestResult?.balance === "number" &&
+    activeTestResult.balance > 0
+      ? ((Number(riskAmountUsd) * Number(maxOpenPositions)) /
+          activeTestResult.balance) *
+        100
+      : Number(riskPerTradePct) * Number(maxOpenPositions);
   const binanceRiskInfo = getRiskLevel(binanceTotalRiskPct);
 
   const tokoTotalCapital =
@@ -1628,39 +1704,93 @@ export default function CredentialConfig({
 
             {/* Risk / Allocation Input */}
             <div className="space-y-1.5">
-              <Label htmlFor="risk-pct" className="text-xs font-medium">
-                {activeExchangeForm === "TOKOCRYPTO"
-                  ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
-                  : "Risk Per Trade (% Wallet)"}
-              </Label>
-              <Input
-                id="risk-pct"
-                type="number"
-                step={
-                  activeExchangeForm === "TOKOCRYPTO"
-                    ? tokocryptoQuoteAsset === "BIDR"
-                      ? "10000"
-                      : "0.5"
-                    : "0.1"
-                }
-                min={
-                  activeExchangeForm === "TOKOCRYPTO"
-                    ? tokocryptoQuoteAsset === "BIDR"
-                      ? "50000"
-                      : "5"
-                    : "0.1"
-                }
-                max={
-                  activeExchangeForm === "TOKOCRYPTO"
-                    ? tokocryptoQuoteAsset === "BIDR"
-                      ? "100000000"
-                      : "100000"
-                    : "100"
-                }
-                value={riskPerTradePct}
-                onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
-                className="h-8 text-xs font-mono"
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="risk-pct" className="text-xs font-medium">
+                  {activeExchangeForm === "TOKOCRYPTO"
+                    ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
+                    : riskMode === "FIXED_USD"
+                      ? "Fixed Margin Per Trade ($ USDT)"
+                      : "Risk Per Trade (% Wallet)"}
+                </Label>
+
+                {activeExchangeForm !== "TOKOCRYPTO" && (
+                  <div className="inline-flex items-center p-0.5 rounded-md border bg-muted/40 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setRiskMode("PERCENTAGE")}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        riskMode === "PERCENTAGE"
+                          ? "bg-background text-foreground font-semibold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      % Percentage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRiskMode("FIXED_USD")}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        riskMode === "FIXED_USD"
+                          ? "bg-background text-foreground font-semibold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      $ Fixed USD
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {activeExchangeForm !== "TOKOCRYPTO" &&
+              riskMode === "FIXED_USD" ? (
+                <>
+                  <Input
+                    id="risk-usd"
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="100000"
+                    value={riskAmountUsd}
+                    onChange={(e) => setRiskAmountUsd(Number(e.target.value))}
+                    className="h-8 text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    * Margin per trade is locked at{" "}
+                    <strong>${Number(riskAmountUsd).toFixed(2)} USDT</strong>{" "}
+                    regardless of balance changes.
+                  </p>
+                </>
+              ) : (
+                <Input
+                  id="risk-pct"
+                  type="number"
+                  step={
+                    activeExchangeForm === "TOKOCRYPTO"
+                      ? tokocryptoQuoteAsset === "BIDR"
+                        ? "10000"
+                        : "0.5"
+                      : "0.1"
+                  }
+                  min={
+                    activeExchangeForm === "TOKOCRYPTO"
+                      ? tokocryptoQuoteAsset === "BIDR"
+                        ? "50000"
+                        : "5"
+                      : "0.1"
+                  }
+                  max={
+                    activeExchangeForm === "TOKOCRYPTO"
+                      ? tokocryptoQuoteAsset === "BIDR"
+                        ? "100000000"
+                        : "100000"
+                      : "100"
+                  }
+                  value={riskPerTradePct}
+                  onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
+                  className="h-8 text-xs font-mono"
+                />
+              )}
+
               {activeExchangeForm === "TOKOCRYPTO" && (
                 <p className="text-[10px] text-muted-foreground">
                   * Minimum Tokocrypto:{" "}
@@ -1764,16 +1894,24 @@ export default function CredentialConfig({
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        Margin per Trade ({riskPerTradePct}%):
+                        {riskMode === "FIXED_USD"
+                          ? "Margin per Trade (Fixed):"
+                          : `Margin per Trade (${riskPerTradePct}%):`}
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         ~
-                        {(
-                          (activeTestResult.balance * Number(riskPerTradePct)) /
-                          100
-                        ).toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
+                        {riskMode === "FIXED_USD"
+                          ? Number(riskAmountUsd).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })
+                          : (
+                              (activeTestResult.balance *
+                                Number(riskPerTradePct)) /
+                              100
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}{" "}
                         {activeTestResult.quoteAsset || "USDT"}
                       </span>
                     </div>
@@ -1783,14 +1921,21 @@ export default function CredentialConfig({
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         ~
-                        {(
-                          ((activeTestResult.balance *
-                            Number(riskPerTradePct)) /
-                            100) *
-                          leverage
-                        ).toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
+                        {riskMode === "FIXED_USD"
+                          ? (Number(riskAmountUsd) * leverage).toLocaleString(
+                              undefined,
+                              {
+                                maximumFractionDigits: 2,
+                              },
+                            )
+                          : (
+                              ((activeTestResult.balance *
+                                Number(riskPerTradePct)) /
+                                100) *
+                              leverage
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}{" "}
                         {activeTestResult.quoteAsset || "USDT"}
                       </span>
                     </div>
@@ -1800,20 +1945,26 @@ export default function CredentialConfig({
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         ~
-                        {(
-                          (activeTestResult.balance * binanceTotalRiskPct) /
-                          100
-                        ).toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
+                        {riskMode === "FIXED_USD"
+                          ? (
+                              Number(riskAmountUsd) * Number(maxOpenPositions)
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })
+                          : (
+                              (activeTestResult.balance * binanceTotalRiskPct) /
+                              100
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}{" "}
                         {activeTestResult.quoteAsset || "USDT"} (
-                        {binanceTotalRiskPct}%)
+                        {binanceTotalRiskPct.toFixed(1)}%)
                       </span>
                     </div>
                     {binanceTotalRiskPct > 100 && (
                       <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
                         * Warning: Total margin allocation (
-                        {binanceTotalRiskPct}
+                        {binanceTotalRiskPct.toFixed(1)}
                         %) exceeds 100% of wallet balance. Reduce Risk per Trade
                         or Max Open Positions.
                       </p>

@@ -4,7 +4,8 @@ import { addAppLog } from "../../lib/logger";
 
 export function roundStep(value: number, stepSize: number): number {
   const precision = Math.max(0, Math.round(-Math.log10(stepSize)));
-  const stepped = Math.floor(value / stepSize) * stepSize;
+  const epsilon = stepSize * 1e-6;
+  const stepped = Math.floor((value + epsilon) / stepSize) * stepSize;
   return parseFloat(stepped.toFixed(precision));
 }
 

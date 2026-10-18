@@ -39,6 +39,8 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
         binanceConfig?.testnetBlockLongOnBtcBearish ?? true,
       testnetLeverage: binanceConfig?.testnetLeverage || 10,
       testnetMarginType: binanceConfig?.testnetMarginType || "ISOLATED",
+      testnetRiskMode: binanceConfig?.testnetRiskMode || "PERCENTAGE",
+      testnetRiskAmountUsd: binanceConfig?.testnetRiskAmountUsd ?? 10.0,
       testnetRiskPerTradePct: binanceConfig?.testnetRiskPerTradePct ?? 2.0,
       testnetMaxOpenPositions: binanceConfig?.testnetMaxOpenPositions ?? 3,
       testnetCoinFilterMode: binanceConfig?.testnetCoinFilterMode || "ALL",
@@ -54,6 +56,8 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
         binanceConfig?.liveBlockLongOnBtcBearish ?? true,
       liveLeverage: binanceConfig?.liveLeverage || 10,
       liveMarginType: binanceConfig?.liveMarginType || "ISOLATED",
+      liveRiskMode: binanceConfig?.liveRiskMode || "PERCENTAGE",
+      liveRiskAmountUsd: binanceConfig?.liveRiskAmountUsd ?? 10.0,
       liveRiskPerTradePct: binanceConfig?.liveRiskPerTradePct ?? 2.0,
       liveMaxOpenPositions: binanceConfig?.liveMaxOpenPositions ?? 3,
       liveCoinFilterMode: binanceConfig?.liveCoinFilterMode || "ALL",
@@ -66,7 +70,11 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       binanceAutoExecute: binanceAuto,
       leverage: binanceConfig?.leverage || 10,
       marginType: binanceConfig?.marginType || "ISOLATED",
+      binanceRiskMode: binanceConfig?.riskMode || "PERCENTAGE",
+      binanceRiskAmountUsd: binanceConfig?.riskAmountUsd ?? 10.0,
       binanceRiskPerTradePct: binanceConfig?.riskPerTradePct ?? 2.0,
+      riskMode: binanceConfig?.riskMode || "PERCENTAGE",
+      riskAmountUsd: binanceConfig?.riskAmountUsd ?? 10.0,
       binanceMaxOpenPositions: binanceConfig?.maxOpenPositions ?? 3,
       binanceCoinFilterMode: binanceConfig?.coinFilterMode || "ALL",
       binanceTargetCoins: binanceConfig?.targetCoins || "",
@@ -125,6 +133,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       testnetBlockLongOnBtcBearish,
       testnetLeverage,
       testnetMarginType,
+      testnetRiskMode,
+      testnetRiskAmountUsd,
       testnetRiskPerTradePct,
       testnetMaxOpenPositions,
       testnetCoinFilterMode,
@@ -138,6 +148,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       liveBlockLongOnBtcBearish,
       liveLeverage,
       liveMarginType,
+      liveRiskMode,
+      liveRiskAmountUsd,
       liveRiskPerTradePct,
       liveMaxOpenPositions,
       liveCoinFilterMode,
@@ -149,6 +161,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       binanceAutoExecute,
       marginType,
       leverage,
+      binanceRiskMode,
+      binanceRiskAmountUsd,
       binanceRiskPerTradePct,
       binanceMaxOpenPositions,
       binanceCoinFilterMode,
@@ -172,6 +186,8 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       // Legacy fallbacks
       autoExecute,
       dryRun,
+      riskMode,
+      riskAmountUsd,
       riskPerTradePct,
       maxOpenPositions,
       coinFilterMode,
@@ -236,6 +252,17 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (testnetMarginType !== undefined) {
       binanceUpdate.testnetMarginType = testnetMarginType;
     }
+    if (testnetRiskMode !== undefined) {
+      const mode = String(testnetRiskMode).trim().toUpperCase();
+      binanceUpdate.testnetRiskMode =
+        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+    }
+    if (testnetRiskAmountUsd !== undefined) {
+      binanceUpdate.testnetRiskAmountUsd = Math.max(
+        0.1,
+        Number(testnetRiskAmountUsd) || 10.0,
+      );
+    }
     if (testnetRiskPerTradePct !== undefined) {
       binanceUpdate.testnetRiskPerTradePct = Number(testnetRiskPerTradePct);
     }
@@ -282,6 +309,17 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (liveMarginType !== undefined) {
       binanceUpdate.liveMarginType = liveMarginType;
     }
+    if (liveRiskMode !== undefined) {
+      const mode = String(liveRiskMode).trim().toUpperCase();
+      binanceUpdate.liveRiskMode =
+        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+    }
+    if (liveRiskAmountUsd !== undefined) {
+      binanceUpdate.liveRiskAmountUsd = Math.max(
+        0.1,
+        Number(liveRiskAmountUsd) || 10.0,
+      );
+    }
     if (liveRiskPerTradePct !== undefined) {
       binanceUpdate.liveRiskPerTradePct = Number(liveRiskPerTradePct);
     }
@@ -311,6 +349,28 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       binanceUpdate.autoExecute = Boolean(binanceAutoExecute);
     } else if (autoExecute !== undefined) {
       binanceUpdate.autoExecute = Boolean(autoExecute);
+    }
+
+    if (binanceRiskMode !== undefined) {
+      const mode = String(binanceRiskMode).trim().toUpperCase();
+      binanceUpdate.riskMode =
+        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+    } else if (riskMode !== undefined) {
+      const mode = String(riskMode).trim().toUpperCase();
+      binanceUpdate.riskMode =
+        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+    }
+
+    if (binanceRiskAmountUsd !== undefined) {
+      binanceUpdate.riskAmountUsd = Math.max(
+        0.1,
+        Number(binanceRiskAmountUsd) || 10.0,
+      );
+    } else if (riskAmountUsd !== undefined) {
+      binanceUpdate.riskAmountUsd = Math.max(
+        0.1,
+        Number(riskAmountUsd) || 10.0,
+      );
     }
 
     if (binanceRiskPerTradePct !== undefined) {

@@ -225,6 +225,14 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               "ISOLATED",
             leverage:
               binanceConfig.testnetLeverage || binanceConfig.leverage || 10,
+            riskMode:
+              binanceConfig.testnetRiskMode ||
+              binanceConfig.riskMode ||
+              "PERCENTAGE",
+            riskAmountUsd:
+              binanceConfig.testnetRiskAmountUsd ??
+              binanceConfig.riskAmountUsd ??
+              10.0,
             riskPerTradePct:
               binanceConfig.testnetRiskPerTradePct ??
               binanceConfig.riskPerTradePct ??
@@ -287,6 +295,14 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               "ISOLATED",
             leverage:
               binanceConfig.liveLeverage || binanceConfig.leverage || 10,
+            riskMode:
+              binanceConfig.liveRiskMode ||
+              binanceConfig.riskMode ||
+              "PERCENTAGE",
+            riskAmountUsd:
+              binanceConfig.liveRiskAmountUsd ??
+              binanceConfig.riskAmountUsd ??
+              10.0,
             riskPerTradePct:
               binanceConfig.liveRiskPerTradePct ??
               binanceConfig.riskPerTradePct ??
