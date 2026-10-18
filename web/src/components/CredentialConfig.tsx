@@ -1702,44 +1702,59 @@ export default function CredentialConfig({
               </div>
             )}
 
-            {/* Risk / Allocation Input */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="risk-pct" className="text-xs font-medium">
-                  {activeExchangeForm === "TOKOCRYPTO"
-                    ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
-                    : riskMode === "FIXED_USD"
-                      ? "Fixed Margin Per Trade ($ USDT)"
-                      : "Risk Per Trade (% Wallet)"}
-                </Label>
-
-                {activeExchangeForm !== "TOKOCRYPTO" && (
-                  <div className="inline-flex items-center p-0.5 rounded-md border bg-muted/40 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => setRiskMode("PERCENTAGE")}
-                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
-                        riskMode === "PERCENTAGE"
-                          ? "bg-background text-foreground font-semibold shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      % Percentage
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRiskMode("FIXED_USD")}
-                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
-                        riskMode === "FIXED_USD"
-                          ? "bg-background text-foreground font-semibold shadow-xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      $ Fixed USD
-                    </button>
-                  </div>
-                )}
+            {/* Risk Allocation Mode (Only relevant for Binance Futures) */}
+            {activeExchangeForm !== "TOKOCRYPTO" && (
+              <div className="space-y-1.5 mt-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="risk-mode" className="text-xs font-medium">
+                    Risk Allocation Mode
+                  </Label>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
+                    {riskMode === "FIXED_USD"
+                      ? "FIXED USD ($)"
+                      : "PERCENTAGE (%)"}
+                  </span>
+                </div>
+                <select
+                  id="risk-mode"
+                  value={riskMode}
+                  onChange={(e) =>
+                    setRiskMode(e.target.value as "PERCENTAGE" | "FIXED_USD")
+                  }
+                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="PERCENTAGE" className="text-black">
+                    Percentage (% of Wallet Balance)
+                  </option>
+                  <option value="FIXED_USD" className="text-black">
+                    Fixed USD Amount ($ Margin per Trade)
+                  </option>
+                </select>
+                <p className="text-[10px] text-muted-foreground">
+                  {riskMode === "FIXED_USD"
+                    ? "Allocate a locked dollar margin per trade (ideal for small balances)."
+                    : "Dynamically calculate margin based on a percentage of available wallet balance."}
+                </p>
               </div>
+            )}
+
+            {/* Risk / Allocation Numeric Input */}
+            <div className="space-y-1.5 mt-2">
+              <Label
+                htmlFor={
+                  activeExchangeForm !== "TOKOCRYPTO" &&
+                  riskMode === "FIXED_USD"
+                    ? "risk-usd"
+                    : "risk-pct"
+                }
+                className="text-xs font-medium"
+              >
+                {activeExchangeForm === "TOKOCRYPTO"
+                  ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
+                  : riskMode === "FIXED_USD"
+                    ? "Fixed Margin Amount ($ USDT)"
+                    : "Risk Per Trade (% Wallet Balance)"}
+              </Label>
 
               {activeExchangeForm !== "TOKOCRYPTO" &&
               riskMode === "FIXED_USD" ? (
@@ -1753,6 +1768,7 @@ export default function CredentialConfig({
                     value={riskAmountUsd}
                     onChange={(e) => setRiskAmountUsd(Number(e.target.value))}
                     className="h-8 text-xs font-mono"
+                    placeholder="e.g. 10.0"
                   />
                   <p className="text-[10px] text-muted-foreground">
                     * Margin per trade is locked at{" "}
@@ -1788,6 +1804,7 @@ export default function CredentialConfig({
                   value={riskPerTradePct}
                   onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
                   className="h-8 text-xs font-mono"
+                  placeholder="e.g. 2.0"
                 />
               )}
 
