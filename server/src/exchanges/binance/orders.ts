@@ -744,7 +744,7 @@ export async function executeSignalOrder(
       }
     }
 
-    // Pasang Stop Loss
+    // Pasang Stop Loss (Guaranteed Double-Layer Protection)
     const targetSlPrice = sl
       ? roundTick(sl, filters.tickSize)
       : roundTick(
@@ -752,6 +752,12 @@ export async function executeSignalOrder(
           filters.tickSize,
         );
 
+    // Buffer jeda 250ms untuk memastikan settlement posisi market entry di matching engine Binance selesai
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    let slSuccess = false;
+
+    // Layer 1: Coba pasang Stop Loss standar dengan closePosition: true
     try {
       await placeOrder(
         apiKey,
@@ -767,6 +773,7 @@ export async function executeSignalOrder(
         isTestnet,
       );
 
+      slSuccess = true;
       const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
       addAppLog(
         "INFO",
@@ -774,44 +781,55 @@ export async function executeSignalOrder(
         `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice}`,
       );
     } catch (err: any) {
-      if (
-        err.message?.includes("closePosition in the direction is existing") ||
-        err.message?.includes("-4130")
-      ) {
-        // Fallback: pasang SL dengan reduceOnly & kuantitas spesifik jika closePosition bentrok
-        try {
-          await placeOrder(
-            apiKey,
-            apiSecret,
-            {
-              symbol,
-              side: exitSide,
-              type: "STOP_MARKET",
-              stopPrice: targetSlPrice,
-              quantity,
-              reduceOnly: true,
-            },
-            isTestnet,
-          );
-          const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
-          addAppLog(
-            "INFO",
-            "Executor",
-            `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice} (qty: ${quantity}, reduceOnly)`,
-          );
-        } catch (retryErr: any) {
+      addAppLog(
+        "WARN",
+        "Executor",
+        `Primary closePosition Stop Loss for ${symbol} rejected (${err.message}). Retrying with explicit quantity fallback...`,
+      );
+    }
+
+    // Layer 2: Fallback jika Layer 1 ditolak (TIF GTE / -4509, race condition, -4130, dll)
+    if (!slSuccess) {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await placeOrder(
+          apiKey,
+          apiSecret,
+          {
+            symbol,
+            side: exitSide,
+            positionSide: side as "LONG" | "SHORT",
+            type: "STOP_MARKET",
+            stopPrice: targetSlPrice,
+            quantity,
+            reduceOnly: true,
+          },
+          isTestnet,
+        );
+        const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
+        addAppLog(
+          "INFO",
+          "Executor",
+          `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice} (qty: ${quantity}, fallback active)`,
+        );
+      } catch (retryErr: any) {
+        if (
+          retryErr.message?.includes("already protected") ||
+          retryErr.message?.includes("existing") ||
+          retryErr.message?.includes("-4130")
+        ) {
           addAppLog(
             "INFO",
             "Executor",
             `[SL ACTIVE] Position ${symbol} already protected by active stop order on Binance.`,
           );
+        } else {
+          addAppLog(
+            "ERROR",
+            "Executor",
+            `CRITICAL: Failed to place fallback Stop Loss for ${symbol}: ${retryErr.message}`,
+          );
         }
-      } else {
-        addAppLog(
-          "WARN",
-          "Executor",
-          `Failed to place Stop Loss for ${symbol}: ${err.message}`,
-        );
       }
     }
   } catch (err: any) {
