@@ -7,6 +7,23 @@ import { addAppLog } from "../lib/logger";
 const SERVER_URL = process.env.SERVER_URL || "https://signal.forlearning.my.id";
 
 let socket: ReturnType<typeof Client> | null = null;
+let heartbeatTimer: NodeJS.Timeout | null = null;
+
+function startHeartbeat(): void {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (socket && socket.connected) {
+      socket.emit("ping");
+    }
+  }, 20000); // Active keep-alive ping every 20s for Cloudflare / Traefik
+}
+
+function stopHeartbeat(): void {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
 
 export function isSocketConnected(): boolean {
   return socket ? socket.connected : false;
@@ -17,6 +34,7 @@ export function getSocketServerUrl(): string {
 }
 
 export function disconnectSocket(): void {
+  stopHeartbeat();
   if (socket) {
     socket.disconnect();
     socket = null;
@@ -70,6 +88,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
   });
 
   socket.on("connect", () => {
+    startHeartbeat();
     addAppLog(
       "SUCCESS",
       "SignalClient",
@@ -78,6 +97,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
   });
 
   socket.on("disconnect", (reason) => {
+    stopHeartbeat();
     addAppLog(
       "WARN",
       "SignalClient",
@@ -94,6 +114,11 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
   });
 
   socket.on("new_signal", async (data) => {
+    addAppLog(
+      "INFO",
+      "SignalClient",
+      `⚡ Broadcast signal received: ${data?.symbol} (${data?.side}) [${data?.strategy}] Score: ${data?.score}`,
+    );
     await handleIncomingSignal(data);
   });
 }
