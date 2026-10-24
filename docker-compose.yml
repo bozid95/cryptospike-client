@@ -3,11 +3,13 @@ version: "3.8"
 services:
   client:
     build: .
-    container_name: cryptospike-client
+    container_name: ${CONTAINER_NAME:-cryptospike-client}
     restart: unless-stopped
+    ports:
+      - "${PORT:-3080}:80"
     volumes:
       - cryptospike_data:/app/server/data
 
 volumes:
   cryptospike_data:
-    name: cryptospike_data
+    name: ${VOLUME_NAME:-cryptospike_data}
