@@ -443,10 +443,12 @@ export async function executeSignalOrder(
     const walletBalance = conn.balance || 0;
 
     if (walletBalance < 10) {
+    if (walletBalance < 5) {
       addAppLog(
         "WARN",
         "Executor",
         `Insufficient Binance margin balance ($${walletBalance.toFixed(2)}). Minimum $10 required.`,
+        `Insufficient Binance margin balance ($${walletBalance.toFixed(2)}). Minimum $5 required.`,
       );
       return;
     }
@@ -474,6 +476,21 @@ export async function executeSignalOrder(
 
     const leverage = config.leverage || 10;
     const notionalValue = marginToRisk * leverage;
+    let notionalValue = marginToRisk * leverage;
+
+    // Auto-adjust margin jika notional di bawah minNotional Binance tetapi saldo mencukupi
+    if (notionalValue < filters.minNotional) {
+      const minMarginNeeded = filters.minNotional / leverage;
+      if (walletBalance >= minMarginNeeded) {
+        addAppLog(
+          "INFO",
+          "Executor",
+          `Adjusted margin from $${marginToRisk.toFixed(2)} to $${minMarginNeeded.toFixed(2)} (${leverage}x) to meet Binance MIN_NOTIONAL ($${filters.minNotional}).`,
+        );
+        marginToRisk = minMarginNeeded;
+        notionalValue = marginToRisk * leverage;
+      }
+    }
 
     if (notionalValue < filters.minNotional) {
       addAppLog(
