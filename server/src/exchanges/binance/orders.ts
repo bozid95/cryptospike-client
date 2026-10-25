@@ -885,7 +885,154 @@ export async function getOpenOrders(
 }
 
 /**
- * Memindahkan Stop Loss ke Break-Even (Harga Entry + Buffer Fee)
+ * Membulatkan harga ke tick dengan arah tertentu (floor / ceil).
+ * Dipakai Auto-BEP agar pembulatan selalu ke arah yang lebih aman (menutup fee),
+ * terutama pada koin dengan tickSize kasar (mis. CELOUSDT tick 0.0001 @ ~0.077).
+ */
+function roundTickDirectional(
+  price: number,
+  tickSize: number,
+  mode: "floor" | "ceil",
+): number {
+  const precision = Math.max(0, Math.round(-Math.log10(tickSize)));
+  const epsilon = tickSize * 1e-6;
+  const steps =
+    mode === "floor"
+      ? Math.floor((price + epsilon) / tickSize)
+      : Math.ceil((price - epsilon) / tickSize);
+  return parseFloat((steps * tickSize).toFixed(precision));
+}
+
+interface ExistingStopOrder {
+  kind: "regular" | "algo";
+  id: string;
+  triggerPrice: number;
+}
+
+/**
+ * Mengambil semua STOP_MARKET penutup posisi (regular + algo) untuk arah exit tertentu.
+ * Termasuk SL berbasis quantity (Layer 2 fallback), bukan hanya closePosition.
+ */
+async function listExitStopOrders(
+  apiKey: string,
+  apiSecret: string,
+  symbol: string,
+  exitSide: "BUY" | "SELL",
+  positionSide: "LONG" | "SHORT",
+  isTestnet: boolean,
+): Promise<ExistingStopOrder[]> {
+  const result: ExistingStopOrder[] = [];
+  const baseUrl = getBaseUrl(isTestnet);
+
+  const matchesPositionSide = (ps?: string) =>
+    !ps || ps === "BOTH" || ps === positionSide;
+
+  // Regular orders
+  const openOrders = await getOpenOrders(apiKey, apiSecret, symbol, isTestnet);
+  for (const ord of openOrders) {
+    const type = ord.origType || ord.type;
+    if (
+      type === "STOP_MARKET" &&
+      ord.side === exitSide &&
+      matchesPositionSide(ord.positionSide)
+    ) {
+      result.push({
+        kind: "regular",
+        id: String(ord.orderId),
+        triggerPrice: parseFloat(ord.stopPrice || "0"),
+      });
+    }
+  }
+
+  // Algo orders
+  try {
+    const timestamp = await getBinanceServerTime(baseUrl);
+    const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
+    const sig = createSignature(query, apiSecret);
+    const res = await fetch(
+      `${baseUrl}/fapi/v1/openAlgoOrders?${query}&signature=${sig}`,
+      { headers: { "X-MBX-APIKEY": apiKey } },
+    );
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const algos = Array.isArray(data?.orders)
+        ? data.orders
+        : Array.isArray(data)
+          ? data
+          : [];
+      for (const algo of algos) {
+        if (
+          algo.orderType === "STOP_MARKET" &&
+          algo.side === exitSide &&
+          matchesPositionSide(algo.positionSide) &&
+          algo.algoId
+        ) {
+          result.push({
+            kind: "algo",
+            id: String(algo.algoId),
+            triggerPrice: parseFloat(algo.triggerPrice || "0"),
+          });
+        }
+      }
+    }
+  } catch {}
+
+  return result;
+}
+
+/**
+ * Membatalkan satu STOP order (regular atau algo). Return true jika berhasil.
+ */
+async function cancelStopOrder(
+  apiKey: string,
+  apiSecret: string,
+  symbol: string,
+  order: ExistingStopOrder,
+  isTestnet: boolean,
+): Promise<boolean> {
+  try {
+    const baseUrl = getBaseUrl(isTestnet);
+    const timestamp = await getBinanceServerTime(baseUrl);
+    const idParam =
+      order.kind === "algo" ? `algoId=${order.id}` : `orderId=${order.id}`;
+    const query = `symbol=${symbol}&${idParam}&timestamp=${timestamp}&recvWindow=60000`;
+    const sig = createSignature(query, apiSecret);
+    const endpoint =
+      order.kind === "algo" ? "/fapi/v1/algoOrder" : "/fapi/v1/order";
+    const res = await fetch(`${baseUrl}${endpoint}?${query}&signature=${sig}`, {
+      method: "DELETE",
+      headers: { "X-MBX-APIKEY": apiKey },
+    });
+    const data = (await res.json().catch(() => ({}))) as any;
+    return (
+      res.ok &&
+      (data?.code === undefined ||
+        String(data?.code) === "200" ||
+        data?.msg === "success")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isImmediateTriggerError(err: any): boolean {
+  const msg = String(err?.message || "").toLowerCase();
+  return msg.includes("immediately trigger") || msg.includes("-2021");
+}
+
+/**
+ * Memindahkan Stop Loss ke Break-Even (Harga Entry + Buffer Fee) secara FAIL-SAFE.
+ *
+ * Prinsip: "Pasang dulu, baru batalkan" — posisi tidak pernah dibiarkan tanpa SL.
+ *  1. Ambil posisi segar (sisa qty + mark price). Jika posisi sudah tutup → selesai.
+ *  2. Hitung harga BEP dengan pembulatan ke arah aman & validasi jarak ≥ 2 tick dari mark price.
+ *  3. Jika harga sudah melewati BEP → tutup sisa posisi via MARKET reduceOnly.
+ *  4. Pasang SL BEP berbasis quantity + reduceOnly (bisa berdampingan dengan SL lama, tanpa -4130).
+ *  5. Setelah SL BEP terkonfirmasi → batalkan SL lama.
+ *  6. Upgrade SL BEP ke closePosition (tahan partial fill TP2); jika gagal, SL quantity tetap aktif.
+ *
+ * Return true jika posisi aman (SL BEP aktif / posisi sudah ditutup / posisi tidak ada).
+ * Return false jika gagal — SL lama TIDAK disentuh sehingga posisi tetap terproteksi.
  */
 export async function moveSlToBreakEven(
   apiKey: string,
@@ -896,110 +1043,190 @@ export async function moveSlToBreakEven(
   isTestnet: boolean,
   bufferPct: number = 0.2,
 ): Promise<boolean> {
+  const exitSide: "BUY" | "SELL" = side === "LONG" ? "SELL" : "BUY";
+  const environment = isTestnet ? "TESTNET" : "LIVE";
+
   try {
     const filters = await getSymbolFilters(symbol, isTestnet);
-    const exitSide = side === "LONG" ? "SELL" : "BUY";
-    const multiplier =
-      side === "LONG" ? 1 + bufferPct / 100 : 1 - bufferPct / 100;
-    const bepPrice = roundTick(entryPrice * multiplier, filters.tickSize);
 
-    // 1. Ambil order terbuka dan batalkan STOP_MARKET lama
-    const openOrders = await getOpenOrders(
+    // 1. Ambil posisi segar
+    const { positions } = await getAccountAndPositions(
+      apiKey,
+      apiSecret,
+      environment,
+    );
+    const pos = positions.find((p) => p.symbol === symbol && p.side === side);
+    if (!pos || pos.positionAmt <= 0) {
+      addAppLog(
+        "INFO",
+        "AutoBEP",
+        `[Auto-BEP] ${symbol} ${side} position already closed. Nothing to move.`,
+      );
+      return true;
+    }
+
+    const remainingQty = roundStep(pos.positionAmt, filters.stepSize);
+    const markPrice = pos.markPrice;
+    const effectiveEntry = entryPrice > 0 ? entryPrice : pos.entryPrice;
+
+    // 2. Harga BEP dengan pembulatan ke arah aman
+    const rawBep =
+      side === "LONG"
+        ? effectiveEntry * (1 + bufferPct / 100)
+        : effectiveEntry * (1 - bufferPct / 100);
+    const bepPrice = roundTickDirectional(
+      rawBep,
+      filters.tickSize,
+      side === "LONG" ? "ceil" : "floor",
+    );
+    const minGap = filters.tickSize * 2;
+    const epsilon = filters.tickSize * 1e-4;
+    const bepValid =
+      side === "LONG"
+        ? bepPrice <= markPrice - minGap + epsilon
+        : bepPrice >= markPrice + minGap - epsilon;
+
+    // Snapshot SL lama SEBELUM memasang SL baru (agar SL baru tidak ikut terbatalkan)
+    const oldStops = await listExitStopOrders(
       apiKey,
       apiSecret,
       symbol,
+      exitSide,
+      side,
       isTestnet,
     );
-    const baseUrl = getBaseUrl(isTestnet);
 
-    for (const ord of openOrders) {
-      if (ord.type === "STOP_MARKET" || ord.origType === "STOP_MARKET") {
-        try {
-          const timestamp = await getBinanceServerTime(baseUrl);
-          const delQuery = `symbol=${symbol}&orderId=${ord.orderId}&timestamp=${timestamp}&recvWindow=60000`;
-          const delSig = createSignature(delQuery, apiSecret);
-          await fetch(
-            `${baseUrl}/fapi/v1/order?${delQuery}&signature=${delSig}`,
-            {
-              method: "DELETE",
-              headers: { "X-MBX-APIKEY": apiKey },
-            },
-          );
-          addAppLog(
-            "INFO",
-            "AutoBEP",
-            `[Auto-BEP] Canceled old regular SL (${ord.orderId}) for ${symbol}`,
-          );
-        } catch {}
+    const closeRemainingAtMarket = async (reason: string): Promise<boolean> => {
+      addAppLog(
+        "WARN",
+        "AutoBEP",
+        `[Auto-BEP] ${symbol} ${reason} (BEP: ${bepPrice}, Mark: ${markPrice}). Closing remaining ${remainingQty} at MARKET to lock break-even...`,
+      );
+      try {
+        await placeOrder(
+          apiKey,
+          apiSecret,
+          {
+            symbol,
+            side: exitSide,
+            positionSide: side,
+            type: "MARKET",
+            quantity: remainingQty,
+            reduceOnly: true,
+          },
+          isTestnet,
+        );
+        await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
+        addAppLog(
+          "SUCCESS",
+          "AutoBEP",
+          `[Auto-BEP] ${symbol} remaining position closed at MARKET. Leftover orders cleaned up.`,
+        );
+        return true;
+      } catch (closeErr: any) {
+        addAppLog(
+          "ERROR",
+          "AutoBEP",
+          `[Auto-BEP] CRITICAL: Market close failed for ${symbol}: ${closeErr.message}. Old SL kept untouched (${oldStops.length} active).`,
+        );
+        return false;
       }
+    };
+
+    // 3. Harga sudah melewati BEP → tutup sisa posisi
+    if (!bepValid) {
+      return await closeRemainingAtMarket("price already beyond BEP");
     }
 
-    // 1b. Batalkan STOP_MARKET lama di openAlgoOrders
+    // 4. Pasang SL BEP berbasis quantity (berdampingan dengan SL lama)
+    let qtySl: ExistingStopOrder | null = null;
     try {
-      const timestamp = await getBinanceServerTime(baseUrl);
-      const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
-      const sig = createSignature(query, apiSecret);
-      const algoRes = await fetch(
-        `${baseUrl}/fapi/v1/openAlgoOrders?${query}&signature=${sig}`,
-        { headers: { "X-MBX-APIKEY": apiKey } },
+      const r = await placeOrder(
+        apiKey,
+        apiSecret,
+        {
+          symbol,
+          side: exitSide,
+          positionSide: side,
+          type: "STOP_MARKET",
+          stopPrice: bepPrice,
+          quantity: remainingQty,
+          reduceOnly: true,
+          workingType: "MARK_PRICE",
+        },
+        isTestnet,
       );
-      if (algoRes.ok) {
-        const algoData = (await algoRes.json()) as any;
-        const algoOrders = Array.isArray(algoData?.orders)
-          ? algoData.orders
-          : Array.isArray(algoData)
-            ? algoData
-            : [];
-        for (const algo of algoOrders) {
-          if (
-            (algo.orderType === "STOP_MARKET" ||
-              algo.algoType === "CONDITIONAL") &&
-            algo.closePosition === true &&
-            algo.algoId
-          ) {
-            const delTs = await getBinanceServerTime(baseUrl);
-            const delQ = `symbol=${symbol}&algoId=${algo.algoId}&timestamp=${delTs}&recvWindow=60000`;
-            const delSig = createSignature(delQ, apiSecret);
-            await fetch(
-              `${baseUrl}/fapi/v1/algoOrder?${delQ}&signature=${delSig}`,
-              { method: "DELETE", headers: { "X-MBX-APIKEY": apiKey } },
-            );
-            addAppLog(
-              "INFO",
-              "AutoBEP",
-              `[Auto-BEP] Canceled old algo SL (${algo.algoId}) for ${symbol}`,
-            );
-          }
-        }
+      qtySl = {
+        kind: r?.algoId ? "algo" : "regular",
+        id: String(r?.algoId || r?.orderId),
+        triggerPrice: bepPrice,
+      };
+    } catch (placeErr: any) {
+      if (isImmediateTriggerError(placeErr)) {
+        return await closeRemainingAtMarket(
+          "price moved beyond BEP during placement",
+        );
       }
-    } catch {}
+      addAppLog(
+        "ERROR",
+        "AutoBEP",
+        `[Auto-BEP] Failed to place BEP SL for ${symbol}: ${placeErr.message}. Old SL kept untouched (${oldStops.length} active).`,
+      );
+      return false;
+    }
 
-    // 2. Pasang SL baru di harga BEP
-    await placeOrder(
-      apiKey,
-      apiSecret,
-      {
+    // 5. SL BEP aktif → batalkan SL lama
+    for (const old of oldStops) {
+      const ok = await cancelStopOrder(
+        apiKey,
+        apiSecret,
         symbol,
-        side: exitSide,
-        positionSide: side,
-        type: "STOP_MARKET",
-        stopPrice: bepPrice,
-        closePosition: true,
-      },
-      isTestnet,
-    );
+        old,
+        isTestnet,
+      );
+      addAppLog(
+        ok ? "INFO" : "WARN",
+        "AutoBEP",
+        ok
+          ? `[Auto-BEP] Canceled old SL (${old.kind} ${old.id} @ ${old.triggerPrice}) for ${symbol}`
+          : `[Auto-BEP] Could not cancel old SL (${old.kind} ${old.id}) for ${symbol}. It is reduceOnly and will be cleaned up on close.`,
+      );
+    }
+
+    // 6. Upgrade ke closePosition agar tahan terhadap partial fill TP2
+    try {
+      await placeOrder(
+        apiKey,
+        apiSecret,
+        {
+          symbol,
+          side: exitSide,
+          positionSide: side,
+          type: "STOP_MARKET",
+          stopPrice: bepPrice,
+          closePosition: true,
+          workingType: "MARK_PRICE",
+        },
+        isTestnet,
+      );
+      if (qtySl) {
+        await cancelStopOrder(apiKey, apiSecret, symbol, qtySl, isTestnet);
+      }
+    } catch {
+      // closePosition gagal (mis. -4130 / -4509) → SL BEP berbasis quantity tetap aktif. Aman.
+    }
 
     addAppLog(
       "SUCCESS",
       "AutoBEP",
-      `[Auto-BEP] Stop Loss moved to Break-Even for ${symbol} @ ${bepPrice} (+${bufferPct}% fee buffer). Position is now RISK-FREE!`,
+      `[Auto-BEP] Stop Loss moved to Break-Even for ${symbol} @ ${bepPrice} (+${bufferPct}% fee buffer, mark ${markPrice}). Position is now RISK-FREE!`,
     );
     return true;
   } catch (err: any) {
     addAppLog(
-      "WARN",
+      "ERROR",
       "AutoBEP",
-      `[Auto-BEP] Failed to move SL to Break-Even for ${symbol}: ${err.message}`,
+      `[Auto-BEP] Failed to move SL to Break-Even for ${symbol}: ${err.message}. Old SL kept untouched.`,
     );
     return false;
   }

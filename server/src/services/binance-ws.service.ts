@@ -17,7 +17,12 @@ interface MonitoredWsPosition {
   initialQty: number;
   bepMoved: boolean;
   openedAt: number;
+  bepInProgress?: boolean;
+  bepAttempts?: number;
 }
+
+const BEP_MAX_ATTEMPTS = 3;
+const BEP_RETRY_DELAY_MS = 3000;
 
 function getWsBaseUrl(isTestnet: boolean): string {
   return isTestnet
@@ -606,29 +611,18 @@ class BinanceEnvironmentStream {
             process.env.BINANCE_BEP_BUFFER_PCT || "0.2",
           );
 
-          if (tracked && !tracked.bepMoved && autoBepEnabled) {
+          if (
+            tracked &&
+            !tracked.bepMoved &&
+            !tracked.bepInProgress &&
+            autoBepEnabled
+          ) {
             addAppLog(
               "INFO",
               this.logTag,
               `[Realtime Auto-BEP] Exit order filled for ${symbol}. Moving SL to Break-Even immediately...`,
             );
-
-            tracked.bepMoved = true;
-            moveSlToBreakEven(
-              apiKey,
-              apiSecret,
-              symbol,
-              tracked.side,
-              tracked.entryPrice,
-              this.isTestnet,
-              bepBufferPct,
-            ).catch((err) => {
-              addAppLog(
-                "WARN",
-                this.logTag,
-                `Auto-BEP move failed for ${symbol}: ${err.message}`,
-              );
-            });
+            this.runAutoBep(tracked, apiKey, apiSecret, bepBufferPct);
           }
         }
       }
@@ -645,6 +639,68 @@ class BinanceEnvironmentStream {
         `Error parsing WS message: ${err.message}`,
       );
     }
+  }
+
+  /**
+   * Menjalankan Auto-BEP dengan guard in-flight & retry terbatas.
+   * bepMoved hanya diset true jika moveSlToBreakEven berhasil (posisi aman).
+   */
+  private runAutoBep(
+    tracked: MonitoredWsPosition,
+    apiKey: string,
+    apiSecret: string,
+    bepBufferPct: number,
+  ): void {
+    tracked.bepInProgress = true;
+    tracked.bepAttempts = (tracked.bepAttempts || 0) + 1;
+    const attempt = tracked.bepAttempts;
+
+    moveSlToBreakEven(
+      apiKey,
+      apiSecret,
+      tracked.symbol,
+      tracked.side,
+      tracked.entryPrice,
+      this.isTestnet,
+      bepBufferPct,
+    )
+      .then((ok) => {
+        if (ok) {
+          tracked.bepMoved = true;
+          return;
+        }
+        if (attempt < BEP_MAX_ATTEMPTS) {
+          addAppLog(
+            "WARN",
+            this.logTag,
+            `[Realtime Auto-BEP] Attempt ${attempt}/${BEP_MAX_ATTEMPTS} failed for ${tracked.symbol}. Retrying in ${BEP_RETRY_DELAY_MS / 1000}s (old SL still active)...`,
+          );
+          setTimeout(() => {
+            if (
+              !tracked.bepMoved &&
+              this.monitoredWsPositions.get(tracked.symbol) === tracked
+            ) {
+              this.runAutoBep(tracked, apiKey, apiSecret, bepBufferPct);
+            }
+          }, BEP_RETRY_DELAY_MS);
+        } else {
+          addAppLog(
+            "ERROR",
+            this.logTag,
+            `[Realtime Auto-BEP] Gave up after ${BEP_MAX_ATTEMPTS} attempts for ${tracked.symbol}. Original SL remains active — please review manually.`,
+          );
+        }
+      })
+      .catch((err) => {
+        addAppLog(
+          "WARN",
+          this.logTag,
+          `Auto-BEP move failed for ${tracked.symbol}: ${err.message}`,
+        );
+      })
+      .finally(() => {
+        tracked.bepInProgress = false;
+      });
   }
 
   public restart(): void {
