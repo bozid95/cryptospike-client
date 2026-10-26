@@ -175,8 +175,9 @@ export function calculateTokocryptoTpPlan(params: {
   sl?: number | undefined;
   stepSize: number;
   minNotional: number;
-  tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | undefined;
+  tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT" | undefined;
   customTpRoiPct?: number | undefined;
+  customTpSplitRatio?: number | undefined;
   slMode?: "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI" | undefined;
   customSlValue?: number | undefined;
 }): TokocryptoTpPlan {
@@ -191,6 +192,7 @@ export function calculateTokocryptoTpPlan(params: {
     minNotional,
     tpMode = "MULTI_TP",
     customTpRoiPct,
+    customTpSplitRatio = 70,
     slMode = "SIGNAL_SL",
     customSlValue,
   } = params;
@@ -241,6 +243,13 @@ export function calculateTokocryptoTpPlan(params: {
     targetTp1 = entryPrice * (1 + customGain / 100);
     qty1 = totalQty;
     qty2 = 0;
+    qty3 = 0;
+  } else if (tpMode === "CUSTOM_SPLIT") {
+    const splitRatio = Math.max(10, Math.min(95, Number(customTpSplitRatio || 70)));
+    const customGain = Math.max(minGainPct, Number(customTpRoiPct || 3.5));
+    targetTp1 = entryPrice * (1 + customGain / 100);
+    qty1 = roundStepLocal(totalQty * (splitRatio / 100));
+    qty2 = parseFloat((totalQty - qty1).toFixed(precision));
     qty3 = 0;
   } else {
     qty1 = roundStepLocal(totalQty * 0.5);
@@ -617,6 +626,7 @@ export async function executeTokocryptoSignalOrder(
       minNotional: 5.0,
       tpMode: config.tpMode,
       customTpRoiPct: config.customTpRoiPct,
+      customTpSplitRatio: config.customTpSplitRatio,
       slMode: config.slMode,
       customSlValue: config.customSlValue,
     });
@@ -742,6 +752,7 @@ export async function executeTokocryptoSignalOrder(
       minNotional: rules.minNotional,
       tpMode: config.tpMode,
       customTpRoiPct: config.customTpRoiPct,
+      customTpSplitRatio: config.customTpSplitRatio,
       slMode: config.slMode,
       customSlValue: config.customSlValue,
     });

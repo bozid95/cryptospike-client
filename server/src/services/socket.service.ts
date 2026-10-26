@@ -177,6 +177,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
             targetCoins: tokocryptoConfig.targetCoins || "",
             tpMode: tpPrefs.tokocryptoTpMode,
             customTpRoiPct: tpPrefs.tokocryptoCustomTpRoiPct,
+            customTpSplitRatio: tpPrefs.tokocryptoCustomTpSplitRatio,
             slMode: tpPrefs.tokocryptoSlMode,
             customSlValue: tpPrefs.tokocryptoCustomSlValue,
           });
@@ -292,6 +293,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               true,
             tpMode: getTpConfig().testnetTpMode,
             customTpRoiPct: getTpConfig().testnetCustomTpRoiPct,
+            customTpSplitRatio: getTpConfig().testnetCustomTpSplitRatio,
             slMode: getTpConfig().testnetSlMode,
             customSlValue: getTpConfig().testnetCustomSlValue,
           });
@@ -363,6 +365,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               true,
             tpMode: getTpConfig().liveTpMode,
             customTpRoiPct: getTpConfig().liveCustomTpRoiPct,
+            customTpSplitRatio: getTpConfig().liveCustomTpSplitRatio,
             slMode: getTpConfig().liveSlMode,
             customSlValue: getTpConfig().liveCustomSlValue,
           });

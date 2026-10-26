@@ -603,6 +603,31 @@ export async function executeSignalOrder(
         "Executor",
         `[CUSTOM_ROI MODE] 100% position targeted at +${targetRoi}% ROI (${customTpPrice.toFixed(4)}) for ${symbol}`,
       );
+    } else if (tpMode === "CUSTOM_SPLIT") {
+      const splitRatio = Math.max(10, Math.min(95, Number(config.customTpSplitRatio || 70)));
+      const targetRoi = Math.max(1.0, Number(config.customTpRoiPct || 10.0));
+      const priceDeltaPct = (targetRoi / leverage) / 100;
+      const splitTp1Price =
+        side === "LONG"
+          ? entryPrice * (1 + priceDeltaPct)
+          : entryPrice * (1 - priceDeltaPct);
+
+      targetTp1 = splitTp1Price;
+      targetTp2 =
+        tp2 ||
+        (side === "LONG"
+          ? splitTp1Price * 1.02
+          : splitTp1Price * 0.98);
+
+      qtyTP1 = roundStep(quantity * (splitRatio / 100), filters.stepSize);
+      qtyTP2 = roundStep(Math.max(0, quantity - qtyTP1), filters.stepSize);
+      qtyTP3 = 0;
+
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[CUSTOM_SPLIT MODE] ${splitRatio}% (${qtyTP1}) targeted at +${targetRoi}% ROI (${splitTp1Price.toFixed(4)}) & remaining ${100 - splitRatio}% (${qtyTP2}) at TP2 (${targetTp2.toFixed(4)}) for ${symbol}`,
+      );
     } else {
       qtyTP1 = roundStep(quantity * 0.5, filters.stepSize);
       qtyTP2 = roundStep(quantity * 0.3, filters.stepSize);

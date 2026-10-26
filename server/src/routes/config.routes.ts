@@ -35,10 +35,13 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       // 🎯 Take Profit Execution Modes
       testnetTpMode: tpConfig.testnetTpMode,
       testnetCustomTpRoiPct: tpConfig.testnetCustomTpRoiPct,
+      testnetCustomTpSplitRatio: tpConfig.testnetCustomTpSplitRatio,
       liveTpMode: tpConfig.liveTpMode,
       liveCustomTpRoiPct: tpConfig.liveCustomTpRoiPct,
+      liveCustomTpSplitRatio: tpConfig.liveCustomTpSplitRatio,
       tokocryptoTpMode: tpConfig.tokocryptoTpMode,
       tokocryptoCustomTpRoiPct: tpConfig.tokocryptoCustomTpRoiPct,
+      tokocryptoCustomTpSplitRatio: tpConfig.tokocryptoCustomTpSplitRatio,
       // 🛡️ Stop Loss Guard Modes
       testnetSlMode: tpConfig.testnetSlMode,
       testnetCustomSlValue: tpConfig.testnetCustomSlValue,
@@ -208,8 +211,12 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       liveCustomTpRoiPct,
       tokocryptoTpMode,
       tokocryptoCustomTpRoiPct,
+      testnetCustomTpSplitRatio,
+      liveCustomTpSplitRatio,
+      tokocryptoCustomTpSplitRatio,
       tpMode,
       customTpRoiPct,
+      customTpSplitRatio,
       // 🛡️ Stop Loss Modes
       testnetSlMode,
       testnetCustomSlValue,
@@ -572,10 +579,13 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     const tpUpdates: any = {};
     if (testnetTpMode !== undefined) tpUpdates.testnetTpMode = testnetTpMode as TpMode;
     if (testnetCustomTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(testnetCustomTpRoiPct);
+    if (testnetCustomTpSplitRatio !== undefined) tpUpdates.testnetCustomTpSplitRatio = Number(testnetCustomTpSplitRatio);
     if (liveTpMode !== undefined) tpUpdates.liveTpMode = liveTpMode as TpMode;
     if (liveCustomTpRoiPct !== undefined) tpUpdates.liveCustomTpRoiPct = Number(liveCustomTpRoiPct);
+    if (liveCustomTpSplitRatio !== undefined) tpUpdates.liveCustomTpSplitRatio = Number(liveCustomTpSplitRatio);
     if (tokocryptoTpMode !== undefined) tpUpdates.tokocryptoTpMode = tokocryptoTpMode as TpMode;
     if (tokocryptoCustomTpRoiPct !== undefined) tpUpdates.tokocryptoCustomTpRoiPct = Number(tokocryptoCustomTpRoiPct);
+    if (tokocryptoCustomTpSplitRatio !== undefined) tpUpdates.tokocryptoCustomTpSplitRatio = Number(tokocryptoCustomTpSplitRatio);
 
     // 🛡️ Stop Loss Updates
     if (testnetSlMode !== undefined) tpUpdates.testnetSlMode = testnetSlMode as SlMode;
@@ -590,9 +600,11 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       if (environment === "LIVE") {
         tpUpdates.liveTpMode = tpMode as TpMode;
         if (customTpRoiPct !== undefined) tpUpdates.liveCustomTpRoiPct = Number(customTpRoiPct);
+        if (customTpSplitRatio !== undefined) tpUpdates.liveCustomTpSplitRatio = Number(customTpSplitRatio);
       } else {
         tpUpdates.testnetTpMode = tpMode as TpMode;
         if (customTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(customTpRoiPct);
+        if (customTpSplitRatio !== undefined) tpUpdates.testnetCustomTpSplitRatio = Number(customTpSplitRatio);
       }
     }
     if (slMode !== undefined) {
@@ -620,10 +632,13 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       // 🎯 Take Profit Modes
       testnetTpMode: savedTp.testnetTpMode,
       testnetCustomTpRoiPct: savedTp.testnetCustomTpRoiPct,
+      testnetCustomTpSplitRatio: savedTp.testnetCustomTpSplitRatio,
       liveTpMode: savedTp.liveTpMode,
       liveCustomTpRoiPct: savedTp.liveCustomTpRoiPct,
+      liveCustomTpSplitRatio: savedTp.liveCustomTpSplitRatio,
       tokocryptoTpMode: savedTp.tokocryptoTpMode,
       tokocryptoCustomTpRoiPct: savedTp.tokocryptoCustomTpRoiPct,
+      tokocryptoCustomTpSplitRatio: savedTp.tokocryptoCustomTpSplitRatio,
       // 🛡️ Stop Loss Modes
       testnetSlMode: savedTp.testnetSlMode,
       testnetCustomSlValue: savedTp.testnetCustomSlValue,

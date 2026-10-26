@@ -255,19 +255,22 @@ export default function CredentialConfig({
 
   // 🎯 Take Profit Mode States
   const [testnetTpMode, setTestnetTpMode] = useState<
-    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI"
+    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT"
   >("MULTI_TP");
-  const [testnetCustomTpRoiPct, setTestnetCustomTpRoiPct] = useState<number>(15.0);
+  const [testnetCustomTpRoiPct, setTestnetCustomTpRoiPct] = useState<number>(10.0);
+  const [testnetCustomTpSplitRatio, setTestnetCustomTpSplitRatio] = useState<number>(70);
 
   const [liveTpMode, setLiveTpMode] = useState<
-    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI"
+    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT"
   >("MULTI_TP");
-  const [liveCustomTpRoiPct, setLiveCustomTpRoiPct] = useState<number>(15.0);
+  const [liveCustomTpRoiPct, setLiveCustomTpRoiPct] = useState<number>(10.0);
+  const [liveCustomTpSplitRatio, setLiveCustomTpSplitRatio] = useState<number>(70);
 
   const [tokocryptoTpMode, setTokocryptoTpMode] = useState<
-    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI"
+    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT"
   >("MULTI_TP");
   const [tokocryptoCustomTpRoiPct, setTokocryptoCustomTpRoiPct] = useState<number>(3.5);
+  const [tokocryptoCustomTpSplitRatio, setTokocryptoCustomTpSplitRatio] = useState<number>(70);
 
   // 🛡️ Stop Loss Mode States
   const [testnetSlMode, setTestnetSlMode] = useState<
@@ -401,6 +404,17 @@ export default function CredentialConfig({
     : isLiveBinance
       ? setLiveCustomTpRoiPct
       : setTestnetCustomTpRoiPct;
+
+  const customTpSplitRatio = isTokoForm
+    ? tokocryptoCustomTpSplitRatio
+    : isLiveBinance
+      ? liveCustomTpSplitRatio
+      : testnetCustomTpSplitRatio;
+  const setCustomTpSplitRatio = isTokoForm
+    ? setTokocryptoCustomTpSplitRatio
+    : isLiveBinance
+      ? setLiveCustomTpSplitRatio
+      : setTestnetCustomTpSplitRatio;
 
   const slMode = isTokoForm
     ? tokocryptoSlMode
@@ -657,11 +671,14 @@ export default function CredentialConfig({
 
             // 🎯 Load Take Profit Modes
             setTestnetTpMode(d.testnetTpMode || "MULTI_TP");
-            setTestnetCustomTpRoiPct(Number(d.testnetCustomTpRoiPct || 15.0));
+            setTestnetCustomTpRoiPct(Number(d.testnetCustomTpRoiPct || 10.0));
+            setTestnetCustomTpSplitRatio(Number(d.testnetCustomTpSplitRatio ?? 70));
             setLiveTpMode(d.liveTpMode || "MULTI_TP");
-            setLiveCustomTpRoiPct(Number(d.liveCustomTpRoiPct || 15.0));
+            setLiveCustomTpRoiPct(Number(d.liveCustomTpRoiPct || 10.0));
+            setLiveCustomTpSplitRatio(Number(d.liveCustomTpSplitRatio ?? 70));
             setTokocryptoTpMode(d.tokocryptoTpMode || "MULTI_TP");
             setTokocryptoCustomTpRoiPct(Number(d.tokocryptoCustomTpRoiPct || 3.5));
+            setTokocryptoCustomTpSplitRatio(Number(d.tokocryptoCustomTpSplitRatio ?? 70));
 
             // 🛡️ Load Stop Loss Modes
             setTestnetSlMode(d.testnetSlMode || "SIGNAL_SL");
@@ -895,6 +912,7 @@ export default function CredentialConfig({
         testnetBlockLongOnBtcBearish: Boolean(testnetBlockLongOnBtcBearish),
         testnetTpMode,
         testnetCustomTpRoiPct: Number(testnetCustomTpRoiPct),
+        testnetCustomTpSplitRatio: Number(testnetCustomTpSplitRatio),
         testnetSlMode,
         testnetCustomSlValue: Number(testnetCustomSlValue),
         testnetRiskMode:
@@ -927,6 +945,7 @@ export default function CredentialConfig({
         liveBlockLongOnBtcBearish: Boolean(liveBlockLongOnBtcBearish),
         liveTpMode,
         liveCustomTpRoiPct: Number(liveCustomTpRoiPct),
+        liveCustomTpSplitRatio: Number(liveCustomTpSplitRatio),
         liveSlMode,
         liveCustomSlValue: Number(liveCustomSlValue),
         liveRiskMode:
@@ -962,6 +981,7 @@ export default function CredentialConfig({
           : tokocryptoTargetCoins,
         tokocryptoTpMode,
         tokocryptoCustomTpRoiPct: Number(tokocryptoCustomTpRoiPct),
+        tokocryptoCustomTpSplitRatio: Number(tokocryptoCustomTpSplitRatio),
         tokocryptoSlMode,
         tokocryptoCustomSlValue: Number(tokocryptoCustomSlValue),
 
@@ -2130,7 +2150,9 @@ export default function CredentialConfig({
                       ? "50% TP1 + 50% TP2"
                       : tpMode === "CUSTOM_ROI"
                         ? "Custom ROI (+" + customTpRoiPct + "%)"
-                        : "Multi-TP (50/30/20)"}
+                        : tpMode === "CUSTOM_SPLIT"
+                          ? "Split " + customTpSplitRatio + "% @ +" + customTpRoiPct + "% ROI"
+                          : "Multi-TP (50/30/20)"}
                 </Badge>
               </div>
 
@@ -2139,13 +2161,16 @@ export default function CredentialConfig({
                 value={tpMode}
                 onChange={(e) =>
                   setTpMode(
-                    e.target.value as "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI",
+                    e.target.value as "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT" | "CUSTOM_SPLIT",
                   )
                 }
                 className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="MULTI_TP" className="text-black">
                   Multi-Stage (50% TP1, 30% TP2, 20% Moonbag/Trailing) [Default]
+                </option>
+                <option value="CUSTOM_SPLIT" className="text-black">
+                  Custom Split (e.g. 70% at Target ROI + 30% Moonbag with Auto-BEP)
                 </option>
                 <option value="TP1_ONLY" className="text-black">
                   100% Sell at TP1 Only (Scalper Hit & Run / Fast Profit Lock)
@@ -2168,6 +2193,54 @@ export default function CredentialConfig({
               {tpMode === "TP2_ONLY" && (
                 <div className="p-2 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary leading-relaxed">
                   🎯 <strong>Balanced Target:</strong> 50% of the position is closed at <strong>TP1</strong>, and the remaining 50% is fully closed at <strong>TP2</strong>. Once TP1 is achieved, Stop Loss automatically adjusts to Break-Even (BEP).
+                </div>
+              )}
+
+              {tpMode === "CUSTOM_SPLIT" && (
+                <div className="space-y-2 p-2.5 rounded bg-primary/10 border border-primary/20">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="custom-split-ratio" className="text-[10px] font-semibold text-primary">
+                        First Exit Size (%)
+                      </Label>
+                      <Input
+                        id="custom-split-ratio"
+                        type="number"
+                        min="10"
+                        max="95"
+                        step="5"
+                        value={customTpSplitRatio}
+                        onChange={(e) => setCustomTpSplitRatio(Number(e.target.value))}
+                        className="h-7 text-xs font-mono"
+                        placeholder="e.g. 70"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="custom-split-roi" className="text-[10px] font-semibold text-primary">
+                        First Target ROI (%)
+                      </Label>
+                      <Input
+                        id="custom-split-roi"
+                        type="number"
+                        min="1"
+                        max="1000"
+                        step="0.5"
+                        value={customTpRoiPct}
+                        onChange={(e) => setCustomTpRoiPct(Number(e.target.value))}
+                        className="h-7 text-xs font-mono"
+                        placeholder="e.g. 10.0"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] pt-1 border-t border-primary/20">
+                    <span className="text-muted-foreground">Price Movement to First Target:</span>
+                    <span className="font-mono font-bold text-primary">
+                      ~{((Number(customTpRoiPct) || 10) / (isTokoForm ? 1 : leverage)).toFixed(2)}%
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    ⚡ <strong>Asymmetric Profit Lock:</strong> <strong>{customTpSplitRatio}%</strong> of your position is automatically closed at <strong>+{customTpRoiPct}% ROI</strong>. The remaining <strong>{100 - customTpSplitRatio}%</strong> is kept open for extended gains while Auto-BEP shifts Stop Loss to entry price, creating a 100% risk-free moonbag.
+                  </p>
                 </div>
               )}
 

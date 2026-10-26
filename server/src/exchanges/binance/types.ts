@@ -64,8 +64,15 @@ export interface BinanceExecutionConfig {
   trailingActivation?: "TP1" | "TP2" | undefined;
   autoBreakEven?: boolean | undefined;
   breakEvenBufferPct?: number | undefined;
-  tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | undefined;
+  tpMode?:
+    | "MULTI_TP"
+    | "TP1_ONLY"
+    | "TP2_ONLY"
+    | "CUSTOM_ROI"
+    | "CUSTOM_SPLIT"
+    | undefined;
   customTpRoiPct?: number | undefined;
+  customTpSplitRatio?: number | undefined;
   slMode?: "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI" | undefined;
   customSlValue?: number | undefined;
 }

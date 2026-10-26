@@ -1,42 +1,53 @@
 import fs from "fs";
 import path from "path";
 
-export type TpMode = "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI";
+export type TpMode =
+  | "MULTI_TP"
+  | "TP1_ONLY"
+  | "TP2_ONLY"
+  | "CUSTOM_ROI"
+  | "CUSTOM_SPLIT";
 export type SlMode = "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI";
 
 export interface TpConfigData {
   // Binance Futures Testnet
   testnetTpMode: TpMode;
   testnetCustomTpRoiPct: number;
+  testnetCustomTpSplitRatio: number; // e.g. 70 for 70%
   testnetSlMode: SlMode;
   testnetCustomSlValue: number;
 
   // Binance Futures Live
   liveTpMode: TpMode;
   liveCustomTpRoiPct: number;
+  liveCustomTpSplitRatio: number;
   liveSlMode: SlMode;
   liveCustomSlValue: number;
 
   // Tokocrypto Spot
   tokocryptoTpMode: TpMode;
   tokocryptoCustomTpRoiPct: number;
+  tokocryptoCustomTpSplitRatio: number;
   tokocryptoSlMode: SlMode;
   tokocryptoCustomSlValue: number;
 }
 
 export const DEFAULT_TP_CONFIG: TpConfigData = {
   testnetTpMode: "MULTI_TP",
-  testnetCustomTpRoiPct: 15.0, // Default +15% ROI
+  testnetCustomTpRoiPct: 10.0, // Default +10% ROI
+  testnetCustomTpSplitRatio: 70, // Default 70%
   testnetSlMode: "SIGNAL_SL",
-  testnetCustomSlValue: 15.0, // Default 15% ROI max loss or 1.5%
+  testnetCustomSlValue: 15.0, // Default 15% ROI max loss
 
   liveTpMode: "MULTI_TP",
-  liveCustomTpRoiPct: 15.0,
+  liveCustomTpRoiPct: 10.0,
+  liveCustomTpSplitRatio: 70,
   liveSlMode: "SIGNAL_SL",
   liveCustomSlValue: 15.0,
 
   tokocryptoTpMode: "MULTI_TP",
   tokocryptoCustomTpRoiPct: 3.5, // Default +3.5% Spot gain
+  tokocryptoCustomTpSplitRatio: 70,
   tokocryptoSlMode: "SIGNAL_SL",
   tokocryptoCustomSlValue: 2.5, // Default 2.5% Spot loss
 };
