@@ -5,6 +5,7 @@ import { testTokocryptoConnection } from "../lib/tokocrypto";
 import { requireAuth } from "../middlewares/auth";
 import { connectToNestJS } from "../services/socket.service";
 import { restartBinanceWsService } from "../services/binance-ws.service";
+import { getTpConfig, saveTpConfig, TpMode } from "../lib/tp-config";
 
 export const configRouter = Router();
 
@@ -26,9 +27,19 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
     const tokocryptoAuto = Boolean(tokocryptoConfig?.autoExecute);
     const tokocryptoDry = Boolean(tokocryptoConfig?.dryRun);
 
+    const tpConfig = getTpConfig();
+
     const mergedData = {
       targetExchange,
       clientToken,
+      // 🎯 Take Profit Execution Modes
+      testnetTpMode: tpConfig.testnetTpMode,
+      testnetCustomTpRoiPct: tpConfig.testnetCustomTpRoiPct,
+      liveTpMode: tpConfig.liveTpMode,
+      liveCustomTpRoiPct: tpConfig.liveCustomTpRoiPct,
+      tokocryptoTpMode: tpConfig.tokocryptoTpMode,
+      tokocryptoCustomTpRoiPct: tpConfig.tokocryptoCustomTpRoiPct,
+
       // 🧪 Binance Testnet Dedicated Fields
       testnetApiKey: binanceConfig?.testnetApiKey || "",
       testnetApiSecret: binanceConfig?.testnetApiSecret || "",
@@ -183,6 +194,15 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       tokocryptoMaxOpenPositions,
       tokocryptoCoinFilterMode,
       tokocryptoTargetCoins,
+      // 🎯 Take Profit Modes
+      testnetTpMode,
+      testnetCustomTpRoiPct,
+      liveTpMode,
+      liveCustomTpRoiPct,
+      tokocryptoTpMode,
+      tokocryptoCustomTpRoiPct,
+      tpMode,
+      customTpRoiPct,
       // Legacy fallbacks
       autoExecute,
       dryRun,
@@ -532,6 +552,27 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       },
     });
 
+    // Simpan Preferensi Take Profit Execution Mode
+    const tpUpdates: any = {};
+    if (testnetTpMode !== undefined) tpUpdates.testnetTpMode = testnetTpMode as TpMode;
+    if (testnetCustomTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(testnetCustomTpRoiPct);
+    if (liveTpMode !== undefined) tpUpdates.liveTpMode = liveTpMode as TpMode;
+    if (liveCustomTpRoiPct !== undefined) tpUpdates.liveCustomTpRoiPct = Number(liveCustomTpRoiPct);
+    if (tokocryptoTpMode !== undefined) tpUpdates.tokocryptoTpMode = tokocryptoTpMode as TpMode;
+    if (tokocryptoCustomTpRoiPct !== undefined) tpUpdates.tokocryptoCustomTpRoiPct = Number(tokocryptoCustomTpRoiPct);
+
+    // Fallback sync jika dikirim via generic tpMode
+    if (tpMode !== undefined) {
+      if (environment === "LIVE") {
+        tpUpdates.liveTpMode = tpMode as TpMode;
+        if (customTpRoiPct !== undefined) tpUpdates.liveCustomTpRoiPct = Number(customTpRoiPct);
+      } else {
+        tpUpdates.testnetTpMode = tpMode as TpMode;
+        if (customTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(customTpRoiPct);
+      }
+    }
+    const savedTp = saveTpConfig(tpUpdates);
+
     // Otomatis Reconnect WebSocket jika ada token di konfigurasi
     if (savedApp.clientToken) {
       connectToNestJS(savedApp.clientToken);
@@ -543,6 +584,13 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     const mergedSaved = {
       targetExchange: savedApp.targetExchange,
       clientToken: savedApp.clientToken || "",
+      // 🎯 Take Profit Modes
+      testnetTpMode: savedTp.testnetTpMode,
+      testnetCustomTpRoiPct: savedTp.testnetCustomTpRoiPct,
+      liveTpMode: savedTp.liveTpMode,
+      liveCustomTpRoiPct: savedTp.liveCustomTpRoiPct,
+      tokocryptoTpMode: savedTp.tokocryptoTpMode,
+      tokocryptoCustomTpRoiPct: savedTp.tokocryptoCustomTpRoiPct,
       // 🧪 Testnet
       testnetApiKey: savedBinance.testnetApiKey || "",
       testnetApiSecret: savedBinance.testnetApiSecret || "",

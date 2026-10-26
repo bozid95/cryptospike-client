@@ -253,6 +253,22 @@ export default function CredentialConfig({
   const [liveBlockLongOnBtcBearish, setLiveBlockLongOnBtcBearish] =
     useState<boolean>(true);
 
+  // 🎯 Take Profit Mode States
+  const [testnetTpMode, setTestnetTpMode] = useState<
+    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI"
+  >("MULTI_TP");
+  const [testnetCustomTpRoiPct, setTestnetCustomTpRoiPct] = useState<number>(15.0);
+
+  const [liveTpMode, setLiveTpMode] = useState<
+    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI"
+  >("MULTI_TP");
+  const [liveCustomTpRoiPct, setLiveCustomTpRoiPct] = useState<number>(15.0);
+
+  const [tokocryptoTpMode, setTokocryptoTpMode] = useState<
+    "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI"
+  >("MULTI_TP");
+  const [tokocryptoCustomTpRoiPct, setTokocryptoCustomTpRoiPct] = useState<number>(3.5);
+
   // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoApiKey, setTokocryptoApiKey] = useState("");
   const [tokocryptoApiSecret, setTokocryptoApiSecret] = useState("");
@@ -347,6 +363,28 @@ export default function CredentialConfig({
 
   const riskMode = isLiveBinance ? liveRiskMode : testnetRiskMode;
   const setRiskMode = isLiveBinance ? setLiveRiskMode : setTestnetRiskMode;
+
+  const tpMode = isTokoForm
+    ? tokocryptoTpMode
+    : isLiveBinance
+      ? liveTpMode
+      : testnetTpMode;
+  const setTpMode = isTokoForm
+    ? setTokocryptoTpMode
+    : isLiveBinance
+      ? setLiveTpMode
+      : setTestnetTpMode;
+
+  const customTpRoiPct = isTokoForm
+    ? tokocryptoCustomTpRoiPct
+    : isLiveBinance
+      ? liveCustomTpRoiPct
+      : testnetCustomTpRoiPct;
+  const setCustomTpRoiPct = isTokoForm
+    ? setTokocryptoCustomTpRoiPct
+    : isLiveBinance
+      ? setLiveCustomTpRoiPct
+      : setTestnetCustomTpRoiPct;
 
   const riskAmountUsd = isLiveBinance
     ? liveRiskAmountUsd
@@ -579,6 +617,14 @@ export default function CredentialConfig({
             setTokocryptoCoinFilterMode(d.tokocryptoCoinFilterMode || "ALL");
             setTokocryptoTargetCoins(d.tokocryptoTargetCoins || "");
 
+            // 🎯 Load Take Profit Modes
+            setTestnetTpMode(d.testnetTpMode || "MULTI_TP");
+            setTestnetCustomTpRoiPct(Number(d.testnetCustomTpRoiPct || 15.0));
+            setLiveTpMode(d.liveTpMode || "MULTI_TP");
+            setLiveCustomTpRoiPct(Number(d.liveCustomTpRoiPct || 15.0));
+            setTokocryptoTpMode(d.tokocryptoTpMode || "MULTI_TP");
+            setTokocryptoCustomTpRoiPct(Number(d.tokocryptoCustomTpRoiPct || 3.5));
+
             // Auto-fetch balances if credentials exist
             try {
               const [resTestnet, resLive, resToko] = await Promise.all([
@@ -801,6 +847,8 @@ export default function CredentialConfig({
         testnetTradeDirection,
         testnetMinScore: Number(testnetMinScore),
         testnetBlockLongOnBtcBearish: Boolean(testnetBlockLongOnBtcBearish),
+        testnetTpMode,
+        testnetCustomTpRoiPct: Number(testnetCustomTpRoiPct),
         testnetRiskMode:
           !isTokoForm && binanceSubTab === "TESTNET"
             ? riskMode
@@ -829,6 +877,8 @@ export default function CredentialConfig({
         liveTradeDirection,
         liveMinScore: Number(liveMinScore),
         liveBlockLongOnBtcBearish: Boolean(liveBlockLongOnBtcBearish),
+        liveTpMode,
+        liveCustomTpRoiPct: Number(liveCustomTpRoiPct),
         liveRiskMode:
           !isTokoForm && binanceSubTab === "LIVE" ? riskMode : liveRiskMode,
         liveRiskAmountUsd:
@@ -860,6 +910,8 @@ export default function CredentialConfig({
         tokocryptoTargetCoins: isTokoForm
           ? finalTargetCoins
           : tokocryptoTargetCoins,
+        tokocryptoTpMode,
+        tokocryptoCustomTpRoiPct: Number(tokocryptoCustomTpRoiPct),
 
         // Legacy Binance Sync
         environment: binanceSubTab,
@@ -2010,6 +2062,95 @@ export default function CredentialConfig({
                 onChange={(e) => setMaxOpenPositions(Number(e.target.value))}
                 className="h-8 text-xs"
               />
+            </div>
+
+            {/* 🎯 Take Profit Execution Mode (Intercept TP) */}
+            <div className="space-y-2 pt-3 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="tp-mode" className="text-xs font-semibold flex items-center gap-1.5">
+                  <Layers className="size-3.5 text-primary" />
+                  Take Profit Target Mode
+                </Label>
+                <Badge variant="outline" className="text-[10px] font-mono font-semibold uppercase">
+                  {tpMode === "TP1_ONLY"
+                    ? "100% TP1"
+                    : tpMode === "TP2_ONLY"
+                      ? "50% TP1 + 50% TP2"
+                      : tpMode === "CUSTOM_ROI"
+                        ? "Custom ROI (+" + customTpRoiPct + "%)"
+                        : "Multi-TP (50/30/20)"}
+                </Badge>
+              </div>
+
+              <select
+                id="tp-mode"
+                value={tpMode}
+                onChange={(e) =>
+                  setTpMode(
+                    e.target.value as "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI",
+                  )
+                }
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="MULTI_TP" className="text-black">
+                  Multi-Stage (50% TP1, 30% TP2, 20% Moonbag/Trailing) [Default]
+                </option>
+                <option value="TP1_ONLY" className="text-black">
+                  100% Sell at TP1 Only (Scalper Hit & Run / Fast Profit Lock)
+                </option>
+                <option value="TP2_ONLY" className="text-black">
+                  50% at TP1 + 50% Full Sell at TP2 (Balanced Target)
+                </option>
+                <option value="CUSTOM_ROI" className="text-black">
+                  100% Sell at Custom Target ROI % (Fixed Target Return)
+                </option>
+              </select>
+
+              {/* TP Mode Information Cards */}
+              {tpMode === "TP1_ONLY" && (
+                <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                  ⚡ <strong>Fast Profit Lock:</strong> 100% of position size is placed as a limit order at <strong>TP1</strong> price. Once TP1 is reached, the entire position is closed immediately and profit is secured with zero residual exposure.
+                </div>
+              )}
+
+              {tpMode === "TP2_ONLY" && (
+                <div className="p-2 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary leading-relaxed">
+                  🎯 <strong>Balanced Target:</strong> 50% of the position is closed at <strong>TP1</strong>, and the remaining 50% is fully closed at <strong>TP2</strong>. Once TP1 is achieved, Stop Loss automatically adjusts to Break-Even (BEP).
+                </div>
+              )}
+
+              {tpMode === "CUSTOM_ROI" && (
+                <div className="space-y-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="custom-tp-roi" className="text-[10px] font-semibold text-amber-900 dark:text-amber-200">
+                      Target Return on Equity (ROI %)
+                    </Label>
+                    <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                      ~{((Number(customTpRoiPct) || 15) / (isTokoForm ? 1 : leverage)).toFixed(2)}% Price Movement
+                    </span>
+                  </div>
+                  <Input
+                    id="custom-tp-roi"
+                    type="number"
+                    min="1"
+                    max="1000"
+                    step="0.5"
+                    value={customTpRoiPct}
+                    onChange={(e) => setCustomTpRoiPct(Number(e.target.value))}
+                    className="h-7 text-xs font-mono"
+                    placeholder="e.g. 15.0"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    100% of the position will be closed at the price target yielding <strong>+{customTpRoiPct}% ROI</strong> (automatically calculated based on {leverage}x leverage).
+                  </p>
+                </div>
+              )}
+
+              {tpMode === "MULTI_TP" && (
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Standard CryptoSpike allocation: 50% TP1, 30% TP2, and 20% Moonbag Trailing Stop Runner with Auto Break-Even protection.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

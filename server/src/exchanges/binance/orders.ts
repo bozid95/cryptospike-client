@@ -546,10 +546,12 @@ export async function executeSignalOrder(
       `Entry Order Succeeded! ID: ${entryOrder.orderId} | ${symbol} ${side} ${quantity}`,
     );
 
-    // 9. Pasang Take Profit Parsial (TP1: 50%, TP2: 30%, TP3: 20%) & Stop Loss
+    // 9. Pasang Take Profit sesuai Target Mode & Stop Loss
     const exitSide = side === "LONG" ? "SELL" : "BUY";
-    const targetTp1 = tp1;
-    const targetTp2 =
+    const tpMode = (config.tpMode || "MULTI_TP").toUpperCase();
+
+    let targetTp1 = tp1;
+    let targetTp2 =
       tp2 ||
       (side === "LONG"
         ? targetTp1
@@ -558,24 +560,65 @@ export async function executeSignalOrder(
         : targetTp1
           ? targetTp1 * 0.985
           : entryPrice * 0.97);
-    const targetTp3 =
+    let targetTp3 =
       tp3 || (side === "LONG" ? targetTp2 * 1.02 : targetTp2 * 0.98);
 
-    let qtyTP1 = roundStep(quantity * 0.5, filters.stepSize);
-    let qtyTP2 = roundStep(quantity * 0.3, filters.stepSize);
-    let qtyTP3 = roundStep(
-      Math.max(0, quantity - qtyTP1 - qtyTP2),
-      filters.stepSize,
-    );
+    let qtyTP1 = 0;
+    let qtyTP2 = 0;
+    let qtyTP3 = 0;
 
-    // Smart TP merge jika < minNotional
-    if (qtyTP3 > 0 && qtyTP3 * targetTp3 < filters.minNotional) {
-      qtyTP2 = roundStep(qtyTP2 + qtyTP3, filters.stepSize);
-      qtyTP3 = 0;
-    }
-    if (qtyTP2 > 0 && qtyTP2 * targetTp2 < filters.minNotional) {
-      qtyTP1 = roundStep(qtyTP1 + qtyTP2, filters.stepSize);
+    if (tpMode === "TP1_ONLY") {
+      targetTp1 = tp1 || (side === "LONG" ? entryPrice * 1.015 : entryPrice * 0.985);
+      qtyTP1 = quantity;
       qtyTP2 = 0;
+      qtyTP3 = 0;
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[TP1_ONLY MODE] 100% position targeted to close at TP1 (${targetTp1}) for ${symbol}`,
+      );
+    } else if (tpMode === "TP2_ONLY") {
+      qtyTP1 = roundStep(quantity * 0.5, filters.stepSize);
+      qtyTP2 = roundStep(Math.max(0, quantity - qtyTP1), filters.stepSize);
+      qtyTP3 = 0;
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[TP2_ONLY MODE] 50% at TP1 (${targetTp1}) & 50% at TP2 (${targetTp2}) for ${symbol}`,
+      );
+    } else if (tpMode === "CUSTOM_ROI") {
+      const targetRoi = Math.max(1.0, Number(config.customTpRoiPct || 15.0));
+      const priceDeltaPct = (targetRoi / leverage) / 100;
+      const customTpPrice =
+        side === "LONG"
+          ? entryPrice * (1 + priceDeltaPct)
+          : entryPrice * (1 - priceDeltaPct);
+
+      targetTp1 = customTpPrice;
+      qtyTP1 = quantity;
+      qtyTP2 = 0;
+      qtyTP3 = 0;
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[CUSTOM_ROI MODE] 100% position targeted at +${targetRoi}% ROI (${customTpPrice.toFixed(4)}) for ${symbol}`,
+      );
+    } else {
+      qtyTP1 = roundStep(quantity * 0.5, filters.stepSize);
+      qtyTP2 = roundStep(quantity * 0.3, filters.stepSize);
+      qtyTP3 = roundStep(
+        Math.max(0, quantity - qtyTP1 - qtyTP2),
+        filters.stepSize,
+      );
+
+      if (qtyTP3 > 0 && qtyTP3 * targetTp3 < filters.minNotional) {
+        qtyTP2 = roundStep(qtyTP2 + qtyTP3, filters.stepSize);
+        qtyTP3 = 0;
+      }
+      if (qtyTP2 > 0 && qtyTP2 * targetTp2 < filters.minNotional) {
+        qtyTP1 = roundStep(qtyTP1 + qtyTP2, filters.stepSize);
+        qtyTP2 = 0;
+      }
     }
 
     // Pasang TP1

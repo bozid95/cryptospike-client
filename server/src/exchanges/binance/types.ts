@@ -52,7 +52,7 @@ export interface BinanceExecutionConfig {
   leverage: number;
   riskMode?: "PERCENTAGE" | "FIXED_USD" | string | undefined;
   riskAmountUsd?: number | undefined;
-  riskPerTradePct: number;
+  riskPerTradePct?: number | undefined;
   maxOpenPositions: number;
   coinFilterMode?: string | undefined;
   targetCoins?: string | null | undefined;
@@ -64,4 +64,6 @@ export interface BinanceExecutionConfig {
   trailingActivation?: "TP1" | "TP2" | undefined;
   autoBreakEven?: boolean | undefined;
   breakEvenBufferPct?: number | undefined;
+  tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | undefined;
+  customTpRoiPct?: number | undefined;
 }

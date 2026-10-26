@@ -192,8 +192,8 @@ async function runComprehensiveRiskTests() {
       config: { riskMode: "PERCENTAGE", riskPerTradePct: 2.0, leverage: 10 },
     });
     assert(
-      resPct.allowed === false &&
-        resPct.rejectReason?.includes("below Binance minimum limit"),
+      Boolean(resPct.allowed === false &&
+        resPct.rejectReason?.includes("below Binance minimum limit")),
       "Mode persentase (2%) gagal karena notional ($2.07) < minNotional Binance ($5)",
       `Reject Reason: ${resPct.rejectReason}`,
     );
@@ -224,8 +224,8 @@ async function runComprehensiveRiskTests() {
       config: { riskMode: "FIXED_USD", riskAmountUsd: 50.0, leverage: 10 },
     });
     assert(
-      res.allowed === false &&
-        res.rejectReason?.includes("exceeds available wallet balance"),
+      Boolean(res.allowed === false &&
+        res.rejectReason?.includes("exceeds available wallet balance")),
       "Order ditolak aman sebelum API dipanggil jika modal ($50) > saldo dompet ($15)",
       `Reject Reason: ${res.rejectReason}`,
     );
@@ -245,8 +245,8 @@ async function runComprehensiveRiskTests() {
       config: { riskMode: "FIXED_USD", riskAmountUsd: 0.3, leverage: 5 }, // 0.3 * 5 = $1.50
     });
     assert(
-      res.allowed === false &&
-        res.rejectReason?.includes("below Binance minimum limit"),
+      Boolean(res.allowed === false &&
+        res.rejectReason?.includes("below Binance minimum limit")),
       "Fixed USD $0.30 x 5x ($1.50) ditolak aman karena di bawah batas minimum Binance ($5)",
       `Reject Reason: ${res.rejectReason}`,
     );

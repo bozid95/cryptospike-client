@@ -175,8 +175,10 @@ export function calculateTokocryptoTpPlan(params: {
   sl?: number | undefined;
   stepSize: number;
   minNotional: number;
+  tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | undefined;
+  customTpRoiPct?: number | undefined;
 }): TokocryptoTpPlan {
-  const { totalQty, entryPrice, tp1, tp2, tp3, sl, stepSize, minNotional } =
+  const { totalQty, entryPrice, tp1, tp2, tp3, sl, stepSize, minNotional, tpMode = "MULTI_TP", customTpRoiPct } =
     params;
 
   // ── FEE SHIELD: Target minimal kotor adalah +2.5% agar margin profit bersih tetap tebal di atas biaya bursa ──
@@ -204,22 +206,42 @@ export function calculateTokocryptoTpPlan(params: {
     return parseFloat(stepped.toFixed(precision));
   };
 
-  let qty1 = roundStepLocal(totalQty * 0.5);
-  let qty2 = roundStepLocal(totalQty * 0.3);
-  let qty3 = roundStepLocal(Math.max(0, totalQty - qty1 - qty2));
+  let qty1 = 0;
+  let qty2 = 0;
+  let qty3 = 0;
 
-  // Smart TP Merge jika nilai notional < minNotional (standar $5 USDT di Tokocrypto)
-  if (qty3 > 0 && qty3 * targetTp3 < minNotional) {
-    qty2 = roundStepLocal(qty2 + qty3);
-    qty3 = 0;
-  }
-  if (qty2 > 0 && qty2 * targetTp2 < minNotional) {
+  if (tpMode === "TP1_ONLY") {
     qty1 = totalQty;
     qty2 = 0;
-  } else if (qty3 === 0 && qty2 > 0) {
+    qty3 = 0;
+  } else if (tpMode === "TP2_ONLY") {
+    qty1 = roundStepLocal(totalQty * 0.5);
     qty2 = parseFloat((totalQty - qty1).toFixed(precision));
-  } else if (qty3 > 0) {
-    qty3 = parseFloat((totalQty - qty1 - qty2).toFixed(precision));
+    qty3 = 0;
+  } else if (tpMode === "CUSTOM_ROI") {
+    const customGain = Math.max(minGainPct, Number(customTpRoiPct || 3.5));
+    targetTp1 = entryPrice * (1 + customGain / 100);
+    qty1 = totalQty;
+    qty2 = 0;
+    qty3 = 0;
+  } else {
+    qty1 = roundStepLocal(totalQty * 0.5);
+    qty2 = roundStepLocal(totalQty * 0.3);
+    qty3 = roundStepLocal(Math.max(0, totalQty - qty1 - qty2));
+
+    // Smart TP Merge jika nilai notional < minNotional (standar $5 USDT di Tokocrypto)
+    if (qty3 > 0 && qty3 * targetTp3 < minNotional) {
+      qty2 = roundStepLocal(qty2 + qty3);
+      qty3 = 0;
+    }
+    if (qty2 > 0 && qty2 * targetTp2 < minNotional) {
+      qty1 = totalQty;
+      qty2 = 0;
+    } else if (qty3 === 0 && qty2 > 0) {
+      qty2 = parseFloat((totalQty - qty1).toFixed(precision));
+    } else if (qty3 > 0) {
+      qty3 = parseFloat((totalQty - qty1 - qty2).toFixed(precision));
+    }
   }
 
   const isMergedToSingle = qty2 === 0 && qty3 === 0;
@@ -575,6 +597,8 @@ export async function executeTokocryptoSignalOrder(
       sl: signal.sl,
       stepSize: 0.0001,
       minNotional: 5.0,
+      tpMode: config.tpMode,
+      customTpRoiPct: config.customTpRoiPct,
     });
 
     return {
@@ -696,6 +720,8 @@ export async function executeTokocryptoSignalOrder(
       sl: signal.sl,
       stepSize: rules.stepSize,
       minNotional: rules.minNotional,
+      tpMode: config.tpMode,
+      customTpRoiPct: config.customTpRoiPct,
     });
 
     if (tpPlan.isMergedToSingle) {

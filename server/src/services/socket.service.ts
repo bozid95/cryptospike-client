@@ -3,6 +3,7 @@ import { prisma } from "../lib/db";
 import { executeSignalOrder } from "../lib/binance";
 import { executeTokocryptoSignalOrder } from "../lib/tokocrypto";
 import { addAppLog } from "../lib/logger";
+import { getTpConfig } from "../lib/tp-config";
 
 const SERVER_URL = process.env.SERVER_URL || "https://signal.forlearning.my.id";
 
@@ -162,6 +163,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
             `Max open positions limit reached (${openSpotCount}/${maxPos}). Signal ${data?.symbol} skipped.`,
           );
         } else {
+          const tpPrefs = getTpConfig();
           const result = await executeTokocryptoSignalOrder(data, {
             autoExecute: Boolean(tokocryptoConfig.autoExecute),
             dryRun: Boolean(tokocryptoConfig.dryRun),
@@ -173,6 +175,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
             maxOpenPositions: maxPos,
             coinFilterMode: tokocryptoConfig.coinFilterMode || "ALL",
             targetCoins: tokocryptoConfig.targetCoins || "",
+            tpMode: tpPrefs.tokocryptoTpMode,
+            customTpRoiPct: tpPrefs.tokocryptoCustomTpRoiPct,
           });
 
           // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
@@ -284,6 +288,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               binanceConfig.testnetBlockLongOnBtcBearish ??
               binanceConfig.blockLongOnBtcBearish ??
               true,
+            tpMode: getTpConfig().testnetTpMode,
+            customTpRoiPct: getTpConfig().testnetCustomTpRoiPct,
           });
         } catch (testnetErr: any) {
           addAppLog(
@@ -351,6 +357,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               binanceConfig.liveBlockLongOnBtcBearish ??
               binanceConfig.blockLongOnBtcBearish ??
               true,
+            tpMode: getTpConfig().liveTpMode,
+            customTpRoiPct: getTpConfig().liveCustomTpRoiPct,
           });
         } catch (liveErr: any) {
           addAppLog(

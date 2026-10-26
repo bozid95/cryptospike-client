@@ -44,4 +44,6 @@ export interface TokocryptoExecutionConfig {
   maxOpenPositions?: number;
   coinFilterMode?: string;
   targetCoins?: string | null;
+  tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | undefined;
+  customTpRoiPct?: number | undefined;
 }
