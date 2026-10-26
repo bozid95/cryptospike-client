@@ -801,13 +801,38 @@ export async function executeSignalOrder(
       }
     }
 
-    // Pasang Stop Loss (Guaranteed Double-Layer Protection)
-    const targetSlPrice = sl
-      ? roundTick(sl, filters.tickSize)
-      : roundTick(
-          entryPrice * (side === "LONG" ? 0.98 : 1.02),
-          filters.tickSize,
-        );
+    // Pasang Stop Loss (Guaranteed Double-Layer Protection with Custom SL Mode)
+    const slMode = (config.slMode || "SIGNAL_SL").toUpperCase();
+    let calculatedSlPrice: number;
+
+    if (slMode === "FIXED_PCT") {
+      const dropPct = Math.max(0.1, Number(config.customSlValue || 1.5)) / 100;
+      calculatedSlPrice =
+        side === "LONG"
+          ? entryPrice * (1 - dropPct)
+          : entryPrice * (1 + dropPct);
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[FIXED_PCT SL] Stop Loss set at ${calculatedSlPrice.toFixed(4)} (-${(dropPct * 100).toFixed(2)}% price change) for ${symbol}`,
+      );
+    } else if (slMode === "MAX_LOSS_ROI") {
+      const maxRoi = Math.max(1.0, Number(config.customSlValue || 15.0));
+      const priceDeltaPct = (maxRoi / leverage) / 100;
+      calculatedSlPrice =
+        side === "LONG"
+          ? entryPrice * (1 - priceDeltaPct)
+          : entryPrice * (1 + priceDeltaPct);
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[MAX_LOSS_ROI SL] Stop Loss set at ${calculatedSlPrice.toFixed(4)} (-${maxRoi}% ROI max loss / -${(priceDeltaPct * 100).toFixed(2)}% price change) for ${symbol}`,
+      );
+    } else {
+      calculatedSlPrice = sl ? sl : entryPrice * (side === "LONG" ? 0.98 : 1.02);
+    }
+
+    const targetSlPrice = roundTick(calculatedSlPrice, filters.tickSize);
 
     // Buffer jeda 250ms untuk memastikan settlement posisi market entry di matching engine Binance selesai
     await new Promise((resolve) => setTimeout(resolve, 250));

@@ -5,7 +5,7 @@ import { testTokocryptoConnection } from "../lib/tokocrypto";
 import { requireAuth } from "../middlewares/auth";
 import { connectToNestJS } from "../services/socket.service";
 import { restartBinanceWsService } from "../services/binance-ws.service";
-import { getTpConfig, saveTpConfig, TpMode } from "../lib/tp-config";
+import { getTpConfig, saveTpConfig, TpMode, SlMode } from "../lib/tp-config";
 
 export const configRouter = Router();
 
@@ -39,6 +39,13 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       liveCustomTpRoiPct: tpConfig.liveCustomTpRoiPct,
       tokocryptoTpMode: tpConfig.tokocryptoTpMode,
       tokocryptoCustomTpRoiPct: tpConfig.tokocryptoCustomTpRoiPct,
+      // 🛡️ Stop Loss Guard Modes
+      testnetSlMode: tpConfig.testnetSlMode,
+      testnetCustomSlValue: tpConfig.testnetCustomSlValue,
+      liveSlMode: tpConfig.liveSlMode,
+      liveCustomSlValue: tpConfig.liveCustomSlValue,
+      tokocryptoSlMode: tpConfig.tokocryptoSlMode,
+      tokocryptoCustomSlValue: tpConfig.tokocryptoCustomSlValue,
 
       // 🧪 Binance Testnet Dedicated Fields
       testnetApiKey: binanceConfig?.testnetApiKey || "",
@@ -203,6 +210,15 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       tokocryptoCustomTpRoiPct,
       tpMode,
       customTpRoiPct,
+      // 🛡️ Stop Loss Modes
+      testnetSlMode,
+      testnetCustomSlValue,
+      liveSlMode,
+      liveCustomSlValue,
+      tokocryptoSlMode,
+      tokocryptoCustomSlValue,
+      slMode,
+      customSlValue,
       // Legacy fallbacks
       autoExecute,
       dryRun,
@@ -561,6 +577,14 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (tokocryptoTpMode !== undefined) tpUpdates.tokocryptoTpMode = tokocryptoTpMode as TpMode;
     if (tokocryptoCustomTpRoiPct !== undefined) tpUpdates.tokocryptoCustomTpRoiPct = Number(tokocryptoCustomTpRoiPct);
 
+    // 🛡️ Stop Loss Updates
+    if (testnetSlMode !== undefined) tpUpdates.testnetSlMode = testnetSlMode as SlMode;
+    if (testnetCustomSlValue !== undefined) tpUpdates.testnetCustomSlValue = Number(testnetCustomSlValue);
+    if (liveSlMode !== undefined) tpUpdates.liveSlMode = liveSlMode as SlMode;
+    if (liveCustomSlValue !== undefined) tpUpdates.liveCustomSlValue = Number(liveCustomSlValue);
+    if (tokocryptoSlMode !== undefined) tpUpdates.tokocryptoSlMode = tokocryptoSlMode as SlMode;
+    if (tokocryptoCustomSlValue !== undefined) tpUpdates.tokocryptoCustomSlValue = Number(tokocryptoCustomSlValue);
+
     // Fallback sync jika dikirim via generic tpMode
     if (tpMode !== undefined) {
       if (environment === "LIVE") {
@@ -569,6 +593,15 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       } else {
         tpUpdates.testnetTpMode = tpMode as TpMode;
         if (customTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(customTpRoiPct);
+      }
+    }
+    if (slMode !== undefined) {
+      if (environment === "LIVE") {
+        tpUpdates.liveSlMode = slMode as SlMode;
+        if (customSlValue !== undefined) tpUpdates.liveCustomSlValue = Number(customSlValue);
+      } else {
+        tpUpdates.testnetSlMode = slMode as SlMode;
+        if (customSlValue !== undefined) tpUpdates.testnetCustomSlValue = Number(customSlValue);
       }
     }
     const savedTp = saveTpConfig(tpUpdates);
@@ -591,6 +624,13 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       liveCustomTpRoiPct: savedTp.liveCustomTpRoiPct,
       tokocryptoTpMode: savedTp.tokocryptoTpMode,
       tokocryptoCustomTpRoiPct: savedTp.tokocryptoCustomTpRoiPct,
+      // 🛡️ Stop Loss Modes
+      testnetSlMode: savedTp.testnetSlMode,
+      testnetCustomSlValue: savedTp.testnetCustomSlValue,
+      liveSlMode: savedTp.liveSlMode,
+      liveCustomSlValue: savedTp.liveCustomSlValue,
+      tokocryptoSlMode: savedTp.tokocryptoSlMode,
+      tokocryptoCustomSlValue: savedTp.tokocryptoCustomSlValue,
       // 🧪 Testnet
       testnetApiKey: savedBinance.testnetApiKey || "",
       testnetApiSecret: savedBinance.testnetApiSecret || "",

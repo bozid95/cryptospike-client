@@ -177,9 +177,23 @@ export function calculateTokocryptoTpPlan(params: {
   minNotional: number;
   tpMode?: "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | undefined;
   customTpRoiPct?: number | undefined;
+  slMode?: "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI" | undefined;
+  customSlValue?: number | undefined;
 }): TokocryptoTpPlan {
-  const { totalQty, entryPrice, tp1, tp2, tp3, sl, stepSize, minNotional, tpMode = "MULTI_TP", customTpRoiPct } =
-    params;
+  const {
+    totalQty,
+    entryPrice,
+    tp1,
+    tp2,
+    tp3,
+    sl,
+    stepSize,
+    minNotional,
+    tpMode = "MULTI_TP",
+    customTpRoiPct,
+    slMode = "SIGNAL_SL",
+    customSlValue,
+  } = params;
 
   // ── FEE SHIELD: Target minimal kotor adalah +2.5% agar margin profit bersih tetap tebal di atas biaya bursa ──
   const minGainPct = 2.5;
@@ -198,7 +212,11 @@ export function calculateTokocryptoTpPlan(params: {
     tp2 && Number(tp2) > targetTp1 ? Number(tp2) : targetTp1 * 1.015;
   const targetTp3 =
     tp3 && Number(tp3) > targetTp2 ? Number(tp3) : targetTp2 * 1.02;
-  const slPrice = sl ? Number(sl) : entryPrice * 0.975;
+  let slPrice = sl ? Number(sl) : entryPrice * 0.975;
+  if (slMode === "FIXED_PCT" || slMode === "MAX_LOSS_ROI") {
+    const dropPct = Math.max(0.5, Number(customSlValue || 2.5)) / 100;
+    slPrice = entryPrice * (1 - dropPct);
+  }
 
   const precision = Math.max(0, Math.round(-Math.log10(stepSize)));
   const roundStepLocal = (val: number) => {
@@ -599,6 +617,8 @@ export async function executeTokocryptoSignalOrder(
       minNotional: 5.0,
       tpMode: config.tpMode,
       customTpRoiPct: config.customTpRoiPct,
+      slMode: config.slMode,
+      customSlValue: config.customSlValue,
     });
 
     return {
@@ -722,6 +742,8 @@ export async function executeTokocryptoSignalOrder(
       minNotional: rules.minNotional,
       tpMode: config.tpMode,
       customTpRoiPct: config.customTpRoiPct,
+      slMode: config.slMode,
+      customSlValue: config.customSlValue,
     });
 
     if (tpPlan.isMergedToSingle) {

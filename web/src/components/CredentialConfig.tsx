@@ -269,6 +269,22 @@ export default function CredentialConfig({
   >("MULTI_TP");
   const [tokocryptoCustomTpRoiPct, setTokocryptoCustomTpRoiPct] = useState<number>(3.5);
 
+  // 🛡️ Stop Loss Mode States
+  const [testnetSlMode, setTestnetSlMode] = useState<
+    "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI"
+  >("SIGNAL_SL");
+  const [testnetCustomSlValue, setTestnetCustomSlValue] = useState<number>(15.0);
+
+  const [liveSlMode, setLiveSlMode] = useState<
+    "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI"
+  >("SIGNAL_SL");
+  const [liveCustomSlValue, setLiveCustomSlValue] = useState<number>(15.0);
+
+  const [tokocryptoSlMode, setTokocryptoSlMode] = useState<
+    "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI"
+  >("SIGNAL_SL");
+  const [tokocryptoCustomSlValue, setTokocryptoCustomSlValue] = useState<number>(2.5);
+
   // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoApiKey, setTokocryptoApiKey] = useState("");
   const [tokocryptoApiSecret, setTokocryptoApiSecret] = useState("");
@@ -385,6 +401,28 @@ export default function CredentialConfig({
     : isLiveBinance
       ? setLiveCustomTpRoiPct
       : setTestnetCustomTpRoiPct;
+
+  const slMode = isTokoForm
+    ? tokocryptoSlMode
+    : isLiveBinance
+      ? liveSlMode
+      : testnetSlMode;
+  const setSlMode = isTokoForm
+    ? setTokocryptoSlMode
+    : isLiveBinance
+      ? setLiveSlMode
+      : setTestnetSlMode;
+
+  const customSlValue = isTokoForm
+    ? tokocryptoCustomSlValue
+    : isLiveBinance
+      ? liveCustomSlValue
+      : testnetCustomSlValue;
+  const setCustomSlValue = isTokoForm
+    ? setTokocryptoCustomSlValue
+    : isLiveBinance
+      ? setLiveCustomSlValue
+      : setTestnetCustomSlValue;
 
   const riskAmountUsd = isLiveBinance
     ? liveRiskAmountUsd
@@ -625,6 +663,14 @@ export default function CredentialConfig({
             setTokocryptoTpMode(d.tokocryptoTpMode || "MULTI_TP");
             setTokocryptoCustomTpRoiPct(Number(d.tokocryptoCustomTpRoiPct || 3.5));
 
+            // 🛡️ Load Stop Loss Modes
+            setTestnetSlMode(d.testnetSlMode || "SIGNAL_SL");
+            setTestnetCustomSlValue(Number(d.testnetCustomSlValue ?? 15.0));
+            setLiveSlMode(d.liveSlMode || "SIGNAL_SL");
+            setLiveCustomSlValue(Number(d.liveCustomSlValue ?? 15.0));
+            setTokocryptoSlMode(d.tokocryptoSlMode || "SIGNAL_SL");
+            setTokocryptoCustomSlValue(Number(d.tokocryptoCustomSlValue ?? 2.5));
+
             // Auto-fetch balances if credentials exist
             try {
               const [resTestnet, resLive, resToko] = await Promise.all([
@@ -849,6 +895,8 @@ export default function CredentialConfig({
         testnetBlockLongOnBtcBearish: Boolean(testnetBlockLongOnBtcBearish),
         testnetTpMode,
         testnetCustomTpRoiPct: Number(testnetCustomTpRoiPct),
+        testnetSlMode,
+        testnetCustomSlValue: Number(testnetCustomSlValue),
         testnetRiskMode:
           !isTokoForm && binanceSubTab === "TESTNET"
             ? riskMode
@@ -879,6 +927,8 @@ export default function CredentialConfig({
         liveBlockLongOnBtcBearish: Boolean(liveBlockLongOnBtcBearish),
         liveTpMode,
         liveCustomTpRoiPct: Number(liveCustomTpRoiPct),
+        liveSlMode,
+        liveCustomSlValue: Number(liveCustomSlValue),
         liveRiskMode:
           !isTokoForm && binanceSubTab === "LIVE" ? riskMode : liveRiskMode,
         liveRiskAmountUsd:
@@ -912,6 +962,8 @@ export default function CredentialConfig({
           : tokocryptoTargetCoins,
         tokocryptoTpMode,
         tokocryptoCustomTpRoiPct: Number(tokocryptoCustomTpRoiPct),
+        tokocryptoSlMode,
+        tokocryptoCustomSlValue: Number(tokocryptoCustomSlValue),
 
         // Legacy Binance Sync
         environment: binanceSubTab,
@@ -2150,6 +2202,115 @@ export default function CredentialConfig({
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
                   Standard CryptoSpike allocation: 50% TP1, 30% TP2, and 20% Moonbag Trailing Stop Runner with Auto Break-Even protection.
                 </p>
+              )}
+            </div>
+
+            {/* 🛡️ Stop Loss Guard Mode (Custom SL) */}
+            <div className="space-y-2 pt-3 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sl-mode" className="text-xs font-semibold flex items-center gap-1.5">
+                  <ShieldAlert className="size-3.5 text-destructive" />
+                  Stop Loss Guard Mode
+                </Label>
+                <Badge variant="outline" className="text-[10px] font-mono font-semibold uppercase">
+                  {slMode === "MAX_LOSS_ROI"
+                    ? "Max Loss ROI (-" + customSlValue + "%)"
+                    : slMode === "FIXED_PCT"
+                      ? "Fixed Drop (-" + customSlValue + "%)"
+                      : "Signal SL (AI)"}
+                </Badge>
+              </div>
+
+              <select
+                id="sl-mode"
+                value={slMode}
+                onChange={(e) =>
+                  setSlMode(
+                    e.target.value as "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI",
+                  )
+                }
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="SIGNAL_SL" className="text-black">
+                  Signal AI Structural SL (Dynamic S/R &amp; ATR Guard) [Recommended]
+                </option>
+                <option value="MAX_LOSS_ROI" className="text-black">
+                  Max Margin Loss ROI % (Wallet Protection — Divided by Leverage)
+                </option>
+                <option value="FIXED_PCT" className="text-black">
+                  Fixed Price Drop % (Chart Candlestick Movement)
+                </option>
+              </select>
+
+              {/* Penjelasan Komparasi Detail Mode SL */}
+              {slMode === "SIGNAL_SL" && (
+                <div className="p-2 rounded bg-muted/40 border text-[10px] text-muted-foreground leading-relaxed">
+                  🧠 <strong>AI Structural Guard:</strong> Stop Loss is dynamically placed at the key structural level calculated by CryptoSpike (below swing low for LONG / above swing high for SHORT with ATR wick buffer).
+                </div>
+              )}
+
+              {slMode === "MAX_LOSS_ROI" && (
+                <div className="space-y-1.5 p-2 rounded bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="custom-sl-roi" className="text-[10px] font-semibold text-destructive dark:text-red-300">
+                      Maximum Loss Tolerance (% of Margin)
+                    </Label>
+                    <span className="text-[10px] font-mono font-bold text-destructive dark:text-red-300">
+                      ~{((Number(customSlValue) || 15) / (isTokoForm ? 1 : leverage)).toFixed(2)}% Price Drop on Chart
+                    </span>
+                  </div>
+                  <Input
+                    id="custom-sl-roi"
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="0.5"
+                    value={customSlValue}
+                    onChange={(e) => setCustomSlValue(Number(e.target.value))}
+                    className="h-7 text-xs font-mono"
+                    placeholder="e.g. 15.0"
+                  />
+                  <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
+                    <p>
+                      💰 <strong>Wallet-Centric Protection:</strong> Limits maximum loss to <strong>-{customSlValue}%</strong> of your allocated trade margin.
+                    </p>
+                    <p className="text-foreground font-medium">
+                      * Calculation: On {leverage}x leverage, the Stop Loss order is automatically placed at <strong>~{((Number(customSlValue) || 15) / (isTokoForm ? 1 : leverage)).toFixed(2)}%</strong> price movement ({customSlValue}% ÷ {leverage}x), capping your wallet loss budget.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {slMode === "FIXED_PCT" && (
+                <div className="space-y-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="custom-sl-pct" className="text-[10px] font-semibold text-amber-900 dark:text-amber-200">
+                      Chart Price Drop Tolerance (%)
+                    </Label>
+                    <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                      -{(Number(customSlValue) * (isTokoForm ? 1 : leverage)).toFixed(1)}% ROI Impact on Margin
+                    </span>
+                  </div>
+                  <Input
+                    id="custom-sl-pct"
+                    type="number"
+                    min="0.2"
+                    max="50"
+                    step="0.1"
+                    value={customSlValue}
+                    onChange={(e) => setCustomSlValue(Number(e.target.value))}
+                    className="h-7 text-xs font-mono"
+                    placeholder="e.g. 1.8"
+                  />
+                  <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
+                    <p>
+                      📊 <strong>Chart-Centric Protection:</strong> Stop Loss is placed exactly <strong>-{customSlValue}%</strong> away from your entry price on the candlestick chart.
+                    </p>
+                    <p className="text-foreground font-medium">
+                      * Calculation: On {leverage}x leverage, a -{customSlValue}% price drop will result in a <strong>-{(Number(customSlValue) * (isTokoForm ? 1 : leverage)).toFixed(1)}% ROI</strong> loss on your margin ({customSlValue}% × {leverage}x).
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </CardContent>

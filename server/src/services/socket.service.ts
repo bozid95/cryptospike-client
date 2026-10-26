@@ -177,6 +177,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
             targetCoins: tokocryptoConfig.targetCoins || "",
             tpMode: tpPrefs.tokocryptoTpMode,
             customTpRoiPct: tpPrefs.tokocryptoCustomTpRoiPct,
+            slMode: tpPrefs.tokocryptoSlMode,
+            customSlValue: tpPrefs.tokocryptoCustomSlValue,
           });
 
           // Jika order berhasil atau simulasi sukses, catat ke tabel SpotTrade
@@ -290,6 +292,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               true,
             tpMode: getTpConfig().testnetTpMode,
             customTpRoiPct: getTpConfig().testnetCustomTpRoiPct,
+            slMode: getTpConfig().testnetSlMode,
+            customSlValue: getTpConfig().testnetCustomSlValue,
           });
         } catch (testnetErr: any) {
           addAppLog(
@@ -359,6 +363,8 @@ export async function handleIncomingSignal(data: any): Promise<void> {
               true,
             tpMode: getTpConfig().liveTpMode,
             customTpRoiPct: getTpConfig().liveCustomTpRoiPct,
+            slMode: getTpConfig().liveSlMode,
+            customSlValue: getTpConfig().liveCustomSlValue,
           });
         } catch (liveErr: any) {
           addAppLog(
