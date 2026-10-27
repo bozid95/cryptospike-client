@@ -16,6 +16,24 @@ export function roundTick(price: number, tickSize: number): number {
   return parseFloat(ticked.toFixed(precision));
 }
 
+/** Harga mark terkini (endpoint publik, weight 1). null jika gagal diambil. */
+export async function getMarkPrice(
+  symbol: string,
+  isTestnet: boolean,
+): Promise<number | null> {
+  try {
+    const res = await binanceFetch(
+      `${getBaseUrl(isTestnet)}/fapi/v1/premiumIndex?symbol=${encodeURIComponent(symbol)}`,
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { markPrice?: string };
+    const price = parseFloat(data.markPrice || "");
+    return Number.isFinite(price) && price > 0 ? price : null;
+  } catch {
+    return null;
+  }
+}
+
 // Memory Cache untuk Symbol Filters agar tidak request exchangeInfo berulang kali
 const symbolFilterCache = new Map<string, SymbolFilters>();
 

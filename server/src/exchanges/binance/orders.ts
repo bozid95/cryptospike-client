@@ -4,7 +4,13 @@ import {
   createSignature,
   getPositionSideDual,
 } from "./client";
-import { getSymbolFilters, roundStep, roundTick } from "./market";
+import { getSymbolFilters, getMarkPrice, roundStep, roundTick } from "./market";
+import {
+  evaluateEntryGuard,
+  ensureStopLossOrExit,
+  maxEntryDeviationR,
+  resolveStopLossPrice,
+} from "./execution-guards";
 import { getAccountAndPositions, testBinanceConnection } from "./account";
 import { BinanceExecutionConfig, PlaceOrderParams } from "./types";
 import { SignalPayload } from "../types";
@@ -435,6 +441,42 @@ export async function executeSignalOrder(
       return;
     }
 
+    // Pengaman harga basi: SL efektif (sesuai mode SL) dibandingkan harga mark terkini di bursa tujuan
+    const tradeSide = normalizedSignalSide as "LONG" | "SHORT";
+    const slPlan = resolveStopLossPrice(
+      config,
+      tradeSide,
+      entryPrice,
+      sl,
+      config.leverage || 10,
+    );
+    const markPrice = await getMarkPrice(symbol, isTestnet);
+    if (markPrice === null) {
+      addAppLog(
+        "WARN",
+        "Executor",
+        `Mark price for ${symbol} unavailable; entry guard skipped (using signal entry ${entryPrice}).`,
+      );
+    } else {
+      const guardReason = evaluateEntryGuard({
+        side: tradeSide,
+        signalEntry: entryPrice,
+        markPrice,
+        sl: slPlan.price,
+        tp1,
+        maxDeviationR: maxEntryDeviationR(),
+      });
+      if (guardReason) {
+        addAppLog(
+          "WARN",
+          "EntryGuard",
+          `Signal ${symbol} ${side} skipped: ${guardReason}.`,
+        );
+        return;
+      }
+    }
+    const pricingRef = markPrice ?? entryPrice;
+
     // 5. Ambil saldo akun Binance
     const conn = await testBinanceConnection(
       apiKey,
@@ -499,7 +541,7 @@ export async function executeSignalOrder(
       return;
     }
 
-    const rawQty = notionalValue / entryPrice;
+    const rawQty = notionalValue / pricingRef;
     const quantity = roundStep(rawQty, filters.stepSize);
 
     if (quantity <= 0) {
@@ -547,8 +589,85 @@ export async function executeSignalOrder(
       `Entry Order Succeeded! ID: ${entryOrder.orderId} | ${symbol} ${side} ${quantity}`,
     );
 
-    // 9. Pasang Take Profit sesuai Target Mode & Stop Loss
     const exitSide = side === "LONG" ? "SELL" : "BUY";
+
+    // 9. Stop Loss DULU (sebelum TP) agar jeda tanpa proteksi sesingkat mungkin.
+    //    Dua lapis; jika keduanya gagal, posisi langsung ditutup — tidak pernah dibiarkan tanpa SL.
+    const targetSlPrice = roundTick(slPlan.price, filters.tickSize);
+    if (slPlan.mode !== "SIGNAL_SL") {
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[${slPlan.mode} SL] Stop Loss set at ${targetSlPrice} for ${symbol}`,
+      );
+    }
+
+    // Buffer jeda 250ms untuk memastikan settlement posisi market entry di matching engine Binance selesai
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const slType = slPlan.fallback ? "FALLBACK SL (2%)" : "SIGNAL SL";
+    const slOutcome = await ensureStopLossOrExit({
+      placePrimary: async () => {
+        await placeOrder(
+          apiKey,
+          apiSecret,
+          {
+            symbol,
+            side: exitSide,
+            positionSide: side as "LONG" | "SHORT",
+            type: "STOP_MARKET",
+            stopPrice: targetSlPrice,
+            closePosition: true,
+          },
+          isTestnet,
+        );
+        addAppLog("INFO", "Executor", `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice}`);
+      },
+      placeFallback: async () => {
+        await placeOrder(
+          apiKey,
+          apiSecret,
+          {
+            symbol,
+            side: exitSide,
+            positionSide: side as "LONG" | "SHORT",
+            type: "STOP_MARKET",
+            stopPrice: targetSlPrice,
+            quantity,
+            reduceOnly: true,
+          },
+          isTestnet,
+        );
+        addAppLog(
+          "INFO",
+          "Executor",
+          `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice} (qty: ${quantity}, fallback active)`,
+        );
+      },
+      emergencyClose: async () => {
+        await placeOrder(
+          apiKey,
+          apiSecret,
+          {
+            symbol,
+            side: exitSide,
+            positionSide: side as "LONG" | "SHORT",
+            type: "MARKET",
+            quantity,
+            reduceOnly: true,
+          },
+          isTestnet,
+        );
+        await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
+      },
+      log: (level, message) => addAppLog(level, "Executor", `${symbol}: ${message}`),
+      retryDelayMs: 300,
+    });
+    if (slOutcome === "EMERGENCY_CLOSED" || slOutcome === "UNPROTECTED") {
+      return;
+    }
+
+    // 10. Pasang Take Profit sesuai Target Mode
     const tpMode = (config.tpMode || "MULTI_TP").toUpperCase();
 
     let targetTp1 = tp1;
@@ -822,120 +941,6 @@ export async function executeSignalOrder(
             "WARN",
             "Executor",
             `Failed to place TP3 for ${symbol}: ${err.message}`,
-          );
-        }
-      }
-    }
-
-    // Pasang Stop Loss (Guaranteed Double-Layer Protection with Custom SL Mode)
-    const slMode = (config.slMode || "SIGNAL_SL").toUpperCase();
-    let calculatedSlPrice: number;
-
-    if (slMode === "FIXED_PCT") {
-      const dropPct = Math.max(0.1, Number(config.customSlValue || 1.5)) / 100;
-      calculatedSlPrice =
-        side === "LONG"
-          ? entryPrice * (1 - dropPct)
-          : entryPrice * (1 + dropPct);
-      addAppLog(
-        "INFO",
-        "Executor",
-        `[FIXED_PCT SL] Stop Loss set at ${calculatedSlPrice.toFixed(4)} (-${(dropPct * 100).toFixed(2)}% price change) for ${symbol}`,
-      );
-    } else if (slMode === "MAX_LOSS_ROI") {
-      const maxRoi = Math.max(1.0, Number(config.customSlValue || 15.0));
-      const priceDeltaPct = (maxRoi / leverage) / 100;
-      calculatedSlPrice =
-        side === "LONG"
-          ? entryPrice * (1 - priceDeltaPct)
-          : entryPrice * (1 + priceDeltaPct);
-      addAppLog(
-        "INFO",
-        "Executor",
-        `[MAX_LOSS_ROI SL] Stop Loss set at ${calculatedSlPrice.toFixed(4)} (-${maxRoi}% ROI max loss / -${(priceDeltaPct * 100).toFixed(2)}% price change) for ${symbol}`,
-      );
-    } else {
-      calculatedSlPrice = sl ? sl : entryPrice * (side === "LONG" ? 0.98 : 1.02);
-    }
-
-    const targetSlPrice = roundTick(calculatedSlPrice, filters.tickSize);
-
-    // Buffer jeda 250ms untuk memastikan settlement posisi market entry di matching engine Binance selesai
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
-    let slSuccess = false;
-
-    // Layer 1: Coba pasang Stop Loss standar dengan closePosition: true
-    try {
-      await placeOrder(
-        apiKey,
-        apiSecret,
-        {
-          symbol,
-          side: exitSide,
-          positionSide: side as "LONG" | "SHORT",
-          type: "STOP_MARKET",
-          stopPrice: targetSlPrice,
-          closePosition: true,
-        },
-        isTestnet,
-      );
-
-      slSuccess = true;
-      const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
-      addAppLog(
-        "INFO",
-        "Executor",
-        `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice}`,
-      );
-    } catch (err: any) {
-      addAppLog(
-        "WARN",
-        "Executor",
-        `Primary closePosition Stop Loss for ${symbol} rejected (${err.message}). Retrying with explicit quantity fallback...`,
-      );
-    }
-
-    // Layer 2: Fallback jika Layer 1 ditolak (TIF GTE / -4509, race condition, -4130, dll)
-    if (!slSuccess) {
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        await placeOrder(
-          apiKey,
-          apiSecret,
-          {
-            symbol,
-            side: exitSide,
-            positionSide: side as "LONG" | "SHORT",
-            type: "STOP_MARKET",
-            stopPrice: targetSlPrice,
-            quantity,
-            reduceOnly: true,
-          },
-          isTestnet,
-        );
-        const slType = sl ? "SIGNAL SL" : "FALLBACK SL (2%)";
-        addAppLog(
-          "INFO",
-          "Executor",
-          `[${slType} PLACED] ${symbol} Stop Loss set at ${targetSlPrice} (qty: ${quantity}, fallback active)`,
-        );
-      } catch (retryErr: any) {
-        if (
-          retryErr.message?.includes("already protected") ||
-          retryErr.message?.includes("existing") ||
-          retryErr.message?.includes("-4130")
-        ) {
-          addAppLog(
-            "INFO",
-            "Executor",
-            `[SL ACTIVE] Position ${symbol} already protected by active stop order on Binance.`,
-          );
-        } else {
-          addAppLog(
-            "ERROR",
-            "Executor",
-            `CRITICAL: Failed to place fallback Stop Loss for ${symbol}: ${retryErr.message}`,
           );
         }
       }
