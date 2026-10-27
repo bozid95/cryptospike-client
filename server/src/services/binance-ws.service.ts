@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import { prisma } from "../lib/db";
 import { addAppLog } from "../lib/logger";
+import { binanceFetch } from "../exchanges/binance/rate-guard";
 import {
   getBaseUrl,
   cancelAllOpenOrders,
@@ -38,7 +39,7 @@ async function createListenKey(
   isTestnet: boolean,
 ): Promise<string> {
   const baseUrl = getBaseUrl(isTestnet);
-  const res = await fetch(`${baseUrl}/fapi/v1/listenKey`, {
+  const res = await binanceFetch(`${baseUrl}/fapi/v1/listenKey`, {
     method: "POST",
     headers: {
       "X-MBX-APIKEY": apiKey,
@@ -66,7 +67,7 @@ async function keepAliveListenKey(
 ): Promise<boolean> {
   try {
     const baseUrl = getBaseUrl(isTestnet);
-    const res = await fetch(
+    const res = await binanceFetch(
       `${baseUrl}/fapi/v1/listenKey?listenKey=${encodeURIComponent(listenKey)}`,
       {
         method: "PUT",
@@ -91,7 +92,7 @@ async function closeListenKey(
 ): Promise<void> {
   try {
     const baseUrl = getBaseUrl(isTestnet);
-    await fetch(
+    await binanceFetch(
       `${baseUrl}/fapi/v1/listenKey?listenKey=${encodeURIComponent(listenKey)}`,
       {
         method: "DELETE",
@@ -373,7 +374,7 @@ class BinanceEnvironmentStream {
         // Buka Public Mark Price Stream
         this.connectMarketWs();
 
-        // Inisialisasi background reconciliation setiap 20 detik
+        // Background reconciliation setiap 60 detik (update real-time sudah via User Data Stream)
         if (this.resyncTimer) clearInterval(this.resyncTimer);
         this.resyncTimer = setInterval(async () => {
           try {
@@ -381,6 +382,7 @@ class BinanceEnvironmentStream {
               trimmedKey,
               trimmedSecret,
               this.environment,
+              "normal",
             );
             this.liveAccount = snapshot.account;
             const activeSymbols = new Set<string>();
@@ -395,7 +397,7 @@ class BinanceEnvironmentStream {
             }
             this.lastCacheUpdate = Date.now();
           } catch {}
-        }, 20000);
+        }, 60000);
       });
 
       this.wsClient.on("message", (data: WebSocket.RawData) => {

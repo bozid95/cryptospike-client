@@ -1,4 +1,5 @@
 import { getBaseUrl } from "./client";
+import { binanceFetch } from "./rate-guard";
 import { SymbolFilters } from "./types";
 import { addAppLog } from "../../lib/logger";
 
@@ -28,7 +29,7 @@ export async function getSymbolFilters(
 
   try {
     const baseUrl = getBaseUrl(isTestnet);
-    const res = await fetch(`${baseUrl}/fapi/v1/exchangeInfo`);
+    const res = await binanceFetch(`${baseUrl}/fapi/v1/exchangeInfo`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as any;
     const symInfo = data.symbols?.find((s: any) => s.symbol === symbol);

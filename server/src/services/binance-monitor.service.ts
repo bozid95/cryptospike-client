@@ -5,6 +5,8 @@ import {
   getOpenOrders,
   cancelAllOpenOrders,
   moveSlToBreakEven,
+  getBaseUrl,
+  isBinanceRestPaused,
 } from "../lib/binance";
 import { isBinanceWsConnected } from "./binance-ws.service";
 
@@ -67,6 +69,12 @@ export async function checkBinancePositionsCycle(): Promise<void> {
     const environment = config.environment || "TESTNET";
     const isTestnet = environment === "TESTNET";
 
+    // Saat 429/418 (atau rem weight) aktif, jangan polling: hanya memperpanjang ban
+    if (isBinanceRestPaused(getBaseUrl(isTestnet))) {
+      isChecking = false;
+      return;
+    }
+
     const autoBepEnabled = process.env.BINANCE_AUTO_BEP !== "false";
     const bepBufferPct = parseFloat(
       process.env.BINANCE_BEP_BUFFER_PCT || "0.2",
@@ -77,6 +85,7 @@ export async function checkBinancePositionsCycle(): Promise<void> {
       apiKey,
       apiSecret,
       environment,
+      "normal",
     );
 
     const activeSymbols = new Set<string>();

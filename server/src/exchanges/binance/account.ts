@@ -1,4 +1,5 @@
 import { getBaseUrl, getBinanceServerTime, createSignature } from "./client";
+import { binanceFetch, BinanceRequestPriority } from "./rate-guard";
 import { PositionRiskItem } from "./types";
 import { AccountOverview } from "../types";
 
@@ -18,7 +19,7 @@ export async function testBinanceConnection(
     const query = `timestamp=${timestamp}&recvWindow=60000`;
     const signature = createSignature(query, apiSecret);
 
-    const response = await fetch(
+    const response = await binanceFetch(
       `${baseUrl}/fapi/v2/account?${query}&signature=${signature}`,
       {
         method: "GET",
@@ -52,12 +53,14 @@ export async function testBinanceConnection(
 }
 
 /**
- * Mengambil detail akun lengkap, saldo, & posisi aktif di Binance Futures
+ * Mengambil detail akun lengkap, saldo, & posisi aktif di Binance Futures.
+ * priority "normal" untuk polling latar belakang (ikut rem weight); default "critical" untuk alur order.
  */
 export async function getAccountAndPositions(
   apiKey: string,
   apiSecret: string,
   environment: string,
+  priority: BinanceRequestPriority = "critical",
 ): Promise<{ account: AccountOverview; positions: PositionRiskItem[] }> {
   const isTestnet = environment === "TESTNET";
   const baseUrl = getBaseUrl(isTestnet);
@@ -67,12 +70,13 @@ export async function getAccountAndPositions(
   const signature = createSignature(query, apiSecret);
 
   // 1. Ambil data ringkasan akun (/fapi/v2/account)
-  const accRes = await fetch(
+  const accRes = await binanceFetch(
     `${baseUrl}/fapi/v2/account?${query}&signature=${signature}`,
     {
       method: "GET",
       headers: { "X-MBX-APIKEY": apiKey },
     },
+    priority,
   );
   const accData = (await accRes.json()) as any;
 
@@ -81,14 +85,22 @@ export async function getAccountAndPositions(
   }
 
   // 2. Ambil data posisi aktif (/fapi/v2/positionRisk)
-  const posRes = await fetch(
+  const posRes = await binanceFetch(
     `${baseUrl}/fapi/v2/positionRisk?${query}&signature=${signature}`,
     {
       method: "GET",
       headers: { "X-MBX-APIKEY": apiKey },
     },
+    priority,
   );
   const posData = (await posRes.json()) as any;
+
+  // Error (mis. 429/418) jangan dibaca sebagai "0 posisi": monitor bisa mengira posisi tertutup
+  if (!posRes.ok || !Array.isArray(posData)) {
+    throw new Error(
+      posData?.msg || `Failed to retrieve Binance positions (HTTP ${posRes.status}).`,
+    );
+  }
 
   let totalExposureUsd = 0;
   const positions: PositionRiskItem[] = (Array.isArray(posData) ? posData : [])

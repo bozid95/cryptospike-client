@@ -182,12 +182,13 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream aktif & berisi posisi
+    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream aktif.
+    //    0 posisi juga data valid — jangan jatuh ke REST (hemat weight IP, cegah ban Binance).
     const wsPositions = getLiveBinancePositions(targetEnv);
     if (
       isBinanceWsConnected(targetEnv) &&
       getLiveCacheLastUpdated(targetEnv) > 0 &&
-      wsPositions.length > 0
+      getLiveBinanceAccount(targetEnv)
     ) {
       return res.json({
         success: true,
@@ -199,10 +200,10 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Fallback REST dengan Caching 5 Detik per environment
+    // 2. Fallback REST (WebSocket putus / env lain) dengan Caching 15 Detik per environment
     const now = Date.now();
     if (
-      now - lastRestPositionsFetch[targetEnv] < 5000 &&
+      now - lastRestPositionsFetch[targetEnv] < 15000 &&
       lastRestPositionsData[targetEnv]
     ) {
       return res.json({
@@ -220,6 +221,7 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
         apiKey.trim(),
         apiSecret.trim(),
         targetEnv,
+        "normal",
       );
 
       lastRestPositionsFetch[targetEnv] = now;

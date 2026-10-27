@@ -10,6 +10,7 @@ import { BinanceExecutionConfig, PlaceOrderParams } from "./types";
 import { SignalPayload } from "../types";
 import { evaluateCoinFilter } from "../../lib/coin-filter";
 import { addAppLog } from "../../lib/logger";
+import { binanceFetch } from "./rate-guard";
 
 /**
  * Atur Leverage di Binance Futures
@@ -27,7 +28,7 @@ export async function setLeverage(
     const query = `symbol=${symbol}&leverage=${leverage}&timestamp=${timestamp}&recvWindow=60000`;
     const signature = createSignature(query, apiSecret);
 
-    const res = await fetch(
+    const res = await binanceFetch(
       `${baseUrl}/fapi/v1/leverage?${query}&signature=${signature}`,
       {
         method: "POST",
@@ -60,7 +61,7 @@ export async function setMarginType(
     const query = `symbol=${symbol}&marginType=${marginType}&timestamp=${timestamp}&recvWindow=60000`;
     const signature = createSignature(query, apiSecret);
 
-    const res = await fetch(
+    const res = await binanceFetch(
       `${baseUrl}/fapi/v1/marginType?${query}&signature=${signature}`,
       {
         method: "POST",
@@ -144,7 +145,7 @@ export async function placeOrder(
 
   const endpoint = isAlgo ? "/fapi/v1/algoOrder" : "/fapi/v1/order";
 
-  const res = await fetch(
+  const res = await binanceFetch(
     `${baseUrl}${endpoint}?${query}&signature=${signature}`,
     {
       method: "POST",
@@ -175,7 +176,7 @@ export async function cancelAllOpenOrders(
     const signature = createSignature(query, apiSecret);
 
     // 1. Batalkan semua regular orders
-    await fetch(
+    await binanceFetch(
       `${baseUrl}/fapi/v1/allOpenOrders?${query}&signature=${signature}`,
       {
         method: "DELETE",
@@ -185,7 +186,7 @@ export async function cancelAllOpenOrders(
 
     // 2. Batalkan semua open algo orders (SL, TP, Trailing Stop)
     try {
-      const algoRes = await fetch(
+      const algoRes = await binanceFetch(
         `${baseUrl}/fapi/v1/openAlgoOrders?${query}&signature=${signature}`,
         {
           headers: { "X-MBX-APIKEY": apiKey },
@@ -203,7 +204,7 @@ export async function cancelAllOpenOrders(
             const delTs = await getBinanceServerTime(baseUrl);
             const delQuery = `symbol=${symbol}&algoId=${algo.algoId}&timestamp=${delTs}&recvWindow=60000`;
             const delSig = createSignature(delQuery, apiSecret);
-            await fetch(
+            await binanceFetch(
               `${baseUrl}/fapi/v1/algoOrder?${delQuery}&signature=${delSig}`,
               {
                 method: "DELETE",
@@ -964,7 +965,7 @@ export async function getOpenOrders(
     const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
     const signature = createSignature(query, apiSecret);
 
-    const res = await fetch(
+    const res = await binanceFetch(
       `${baseUrl}/fapi/v1/openOrders?${query}&signature=${signature}`,
       {
         headers: { "X-MBX-APIKEY": apiKey },
@@ -1042,7 +1043,7 @@ async function listExitStopOrders(
     const timestamp = await getBinanceServerTime(baseUrl);
     const query = `symbol=${symbol}&timestamp=${timestamp}&recvWindow=60000`;
     const sig = createSignature(query, apiSecret);
-    const res = await fetch(
+    const res = await binanceFetch(
       `${baseUrl}/fapi/v1/openAlgoOrders?${query}&signature=${sig}`,
       { headers: { "X-MBX-APIKEY": apiKey } },
     );
@@ -1092,7 +1093,7 @@ async function cancelStopOrder(
     const sig = createSignature(query, apiSecret);
     const endpoint =
       order.kind === "algo" ? "/fapi/v1/algoOrder" : "/fapi/v1/order";
-    const res = await fetch(`${baseUrl}${endpoint}?${query}&signature=${sig}`, {
+    const res = await binanceFetch(`${baseUrl}${endpoint}?${query}&signature=${sig}`, {
       method: "DELETE",
       headers: { "X-MBX-APIKEY": apiKey },
     });
