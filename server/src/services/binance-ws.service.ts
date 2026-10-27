@@ -7,9 +7,16 @@ import {
   cancelAllOpenOrders,
   moveSlToBreakEven,
   getAccountAndPositions,
+  clearBreakEvenState,
 } from "../lib/binance";
 import { PositionRiskItem } from "../exchanges/binance/types";
 import { AccountOverview } from "../exchanges/types";
+import {
+  getMarketWsUrl,
+  getUserDataWsUrl,
+  isMarketStreamStale,
+  isStreamHealthy,
+} from "./binance-stream-health";
 
 interface MonitoredWsPosition {
   symbol: string;
@@ -24,12 +31,6 @@ interface MonitoredWsPosition {
 
 const BEP_MAX_ATTEMPTS = 3;
 const BEP_RETRY_DELAY_MS = 3000;
-
-function getWsBaseUrl(isTestnet: boolean): string {
-  return isTestnet
-    ? "wss://stream.binancefuture.com/ws/"
-    : "wss://fstream.binance.com/ws/";
-}
 
 /**
  * Mengambil listenKey baru dari Binance Futures
@@ -122,6 +123,9 @@ class BinanceEnvironmentStream {
   private isReconnecting = false;
   private bannedUntilTimestamp = 0;
   private isWsConnected = false;
+  private marketConnectedAt = 0;
+  private marketLastDataAt = 0;
+  private marketWatchdog: NodeJS.Timeout | null = null;
 
   private readonly livePositions = new Map<string, PositionRiskItem>();
   private liveAccount: AccountOverview = {
@@ -145,6 +149,37 @@ class BinanceEnvironmentStream {
 
   public isConnected(): boolean {
     return this.isWsConnected && this.wsClient?.readyState === WebSocket.OPEN;
+  }
+
+  /** Tersambung DAN stream market benar-benar mengirim data (URL salah tetap bisa "tersambung"). */
+  public isHealthy(now: number = Date.now()): boolean {
+    return isStreamHealthy(this.isConnected(), this.marketLastDataAt, now);
+  }
+
+  /** Watchdog: stream market terbuka tapi diam → putuskan agar close handler reconnect. */
+  private checkMarketStale(): void {
+    const ws = this.marketWsClient;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const now = Date.now();
+    if (!isMarketStreamStale(this.marketConnectedAt, this.marketLastDataAt, now)) {
+      return;
+    }
+    addAppLog(
+      "WARN",
+      this.logTag,
+      `Mark price stream connected but silent for ${Math.round((now - Math.max(this.marketConnectedAt, this.marketLastDataAt)) / 1000)}s. Reconnecting (REST monitor covers Auto-BEP meanwhile)...`,
+    );
+    this.marketConnectedAt = 0;
+    ws.terminate();
+  }
+
+  private stopMarketWatchdog(): void {
+    if (this.marketWatchdog) {
+      clearInterval(this.marketWatchdog);
+      this.marketWatchdog = null;
+    }
+    this.marketConnectedAt = 0;
+    this.marketLastDataAt = 0;
   }
 
   public getPositions(): PositionRiskItem[] {
@@ -199,22 +234,42 @@ class BinanceEnvironmentStream {
       this.marketReconnectTimer = null;
     }
 
-    const baseWs = getWsBaseUrl(this.isTestnet);
-    const marketUrl = `${baseWs}!markPrice@arr@1s`;
+    const marketUrl = getMarketWsUrl(this.isTestnet);
+    let gotData = false;
+
+    if (!this.marketWatchdog) {
+      this.marketWatchdog = setInterval(() => this.checkMarketStale(), 10_000);
+      this.marketWatchdog.unref();
+    }
 
     try {
       this.marketWsClient = new WebSocket(marketUrl);
 
       this.marketWsClient.on("open", () => {
+        this.marketConnectedAt = Date.now();
+        this.marketLastDataAt = 0;
         console.log(
-          `[${new Date().toLocaleTimeString()}] ℹ️ [${this.logTag}] Public Mark Price stream connected (${this.environment}). Real-time pricing active.`,
+          `[${new Date().toLocaleTimeString()}] ℹ️ [${this.logTag}] Public Mark Price stream connected (${this.environment}): ${marketUrl}`,
         );
       });
 
       this.marketWsClient.on("message", (data: WebSocket.RawData) => {
         try {
           const rawStr = data.toString();
-          const items = JSON.parse(rawStr);
+          const parsed = JSON.parse(rawStr);
+          // /ws/<stream> → array mentah; /stream?streams= → { stream, data }
+          const items = Array.isArray(parsed) ? parsed : parsed?.data;
+          if (Array.isArray(items) && items.length > 0) {
+            this.marketLastDataAt = Date.now();
+            if (!gotData) {
+              gotData = true;
+              addAppLog(
+                "SUCCESS",
+                this.logTag,
+                `Mark price stream receiving data (${this.environment}). Real-time pricing active.`,
+              );
+            }
+          }
           if (Array.isArray(items) && this.livePositions.size > 0) {
             let hasUpdated = false;
             for (const item of items) {
@@ -256,6 +311,7 @@ class BinanceEnvironmentStream {
       });
 
       this.marketWsClient.on("close", () => {
+        this.marketConnectedAt = 0;
         if (!this.marketReconnectTimer) {
           this.marketReconnectTimer = setTimeout(() => {
             this.marketReconnectTimer = null;
@@ -346,7 +402,7 @@ class BinanceEnvironmentStream {
       } catch {}
 
       // Buka koneksi WebSocket Stream
-      const wsUrl = `${getWsBaseUrl(this.isTestnet)}${listenKey}`;
+      const wsUrl = getUserDataWsUrl(this.isTestnet, listenKey);
       this.wsClient = new WebSocket(wsUrl);
 
       this.wsClient.on("open", () => {
@@ -575,6 +631,7 @@ class BinanceEnvironmentStream {
                     `[Realtime Cleanup] Position ${symbol} is now CLOSED. Cancelling leftover orders...`,
                   );
                   this.monitoredWsPositions.delete(symbol);
+                  clearBreakEvenState(this.environment, symbol);
 
                   cancelAllOpenOrders(
                     apiKey,
@@ -719,6 +776,7 @@ class BinanceEnvironmentStream {
       this.marketWsClient = null;
     }
     this.isWsConnected = false;
+    this.stopMarketWatchdog();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -761,6 +819,7 @@ class BinanceEnvironmentStream {
       this.marketWsClient = null;
     }
     this.isWsConnected = false;
+    this.stopMarketWatchdog();
 
     if (this.currentListenKey) {
       try {
@@ -796,6 +855,11 @@ export function isBinanceWsConnected(env?: "TESTNET" | "LIVE"): boolean {
   if (env === "TESTNET") return testnetStream.isConnected();
   if (env === "LIVE") return liveStream.isConnected();
   return testnetStream.isConnected() || liveStream.isConnected();
+}
+
+/** True jika stream environment tsb tersambung DAN menerima data (dipakai monitor REST). */
+export function isBinanceWsHealthy(env: "TESTNET" | "LIVE"): boolean {
+  return env === "TESTNET" ? testnetStream.isHealthy() : liveStream.isHealthy();
 }
 
 export function getLiveBinancePositions(

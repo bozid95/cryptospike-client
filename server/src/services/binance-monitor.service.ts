@@ -5,10 +5,12 @@ import {
   getOpenOrders,
   cancelAllOpenOrders,
   moveSlToBreakEven,
+  clearBreakEvenState,
   getBaseUrl,
   isBinanceRestPaused,
 } from "../lib/binance";
-import { isBinanceWsConnected } from "./binance-ws.service";
+import { isBinanceWsHealthy } from "./binance-ws.service";
+import { shouldRunMonitorCycle } from "./binance-stream-health";
 
 interface MonitoredPosition {
   symbol: string;
@@ -21,6 +23,7 @@ interface MonitoredPosition {
 
 let monitorInterval: NodeJS.Timeout | null = null;
 let isChecking = false;
+let lastCycleRunAt = 0;
 
 // Menyimpan state posisi yang sedang dipantau di memori
 const monitoredPositions = new Map<string, MonitoredPosition>();
@@ -48,10 +51,6 @@ function logThrottled(
  */
 export async function checkBinancePositionsCycle(): Promise<void> {
   if (isChecking) return;
-  // Jika WebSocket aktif, pemantauan ditangani 100% oleh push event stream (Zero-Polling)
-  if (isBinanceWsConnected()) {
-    return;
-  }
   isChecking = true;
 
   try {
@@ -68,6 +67,22 @@ export async function checkBinancePositionsCycle(): Promise<void> {
     const apiSecret = config.apiSecret.trim();
     const environment = config.environment || "TESTNET";
     const isTestnet = environment === "TESTNET";
+
+    // WebSocket environment AKUN INI sehat (tersambung & benar-benar menerima data) → event stream menangani
+    // Auto-BEP/cleanup; monitor REST tetap jalan tiap 60 detik sebagai jaring pengaman.
+    // Tidak sehat (mis. URL tanpa jalur yang diam) → monitor REST tiap siklus.
+    const now = Date.now();
+    if (
+      !shouldRunMonitorCycle(
+        isBinanceWsHealthy(isTestnet ? "TESTNET" : "LIVE"),
+        lastCycleRunAt,
+        now,
+      )
+    ) {
+      isChecking = false;
+      return;
+    }
+    lastCycleRunAt = now;
 
     // Saat 429/418 (atau rem weight) aktif, jangan polling: hanya memperpanjang ban
     if (isBinanceRestPaused(getBaseUrl(isTestnet))) {
@@ -186,6 +201,7 @@ export async function checkBinancePositionsCycle(): Promise<void> {
 
         await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
         monitoredPositions.delete(symbol);
+        clearBreakEvenState(isTestnet ? "TESTNET" : "LIVE", symbol);
       }
     }
   } catch (err: any) {

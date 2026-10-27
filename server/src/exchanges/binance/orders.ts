@@ -1127,8 +1127,10 @@ function isImmediateTriggerError(err: any): boolean {
  *
  * Return true jika posisi aman (SL BEP aktif / posisi sudah ditutup / posisi tidak ada).
  * Return false jika gagal — SL lama TIDAK disentuh sehingga posisi tetap terproteksi.
+ *
+ * Dipanggil lewat `moveSlToBreakEven` (guard) agar WebSocket & monitor REST tidak memindah SL bersamaan.
  */
-export async function moveSlToBreakEven(
+async function runMoveSlToBreakEven(
   apiKey: string,
   apiSecret: string,
   symbol: string,
@@ -1325,3 +1327,63 @@ export async function moveSlToBreakEven(
     return false;
   }
 }
+
+type BreakEvenRunner = typeof runMoveSlToBreakEven;
+
+/**
+ * Guard Auto-BEP per environment + simbol + sisi:
+ *  - Panggilan bersamaan (WebSocket & monitor REST) memakai satu proses yang sama.
+ *  - Setelah sukses untuk entry yang sama, panggilan berikutnya dilewati (return true).
+ *  - Gagal (false / error) tidak dicatat → boleh dicoba ulang.
+ * `clear` dipanggil saat posisi tertutup agar posisi baru di simbol yang sama bisa BEP lagi.
+ */
+export function createBreakEvenGuard(run: BreakEvenRunner) {
+  const inFlight = new Map<string, Promise<boolean>>();
+  const completedEntry = new Map<string, number>();
+  const keyOf = (env: string, symbol: string, side: string) =>
+    `${env}:${symbol}:${side}`;
+  const sameEntry = (a: number, b: number) =>
+    Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-6;
+
+  const move: BreakEvenRunner = (
+    apiKey,
+    apiSecret,
+    symbol,
+    side,
+    entryPrice,
+    isTestnet,
+    bufferPct,
+  ) => {
+    const key = keyOf(isTestnet ? "TESTNET" : "LIVE", symbol, side);
+    const done = completedEntry.get(key);
+    if (done !== undefined && entryPrice > 0 && sameEntry(done, entryPrice)) {
+      return Promise.resolve(true);
+    }
+    const running = inFlight.get(key);
+    if (running) return running;
+
+    const p = run(apiKey, apiSecret, symbol, side, entryPrice, isTestnet, bufferPct)
+      .then((ok) => {
+        if (ok && entryPrice > 0) completedEntry.set(key, entryPrice);
+        return ok;
+      })
+      .finally(() => inFlight.delete(key));
+    inFlight.set(key, p);
+    return p;
+  };
+
+  const clear = (env: "TESTNET" | "LIVE", symbol: string) => {
+    for (const side of ["LONG", "SHORT"]) {
+      completedEntry.delete(keyOf(env, symbol, side));
+    }
+  };
+
+  return { move, clear };
+}
+
+const breakEvenGuard = createBreakEvenGuard(runMoveSlToBreakEven);
+
+/** Pindahkan SL ke Break-Even (fail-safe, anti-duplikat). Lihat runMoveSlToBreakEven. */
+export const moveSlToBreakEven = breakEvenGuard.move;
+/** Reset status BEP simbol setelah posisinya tertutup. */
+export const clearBreakEvenState = breakEvenGuard.clear;

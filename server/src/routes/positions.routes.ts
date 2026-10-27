@@ -4,7 +4,7 @@ import { getAccountAndPositions, closePositionDirect } from "../lib/binance";
 import { getTokocryptoBalance, getTokocryptoTicker } from "../lib/tokocrypto";
 import { closeSpotTradeManually } from "../services/spot-monitor.service";
 import {
-  isBinanceWsConnected,
+  isBinanceWsHealthy,
   getLiveBinanceAccount,
   getLiveBinancePositions,
   getLiveCacheLastUpdated,
@@ -182,11 +182,11 @@ positionsRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream aktif.
+    // 1. Prioritas Utama: Layani langsung dari WebSocket Live Cache jika stream sehat (tersambung & menerima data).
     //    0 posisi juga data valid — jangan jatuh ke REST (hemat weight IP, cegah ban Binance).
     const wsPositions = getLiveBinancePositions(targetEnv);
     if (
-      isBinanceWsConnected(targetEnv) &&
+      isBinanceWsHealthy(targetEnv) &&
       getLiveCacheLastUpdated(targetEnv) > 0 &&
       getLiveBinanceAccount(targetEnv)
     ) {
