@@ -7,6 +7,12 @@ import { connectToNestJS } from "../services/socket.service";
 import { restartBinanceWsService } from "../services/binance-ws.service";
 import { getTpConfig, saveTpConfig, TpMode, SlMode } from "../lib/tp-config";
 
+
+/** Mode alokasi risiko Binance yang didukung; nilai lain jatuh ke PERCENTAGE. */
+function normalizeRiskMode(mode: string): "PERCENTAGE" | "FIXED_USD" | "RISK_AT_SL" {
+  return mode === "FIXED_USD" || mode === "RISK_AT_SL" ? mode : "PERCENTAGE";
+}
+
 export const configRouter = Router();
 
 // 1. Ambil Konfigurasi dari Database SQLite Lokal
@@ -298,7 +304,7 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (testnetRiskMode !== undefined) {
       const mode = String(testnetRiskMode).trim().toUpperCase();
       binanceUpdate.testnetRiskMode =
-        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+        normalizeRiskMode(mode);
     }
     if (testnetRiskAmountUsd !== undefined) {
       binanceUpdate.testnetRiskAmountUsd = Math.max(
@@ -355,7 +361,7 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (liveRiskMode !== undefined) {
       const mode = String(liveRiskMode).trim().toUpperCase();
       binanceUpdate.liveRiskMode =
-        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+        normalizeRiskMode(mode);
     }
     if (liveRiskAmountUsd !== undefined) {
       binanceUpdate.liveRiskAmountUsd = Math.max(
@@ -397,11 +403,11 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     if (binanceRiskMode !== undefined) {
       const mode = String(binanceRiskMode).trim().toUpperCase();
       binanceUpdate.riskMode =
-        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+        normalizeRiskMode(mode);
     } else if (riskMode !== undefined) {
       const mode = String(riskMode).trim().toUpperCase();
       binanceUpdate.riskMode =
-        mode === "FIXED_USD" ? "FIXED_USD" : "PERCENTAGE";
+        normalizeRiskMode(mode);
     }
 
     if (binanceRiskAmountUsd !== undefined) {

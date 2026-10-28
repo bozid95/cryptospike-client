@@ -38,6 +38,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+type RiskMode = "PERCENTAGE" | "FIXED_USD" | "RISK_AT_SL";
+
+/** Normalisasi mode alokasi risiko dari API; nilai tak dikenal → PERCENTAGE. */
+function toRiskMode(value: unknown): RiskMode {
+  const mode = String(value ?? "").toUpperCase();
+  return mode === "FIXED_USD" || mode === "RISK_AT_SL" ? mode : "PERCENTAGE";
+}
+
 const TOP_50_CMC: string[] = [
   "BTCUSDT",
   "ETHUSDT",
@@ -211,7 +219,7 @@ export default function CredentialConfig({
   >("ISOLATED");
   const [testnetLeverage, setTestnetLeverage] = useState(10);
   const [testnetRiskMode, setTestnetRiskMode] = useState<
-    "PERCENTAGE" | "FIXED_USD"
+    RiskMode
   >("PERCENTAGE");
   const [testnetRiskAmountUsd, setTestnetRiskAmountUsd] = useState(10.0);
   const [testnetRiskPerTradePct, setTestnetRiskPerTradePct] = useState(2.0);
@@ -236,7 +244,7 @@ export default function CredentialConfig({
     "ISOLATED",
   );
   const [liveLeverage, setLiveLeverage] = useState(10);
-  const [liveRiskMode, setLiveRiskMode] = useState<"PERCENTAGE" | "FIXED_USD">(
+  const [liveRiskMode, setLiveRiskMode] = useState<RiskMode>(
     "PERCENTAGE",
   );
   const [liveRiskAmountUsd, setLiveRiskAmountUsd] = useState(10.0);
@@ -537,14 +545,12 @@ export default function CredentialConfig({
             );
             setTestnetLeverage(d.testnetLeverage || d.leverage || 10);
             setTestnetRiskMode(
-              (
+              toRiskMode(
                 d.testnetRiskMode ||
                 d.binanceRiskMode ||
                 d.riskMode ||
                 "PERCENTAGE"
-              ).toUpperCase() === "FIXED_USD"
-                ? "FIXED_USD"
-                : "PERCENTAGE",
+              ),
             );
             setTestnetRiskAmountUsd(
               Number(
@@ -605,14 +611,12 @@ export default function CredentialConfig({
             setLiveMarginType(d.liveMarginType || d.marginType || "ISOLATED");
             setLiveLeverage(d.liveLeverage || d.leverage || 10);
             setLiveRiskMode(
-              (
+              toRiskMode(
                 d.liveRiskMode ||
                 d.binanceRiskMode ||
                 d.riskMode ||
                 "PERCENTAGE"
-              ).toUpperCase() === "FIXED_USD"
-                ? "FIXED_USD"
-                : "PERCENTAGE",
+              ),
             );
             setLiveRiskAmountUsd(
               Number(
@@ -1836,14 +1840,16 @@ export default function CredentialConfig({
                   <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
                     {riskMode === "FIXED_USD"
                       ? "FIXED USD ($)"
-                      : "PERCENTAGE (%)"}
+                      : riskMode === "RISK_AT_SL"
+                        ? "RISK AT SL (%)"
+                        : "PERCENTAGE (%)"}
                   </span>
                 </div>
                 <select
                   id="risk-mode"
                   value={riskMode}
                   onChange={(e) =>
-                    setRiskMode(e.target.value as "PERCENTAGE" | "FIXED_USD")
+                    setRiskMode(e.target.value as RiskMode)
                   }
                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1853,11 +1859,16 @@ export default function CredentialConfig({
                   <option value="FIXED_USD" className="text-black">
                     Fixed USD Amount ($ Margin per Trade)
                   </option>
+                  <option value="RISK_AT_SL" className="text-black">
+                    Risk at Stop Loss (% of Wallet Lost if SL Hits)
+                  </option>
                 </select>
                 <p className="text-[10px] text-muted-foreground">
                   {riskMode === "FIXED_USD"
                     ? "Allocate a locked dollar margin per trade (ideal for small balances)."
-                    : "Dynamically calculate margin based on a percentage of available wallet balance."}
+                    : riskMode === "RISK_AT_SL"
+                      ? "Position size follows the signal SL distance so every stop loss costs the same % of balance (wider SL = smaller position). Margin per trade is capped at 20% of balance."
+                      : "Dynamically calculate margin based on a percentage of available wallet balance."}
                 </p>
               </div>
             )}
@@ -1877,7 +1888,9 @@ export default function CredentialConfig({
                   ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
                   : riskMode === "FIXED_USD"
                     ? "Fixed Margin Amount ($ USDT)"
-                    : "Risk Per Trade (% Wallet Balance)"}
+                    : riskMode === "RISK_AT_SL"
+                      ? "Loss at Stop Loss (% Wallet Balance)"
+                      : "Risk Per Trade (% Wallet Balance)"}
               </Label>
 
               {activeExchangeForm !== "TOKOCRYPTO" &&

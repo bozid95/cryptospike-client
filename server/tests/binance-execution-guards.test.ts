@@ -2,9 +2,11 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   evaluateEntryGuard,
+  computeRiskAtSlSizing,
   ensureStopLossOrExit,
   maxEntryDeviationR,
   resolveStopLossPrice,
+  riskAtSlLimits,
 } from "../src/exchanges/binance/execution-guards";
 
 /**
@@ -127,5 +129,61 @@ describe("ensureStopLossOrExit", () => {
     const h = harness({ primary: new Error("a"), fallback: new Error("b"), close: new Error("c") });
     assert.equal(await ensureStopLossOrExit(h.deps), "UNPROTECTED");
     assert.ok(h.logs.some((l) => l.includes("OPEN WITHOUT STOP LOSS")));
+  });
+});
+
+describe("computeRiskAtSlSizing (RISK_AT_SL)", () => {
+  const base = { walletBalance: 500, riskPct: 1, entryPrice: 100, leverage: 10, minSlPct: 0.5, maxMarginPct: 20 };
+
+  test("every SL distance loses the same amount at stop loss", () => {
+    for (const [sl, notional] of [[101, 500], [102.5, 200], [105, 100]] as const) {
+      const r = computeRiskAtSlSizing({ ...base, slPrice: sl });
+      assert.ok(!("error" in r));
+      assert.ok(Math.abs(r.notional - notional) < 1e-6, `notional for SL ${sl}`);
+      assert.ok(Math.abs(r.riskUsd - 5) < 1e-6, `risk for SL ${sl}`);
+      assert.equal(r.capped, false);
+    }
+  });
+
+  test("works for LONG (SL below entry)", () => {
+    const r = computeRiskAtSlSizing({ ...base, slPrice: 98 });
+    assert.ok(!("error" in r));
+    assert.ok(Math.abs(r.notional - 250) < 1e-6);
+    assert.ok(Math.abs(r.margin - 25) < 1e-6);
+  });
+
+  test("margin cap shrinks the position and the effective risk", () => {
+    // SL 0.6% → notional 833; at 5x leverage margin 166 > cap 20% × 500 = 100
+    const r = computeRiskAtSlSizing({ ...base, leverage: 5, slPrice: 100.6 });
+    assert.ok(!("error" in r));
+    assert.equal(r.capped, true);
+    assert.ok(Math.abs(r.margin - 100) < 1e-6);
+    assert.ok(Math.abs(r.notional - 500) < 1e-6);
+    assert.ok(r.riskUsd < 5);
+  });
+
+  test("rejects an SL tighter than the minimum distance", () => {
+    const r = computeRiskAtSlSizing({ ...base, slPrice: 100.3 });
+    assert.ok("error" in r && /below minimum/.test(r.error));
+  });
+
+  test("rejects invalid inputs", () => {
+    assert.ok("error" in computeRiskAtSlSizing({ ...base, slPrice: 0 }));
+    assert.ok("error" in computeRiskAtSlSizing({ ...base, walletBalance: 0, slPrice: 102 }));
+    assert.ok("error" in computeRiskAtSlSizing({ ...base, riskPct: 0, slPrice: 102 }));
+  });
+
+  test("limits come from env with safe defaults", () => {
+    const prev = { a: process.env.BINANCE_RISK_MIN_SL_PCT, b: process.env.BINANCE_RISK_MAX_MARGIN_PCT };
+    delete process.env.BINANCE_RISK_MIN_SL_PCT;
+    delete process.env.BINANCE_RISK_MAX_MARGIN_PCT;
+    assert.deepEqual(riskAtSlLimits(), { minSlPct: 0.5, maxMarginPct: 20 });
+    process.env.BINANCE_RISK_MIN_SL_PCT = "0.8";
+    process.env.BINANCE_RISK_MAX_MARGIN_PCT = "150";
+    assert.deepEqual(riskAtSlLimits(), { minSlPct: 0.8, maxMarginPct: 20 });
+    for (const [k, v] of [["BINANCE_RISK_MIN_SL_PCT", prev.a], ["BINANCE_RISK_MAX_MARGIN_PCT", prev.b]] as const) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   });
 });

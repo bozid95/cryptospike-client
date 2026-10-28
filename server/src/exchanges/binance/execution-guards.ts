@@ -121,3 +121,59 @@ export async function ensureStopLossOrExit(deps: {
     return "UNPROTECTED";
   }
 }
+
+/** Batas pengaman mode RISK_AT_SL (env): jarak SL minimum (%) & margin maksimum per trade (% saldo). */
+export function riskAtSlLimits(): { minSlPct: number; maxMarginPct: number } {
+  const minSl = parseFloat(process.env.BINANCE_RISK_MIN_SL_PCT || "0.5");
+  const maxMargin = parseFloat(process.env.BINANCE_RISK_MAX_MARGIN_PCT || "20");
+  return {
+    minSlPct: Number.isFinite(minSl) && minSl > 0 ? minSl : 0.5,
+    maxMarginPct:
+      Number.isFinite(maxMargin) && maxMargin > 0 && maxMargin <= 100 ? maxMargin : 20,
+  };
+}
+
+export interface RiskAtSlSizing {
+  margin: number;
+  notional: number;
+  /** Kerugian USD bila SL kena (setelah pembatasan margin). */
+  riskUsd: number;
+  slDistPct: number;
+  capped: boolean;
+}
+
+/**
+ * Mode RISK_AT_SL: ukuran posisi dihitung agar kerugian saat SL = riskPct % saldo.
+ *   notional = (saldo × riskPct%) ÷ jarak SL%   ;   margin = notional ÷ leverage
+ * Margin dibatasi maxMarginPct % saldo (risiko efektif ikut turun). Mengembalikan alasan penolakan bila tidak aman.
+ */
+export function computeRiskAtSlSizing(params: {
+  walletBalance: number;
+  riskPct: number;
+  entryPrice: number;
+  slPrice: number;
+  leverage: number;
+  minSlPct: number;
+  maxMarginPct: number;
+}): RiskAtSlSizing | { error: string } {
+  const { walletBalance, riskPct, entryPrice, slPrice, leverage, minSlPct, maxMarginPct } = params;
+  if (!(walletBalance > 0) || !(entryPrice > 0) || !(slPrice > 0) || !(leverage > 0) || !(riskPct > 0)) {
+    return { error: "invalid sizing inputs" };
+  }
+  const slDistPct = (Math.abs(entryPrice - slPrice) / entryPrice) * 100;
+  if (slDistPct < minSlPct) {
+    return {
+      error: `SL distance ${slDistPct.toFixed(2)}% below minimum ${minSlPct}% (position would be oversized)`,
+    };
+  }
+  let notional = (walletBalance * riskPct) / 100 / (slDistPct / 100);
+  let margin = notional / leverage;
+  const maxMargin = (walletBalance * maxMarginPct) / 100;
+  let capped = false;
+  if (margin > maxMargin) {
+    margin = maxMargin;
+    notional = margin * leverage;
+    capped = true;
+  }
+  return { margin, notional, riskUsd: notional * (slDistPct / 100), slDistPct, capped };
+}

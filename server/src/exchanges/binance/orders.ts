@@ -8,8 +8,10 @@ import { getSymbolFilters, getMarkPrice, roundStep, roundTick } from "./market";
 import {
   evaluateEntryGuard,
   ensureStopLossOrExit,
+  computeRiskAtSlSizing,
   maxEntryDeviationR,
   resolveStopLossPrice,
+  riskAtSlLimits,
 } from "./execution-guards";
 import { getAccountAndPositions, testBinanceConnection } from "./account";
 import { BinanceExecutionConfig, PlaceOrderParams } from "./types";
@@ -501,6 +503,33 @@ export async function executeSignalOrder(
 
     if (riskMode === "FIXED_USD") {
       marginToRisk = Math.max(0.1, Number(config.riskAmountUsd || 10.0));
+    } else if (riskMode === "RISK_AT_SL") {
+      // Kerugian saat SL = riskPerTradePct % saldo; ukuran posisi mengikuti jarak SL efektif
+      const riskPct = config.riskPerTradePct || 1.0;
+      const { minSlPct, maxMarginPct } = riskAtSlLimits();
+      const sizing = computeRiskAtSlSizing({
+        walletBalance,
+        riskPct,
+        entryPrice: pricingRef,
+        slPrice: slPlan.price,
+        leverage: config.leverage || 10,
+        minSlPct,
+        maxMarginPct,
+      });
+      if ("error" in sizing) {
+        addAppLog(
+          "WARN",
+          "Executor",
+          `[RISK_AT_SL] ${symbol} skipped: ${sizing.error}.`,
+        );
+        return;
+      }
+      marginToRisk = sizing.margin;
+      addAppLog(
+        "INFO",
+        "Executor",
+        `[RISK_AT_SL] ${symbol} SL ${sizing.slDistPct.toFixed(2)}% → notional $${sizing.notional.toFixed(2)}, margin $${sizing.margin.toFixed(2)}, risk at SL $${sizing.riskUsd.toFixed(2)} (${((sizing.riskUsd / walletBalance) * 100).toFixed(2)}% of balance${sizing.capped ? `, capped by max margin ${maxMarginPct}%` : ""}).`,
+      );
     } else {
       const riskPct = config.riskPerTradePct || 2.0;
       marginToRisk = (walletBalance * riskPct) / 100;
