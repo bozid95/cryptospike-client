@@ -6,11 +6,13 @@ import {
   cancelAllOpenOrders,
   moveSlToBreakEven,
   clearBreakEvenState,
+  closePositionDirect,
   getBaseUrl,
   isBinanceRestPaused,
 } from "../lib/binance";
 import { isBinanceWsHealthy } from "./binance-ws.service";
 import { shouldRunMonitorCycle } from "./binance-stream-health";
+import { getTpConfig } from "../lib/tp-config";
 
 interface MonitoredPosition {
   symbol: string;
@@ -18,6 +20,7 @@ interface MonitoredPosition {
   entryPrice: number;
   initialQty: number;
   bepMoved: boolean;
+  openedAt: number;
   lastCheckedAt: number;
 }
 
@@ -95,6 +98,29 @@ export async function checkBinancePositionsCycle(): Promise<void> {
       process.env.BINANCE_BEP_BUFFER_PCT || "0.2",
     );
 
+    const tpConfig = getTpConfig();
+    const stagnationEnabled = isTestnet
+      ? Boolean(
+          tpConfig.testnetStagnationStopEnabled ??
+          process.env.BINANCE_STAGNATION_STOP !== "false",
+        )
+      : Boolean(
+          tpConfig.liveStagnationStopEnabled ??
+          process.env.BINANCE_STAGNATION_STOP !== "false",
+        );
+    const stagnationHours = isTestnet
+      ? Number(
+          tpConfig.testnetStagnationHours ||
+            process.env.BINANCE_STAGNATION_HOURS ||
+            32,
+        )
+      : Number(
+          tpConfig.liveStagnationHours ||
+            process.env.BINANCE_STAGNATION_HOURS ||
+            32,
+        );
+    const stagnationMs = stagnationHours * 60 * 60 * 1000;
+
     // Ambil akun & posisi aktif
     const { positions } = await getAccountAndPositions(
       apiKey,
@@ -120,6 +146,7 @@ export async function checkBinancePositionsCycle(): Promise<void> {
           entryPrice: pos.entryPrice,
           initialQty: currentAmt,
           bepMoved: false,
+          openedAt: Date.now(),
           lastCheckedAt: Date.now(),
         };
         monitoredPositions.set(symbol, tracked);
@@ -127,6 +154,32 @@ export async function checkBinancePositionsCycle(): Promise<void> {
         // Update initialQty jika posisi baru saja ditambah
         if (currentAmt > tracked.initialQty) {
           tracked.initialQty = currentAmt;
+        }
+      }
+
+      // Evaluasi Stagnation Cutoff: Jika posisi macet >= stagnationHours dan belum TP1 / BEP
+      if (stagnationEnabled && !tracked.bepMoved) {
+        const holdingMs = Date.now() - tracked.openedAt;
+        if (holdingMs >= stagnationMs) {
+          const holdingHours = (holdingMs / (60 * 60 * 1000)).toFixed(1);
+          addAppLog(
+            "WARN",
+            "BinanceMonitor",
+            `[Stagnation Cutoff] Position ${symbol} has been open for ${holdingHours}h without reaching TP1 (limit: ${stagnationHours}h). Closing position at market...`,
+          );
+
+          try {
+            await closePositionDirect(apiKey, apiSecret, symbol, isTestnet);
+            await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
+            monitoredPositions.delete(symbol);
+            continue;
+          } catch (err: any) {
+            addAppLog(
+              "ERROR",
+              "BinanceMonitor",
+              `[Stagnation Cutoff Failed] Could not close ${symbol}: ${err?.message}`,
+            );
+          }
         }
       }
 

@@ -16,6 +16,8 @@ export interface TpConfigData {
   testnetCustomTpSplitRatio: number; // e.g. 70 for 70%
   testnetSlMode: SlMode;
   testnetCustomSlValue: number;
+  testnetStagnationStopEnabled: boolean;
+  testnetStagnationHours: number;
 
   // Binance Futures Live
   liveTpMode: TpMode;
@@ -23,6 +25,8 @@ export interface TpConfigData {
   liveCustomTpSplitRatio: number;
   liveSlMode: SlMode;
   liveCustomSlValue: number;
+  liveStagnationStopEnabled: boolean;
+  liveStagnationHours: number;
 
   // Tokocrypto Spot
   tokocryptoTpMode: TpMode;
@@ -38,12 +42,16 @@ export const DEFAULT_TP_CONFIG: TpConfigData = {
   testnetCustomTpSplitRatio: 70, // Default 70%
   testnetSlMode: "SIGNAL_SL",
   testnetCustomSlValue: 15.0, // Default 15% ROI max loss
+  testnetStagnationStopEnabled: true,
+  testnetStagnationHours: 32, // Default 32 jam = 8 candle 4H
 
   liveTpMode: "MULTI_TP",
   liveCustomTpRoiPct: 10.0,
   liveCustomTpSplitRatio: 70,
   liveSlMode: "SIGNAL_SL",
   liveCustomSlValue: 15.0,
+  liveStagnationStopEnabled: true,
+  liveStagnationHours: 32, // Default 32 jam = 8 candle 4H
 
   tokocryptoTpMode: "MULTI_TP",
   tokocryptoCustomTpRoiPct: 3.5, // Default +3.5% Spot gain

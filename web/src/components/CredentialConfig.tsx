@@ -14,6 +14,7 @@ import {
   XIcon,
   Coins,
   Layers,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api";
@@ -218,9 +219,8 @@ export default function CredentialConfig({
     "ISOLATED" | "CROSSED"
   >("ISOLATED");
   const [testnetLeverage, setTestnetLeverage] = useState(10);
-  const [testnetRiskMode, setTestnetRiskMode] = useState<
-    RiskMode
-  >("PERCENTAGE");
+  const [testnetRiskMode, setTestnetRiskMode] =
+    useState<RiskMode>("PERCENTAGE");
   const [testnetRiskAmountUsd, setTestnetRiskAmountUsd] = useState(10.0);
   const [testnetRiskPerTradePct, setTestnetRiskPerTradePct] = useState(2.0);
   const [testnetMaxOpenPositions, setTestnetMaxOpenPositions] = useState(3);
@@ -244,9 +244,7 @@ export default function CredentialConfig({
     "ISOLATED",
   );
   const [liveLeverage, setLiveLeverage] = useState(10);
-  const [liveRiskMode, setLiveRiskMode] = useState<RiskMode>(
-    "PERCENTAGE",
-  );
+  const [liveRiskMode, setLiveRiskMode] = useState<RiskMode>("PERCENTAGE");
   const [liveRiskAmountUsd, setLiveRiskAmountUsd] = useState(10.0);
   const [liveRiskPerTradePct, setLiveRiskPerTradePct] = useState(2.0);
   const [liveMaxOpenPositions, setLiveMaxOpenPositions] = useState(3);
@@ -265,26 +263,32 @@ export default function CredentialConfig({
   const [testnetTpMode, setTestnetTpMode] = useState<
     "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT"
   >("MULTI_TP");
-  const [testnetCustomTpRoiPct, setTestnetCustomTpRoiPct] = useState<number>(10.0);
-  const [testnetCustomTpSplitRatio, setTestnetCustomTpSplitRatio] = useState<number>(70);
+  const [testnetCustomTpRoiPct, setTestnetCustomTpRoiPct] =
+    useState<number>(10.0);
+  const [testnetCustomTpSplitRatio, setTestnetCustomTpSplitRatio] =
+    useState<number>(70);
 
   const [liveTpMode, setLiveTpMode] = useState<
     "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT"
   >("MULTI_TP");
   const [liveCustomTpRoiPct, setLiveCustomTpRoiPct] = useState<number>(10.0);
-  const [liveCustomTpSplitRatio, setLiveCustomTpSplitRatio] = useState<number>(70);
+  const [liveCustomTpSplitRatio, setLiveCustomTpSplitRatio] =
+    useState<number>(70);
 
   const [tokocryptoTpMode, setTokocryptoTpMode] = useState<
     "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT"
   >("MULTI_TP");
-  const [tokocryptoCustomTpRoiPct, setTokocryptoCustomTpRoiPct] = useState<number>(3.5);
-  const [tokocryptoCustomTpSplitRatio, setTokocryptoCustomTpSplitRatio] = useState<number>(70);
+  const [tokocryptoCustomTpRoiPct, setTokocryptoCustomTpRoiPct] =
+    useState<number>(3.5);
+  const [tokocryptoCustomTpSplitRatio, setTokocryptoCustomTpSplitRatio] =
+    useState<number>(70);
 
   // 🛡️ Stop Loss Mode States
   const [testnetSlMode, setTestnetSlMode] = useState<
     "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI"
   >("SIGNAL_SL");
-  const [testnetCustomSlValue, setTestnetCustomSlValue] = useState<number>(15.0);
+  const [testnetCustomSlValue, setTestnetCustomSlValue] =
+    useState<number>(15.0);
 
   const [liveSlMode, setLiveSlMode] = useState<
     "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI"
@@ -294,7 +298,17 @@ export default function CredentialConfig({
   const [tokocryptoSlMode, setTokocryptoSlMode] = useState<
     "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI"
   >("SIGNAL_SL");
-  const [tokocryptoCustomSlValue, setTokocryptoCustomSlValue] = useState<number>(2.5);
+  const [tokocryptoCustomSlValue, setTokocryptoCustomSlValue] =
+    useState<number>(2.5);
+
+  // ⏱️ Stagnation Cutoff Mode States
+  const [testnetStagnationStopEnabled, setTestnetStagnationStopEnabled] =
+    useState<boolean>(true);
+  const [testnetStagnationHours, setTestnetStagnationHours] =
+    useState<number>(32);
+  const [liveStagnationStopEnabled, setLiveStagnationStopEnabled] =
+    useState<boolean>(true);
+  const [liveStagnationHours, setLiveStagnationHours] = useState<number>(32);
 
   // Tokocrypto Dedicated Risk & Execution
   const [tokocryptoApiKey, setTokocryptoApiKey] = useState("");
@@ -453,6 +467,20 @@ export default function CredentialConfig({
     ? setLiveRiskAmountUsd
     : setTestnetRiskAmountUsd;
 
+  const stagnationStopEnabled = isLiveBinance
+    ? liveStagnationStopEnabled
+    : testnetStagnationStopEnabled;
+  const setStagnationStopEnabled = isLiveBinance
+    ? setLiveStagnationStopEnabled
+    : setTestnetStagnationStopEnabled;
+
+  const stagnationHours = isLiveBinance
+    ? liveStagnationHours
+    : testnetStagnationHours;
+  const setStagnationHours = isLiveBinance
+    ? setLiveStagnationHours
+    : setTestnetStagnationHours;
+
   const maxOpenPositions = isTokoForm
     ? tokocryptoMaxOpenPositions
     : isLiveBinance
@@ -547,9 +575,9 @@ export default function CredentialConfig({
             setTestnetRiskMode(
               toRiskMode(
                 d.testnetRiskMode ||
-                d.binanceRiskMode ||
-                d.riskMode ||
-                "PERCENTAGE"
+                  d.binanceRiskMode ||
+                  d.riskMode ||
+                  "PERCENTAGE",
               ),
             );
             setTestnetRiskAmountUsd(
@@ -613,9 +641,9 @@ export default function CredentialConfig({
             setLiveRiskMode(
               toRiskMode(
                 d.liveRiskMode ||
-                d.binanceRiskMode ||
-                d.riskMode ||
-                "PERCENTAGE"
+                  d.binanceRiskMode ||
+                  d.riskMode ||
+                  "PERCENTAGE",
               ),
             );
             setLiveRiskAmountUsd(
@@ -676,13 +704,19 @@ export default function CredentialConfig({
             // 🎯 Load Take Profit Modes
             setTestnetTpMode(d.testnetTpMode || "MULTI_TP");
             setTestnetCustomTpRoiPct(Number(d.testnetCustomTpRoiPct || 10.0));
-            setTestnetCustomTpSplitRatio(Number(d.testnetCustomTpSplitRatio ?? 70));
+            setTestnetCustomTpSplitRatio(
+              Number(d.testnetCustomTpSplitRatio ?? 70),
+            );
             setLiveTpMode(d.liveTpMode || "MULTI_TP");
             setLiveCustomTpRoiPct(Number(d.liveCustomTpRoiPct || 10.0));
             setLiveCustomTpSplitRatio(Number(d.liveCustomTpSplitRatio ?? 70));
             setTokocryptoTpMode(d.tokocryptoTpMode || "MULTI_TP");
-            setTokocryptoCustomTpRoiPct(Number(d.tokocryptoCustomTpRoiPct || 3.5));
-            setTokocryptoCustomTpSplitRatio(Number(d.tokocryptoCustomTpSplitRatio ?? 70));
+            setTokocryptoCustomTpRoiPct(
+              Number(d.tokocryptoCustomTpRoiPct || 3.5),
+            );
+            setTokocryptoCustomTpSplitRatio(
+              Number(d.tokocryptoCustomTpSplitRatio ?? 70),
+            );
 
             // 🛡️ Load Stop Loss Modes
             setTestnetSlMode(d.testnetSlMode || "SIGNAL_SL");
@@ -690,7 +724,19 @@ export default function CredentialConfig({
             setLiveSlMode(d.liveSlMode || "SIGNAL_SL");
             setLiveCustomSlValue(Number(d.liveCustomSlValue ?? 15.0));
             setTokocryptoSlMode(d.tokocryptoSlMode || "SIGNAL_SL");
-            setTokocryptoCustomSlValue(Number(d.tokocryptoCustomSlValue ?? 2.5));
+            setTokocryptoCustomSlValue(
+              Number(d.tokocryptoCustomSlValue ?? 2.5),
+            );
+
+            // ⏱️ Load Stagnation Cutoff
+            setTestnetStagnationStopEnabled(
+              Boolean(d.testnetStagnationStopEnabled ?? true),
+            );
+            setTestnetStagnationHours(Number(d.testnetStagnationHours || 32));
+            setLiveStagnationStopEnabled(
+              Boolean(d.liveStagnationStopEnabled ?? true),
+            );
+            setLiveStagnationHours(Number(d.liveStagnationHours || 32));
 
             // Auto-fetch balances if credentials exist
             try {
@@ -919,6 +965,14 @@ export default function CredentialConfig({
         testnetCustomTpSplitRatio: Number(testnetCustomTpSplitRatio),
         testnetSlMode,
         testnetCustomSlValue: Number(testnetCustomSlValue),
+        testnetStagnationStopEnabled:
+          !isTokoForm && binanceSubTab === "TESTNET"
+            ? stagnationStopEnabled
+            : testnetStagnationStopEnabled,
+        testnetStagnationHours:
+          !isTokoForm && binanceSubTab === "TESTNET"
+            ? Number(stagnationHours)
+            : Number(testnetStagnationHours),
         testnetRiskMode:
           !isTokoForm && binanceSubTab === "TESTNET"
             ? riskMode
@@ -952,6 +1006,14 @@ export default function CredentialConfig({
         liveCustomTpSplitRatio: Number(liveCustomTpSplitRatio),
         liveSlMode,
         liveCustomSlValue: Number(liveCustomSlValue),
+        liveStagnationStopEnabled:
+          !isTokoForm && binanceSubTab === "LIVE"
+            ? stagnationStopEnabled
+            : liveStagnationStopEnabled,
+        liveStagnationHours:
+          !isTokoForm && binanceSubTab === "LIVE"
+            ? Number(stagnationHours)
+            : Number(liveStagnationHours),
         liveRiskMode:
           !isTokoForm && binanceSubTab === "LIVE" ? riskMode : liveRiskMode,
         liveRiskAmountUsd:
@@ -1848,9 +1910,7 @@ export default function CredentialConfig({
                 <select
                   id="risk-mode"
                   value={riskMode}
-                  onChange={(e) =>
-                    setRiskMode(e.target.value as RiskMode)
-                  }
+                  onChange={(e) => setRiskMode(e.target.value as RiskMode)}
                   className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="PERCENTAGE" className="text-black">
@@ -2152,11 +2212,17 @@ export default function CredentialConfig({
             {/* 🎯 Take Profit Execution Mode (Intercept TP) */}
             <div className="space-y-2 pt-3 border-t border-border/50">
               <div className="flex items-center justify-between">
-                <Label htmlFor="tp-mode" className="text-xs font-semibold flex items-center gap-1.5">
+                <Label
+                  htmlFor="tp-mode"
+                  className="text-xs font-semibold flex items-center gap-1.5"
+                >
                   <Layers className="size-3.5 text-primary" />
                   Take Profit Target Mode
                 </Label>
-                <Badge variant="outline" className="text-[10px] font-mono font-semibold uppercase">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-mono font-semibold uppercase"
+                >
                   {tpMode === "TP1_ONLY"
                     ? "100% TP1"
                     : tpMode === "TP2_ONLY"
@@ -2164,7 +2230,11 @@ export default function CredentialConfig({
                       : tpMode === "CUSTOM_ROI"
                         ? "Custom ROI (+" + customTpRoiPct + "%)"
                         : tpMode === "CUSTOM_SPLIT"
-                          ? "Split " + customTpSplitRatio + "% @ +" + customTpRoiPct + "% ROI"
+                          ? "Split " +
+                            customTpSplitRatio +
+                            "% @ +" +
+                            customTpRoiPct +
+                            "% ROI"
                           : "Multi-TP (50/30/20)"}
                 </Badge>
               </div>
@@ -2174,7 +2244,13 @@ export default function CredentialConfig({
                 value={tpMode}
                 onChange={(e) =>
                   setTpMode(
-                    e.target.value as "MULTI_TP" | "TP1_ONLY" | "TP2_ONLY" | "CUSTOM_ROI" | "CUSTOM_SPLIT" | "CUSTOM_SPLIT",
+                    e.target.value as
+                      | "MULTI_TP"
+                      | "TP1_ONLY"
+                      | "TP2_ONLY"
+                      | "CUSTOM_ROI"
+                      | "CUSTOM_SPLIT"
+                      | "CUSTOM_SPLIT",
                   )
                 }
                 className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -2183,7 +2259,8 @@ export default function CredentialConfig({
                   Multi-Stage (50% TP1, 30% TP2, 20% Moonbag/Trailing) [Default]
                 </option>
                 <option value="CUSTOM_SPLIT" className="text-black">
-                  Custom Split (e.g. 70% at Target ROI + 30% Moonbag with Auto-BEP)
+                  Custom Split (e.g. 70% at Target ROI + 30% Moonbag with
+                  Auto-BEP)
                 </option>
                 <option value="TP1_ONLY" className="text-black">
                   100% Sell at TP1 Only (Scalper Hit & Run / Fast Profit Lock)
@@ -2199,13 +2276,19 @@ export default function CredentialConfig({
               {/* TP Mode Information Cards */}
               {tpMode === "TP1_ONLY" && (
                 <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
-                  ⚡ <strong>Fast Profit Lock:</strong> 100% of position size is placed as a limit order at <strong>TP1</strong> price. Once TP1 is reached, the entire position is closed immediately and profit is secured with zero residual exposure.
+                  ⚡ <strong>Fast Profit Lock:</strong> 100% of position size is
+                  placed as a limit order at <strong>TP1</strong> price. Once
+                  TP1 is reached, the entire position is closed immediately and
+                  profit is secured with zero residual exposure.
                 </div>
               )}
 
               {tpMode === "TP2_ONLY" && (
                 <div className="p-2 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary leading-relaxed">
-                  🎯 <strong>Balanced Target:</strong> 50% of the position is closed at <strong>TP1</strong>, and the remaining 50% is fully closed at <strong>TP2</strong>. Once TP1 is achieved, Stop Loss automatically adjusts to Break-Even (BEP).
+                  🎯 <strong>Balanced Target:</strong> 50% of the position is
+                  closed at <strong>TP1</strong>, and the remaining 50% is fully
+                  closed at <strong>TP2</strong>. Once TP1 is achieved, Stop
+                  Loss automatically adjusts to Break-Even (BEP).
                 </div>
               )}
 
@@ -2213,7 +2296,10 @@ export default function CredentialConfig({
                 <div className="space-y-2 p-2.5 rounded bg-primary/10 border border-primary/20">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label htmlFor="custom-split-ratio" className="text-[10px] font-semibold text-primary">
+                      <Label
+                        htmlFor="custom-split-ratio"
+                        className="text-[10px] font-semibold text-primary"
+                      >
                         First Exit Size (%)
                       </Label>
                       <Input
@@ -2223,13 +2309,18 @@ export default function CredentialConfig({
                         max="95"
                         step="5"
                         value={customTpSplitRatio}
-                        onChange={(e) => setCustomTpSplitRatio(Number(e.target.value))}
+                        onChange={(e) =>
+                          setCustomTpSplitRatio(Number(e.target.value))
+                        }
                         className="h-7 text-xs font-mono"
                         placeholder="e.g. 70"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="custom-split-roi" className="text-[10px] font-semibold text-primary">
+                      <Label
+                        htmlFor="custom-split-roi"
+                        className="text-[10px] font-semibold text-primary"
+                      >
                         First Target ROI (%)
                       </Label>
                       <Input
@@ -2239,20 +2330,35 @@ export default function CredentialConfig({
                         max="1000"
                         step="0.5"
                         value={customTpRoiPct}
-                        onChange={(e) => setCustomTpRoiPct(Number(e.target.value))}
+                        onChange={(e) =>
+                          setCustomTpRoiPct(Number(e.target.value))
+                        }
                         className="h-7 text-xs font-mono"
                         placeholder="e.g. 10.0"
                       />
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-[10px] pt-1 border-t border-primary/20">
-                    <span className="text-muted-foreground">Price Movement to First Target:</span>
+                    <span className="text-muted-foreground">
+                      Price Movement to First Target:
+                    </span>
                     <span className="font-mono font-bold text-primary">
-                      ~{((Number(customTpRoiPct) || 10) / (isTokoForm ? 1 : leverage)).toFixed(2)}%
+                      ~
+                      {(
+                        (Number(customTpRoiPct) || 10) /
+                        (isTokoForm ? 1 : leverage)
+                      ).toFixed(2)}
+                      %
                     </span>
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    ⚡ <strong>Asymmetric Profit Lock:</strong> <strong>{customTpSplitRatio}%</strong> of your position is automatically closed at <strong>+{customTpRoiPct}% ROI</strong>. The remaining <strong>{100 - customTpSplitRatio}%</strong> is kept open for extended gains while Auto-BEP shifts Stop Loss to entry price, creating a 100% risk-free moonbag.
+                    ⚡ <strong>Asymmetric Profit Lock:</strong>{" "}
+                    <strong>{customTpSplitRatio}%</strong> of your position is
+                    automatically closed at{" "}
+                    <strong>+{customTpRoiPct}% ROI</strong>. The remaining{" "}
+                    <strong>{100 - customTpSplitRatio}%</strong> is kept open
+                    for extended gains while Auto-BEP shifts Stop Loss to entry
+                    price, creating a 100% risk-free moonbag.
                   </p>
                 </div>
               )}
@@ -2260,11 +2366,19 @@ export default function CredentialConfig({
               {tpMode === "CUSTOM_ROI" && (
                 <div className="space-y-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="custom-tp-roi" className="text-[10px] font-semibold text-amber-900 dark:text-amber-200">
+                    <Label
+                      htmlFor="custom-tp-roi"
+                      className="text-[10px] font-semibold text-amber-900 dark:text-amber-200"
+                    >
                       Target Return on Equity (ROI %)
                     </Label>
                     <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
-                      ~{((Number(customTpRoiPct) || 15) / (isTokoForm ? 1 : leverage)).toFixed(2)}% Price Movement
+                      ~
+                      {(
+                        (Number(customTpRoiPct) || 15) /
+                        (isTokoForm ? 1 : leverage)
+                      ).toFixed(2)}
+                      % Price Movement
                     </span>
                   </div>
                   <Input
@@ -2279,14 +2393,17 @@ export default function CredentialConfig({
                     placeholder="e.g. 15.0"
                   />
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    100% of the position will be closed at the price target yielding <strong>+{customTpRoiPct}% ROI</strong> (automatically calculated based on {leverage}x leverage).
+                    100% of the position will be closed at the price target
+                    yielding <strong>+{customTpRoiPct}% ROI</strong>{" "}
+                    (automatically calculated based on {leverage}x leverage).
                   </p>
                 </div>
               )}
 
               {tpMode === "MULTI_TP" && (
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Standard CryptoSpike allocation: 50% TP1, 30% TP2, and 20% Moonbag Trailing Stop Runner with Auto Break-Even protection.
+                  Standard CryptoSpike allocation: 50% TP1, 30% TP2, and 20%
+                  Moonbag Trailing Stop Runner with Auto Break-Even protection.
                 </p>
               )}
             </div>
@@ -2294,11 +2411,17 @@ export default function CredentialConfig({
             {/* 🛡️ Stop Loss Guard Mode (Custom SL) */}
             <div className="space-y-2 pt-3 border-t border-border/50">
               <div className="flex items-center justify-between">
-                <Label htmlFor="sl-mode" className="text-xs font-semibold flex items-center gap-1.5">
+                <Label
+                  htmlFor="sl-mode"
+                  className="text-xs font-semibold flex items-center gap-1.5"
+                >
                   <ShieldAlert className="size-3.5 text-destructive" />
                   Stop Loss Guard Mode
                 </Label>
-                <Badge variant="outline" className="text-[10px] font-mono font-semibold uppercase">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-mono font-semibold uppercase"
+                >
                   {slMode === "MAX_LOSS_ROI"
                     ? "Max Loss ROI (-" + customSlValue + "%)"
                     : slMode === "FIXED_PCT"
@@ -2312,16 +2435,21 @@ export default function CredentialConfig({
                 value={slMode}
                 onChange={(e) =>
                   setSlMode(
-                    e.target.value as "SIGNAL_SL" | "FIXED_PCT" | "MAX_LOSS_ROI",
+                    e.target.value as
+                      | "SIGNAL_SL"
+                      | "FIXED_PCT"
+                      | "MAX_LOSS_ROI",
                   )
                 }
                 className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="SIGNAL_SL" className="text-black">
-                  Signal AI Structural SL (Dynamic S/R &amp; ATR Guard) [Recommended]
+                  Signal AI Structural SL (Dynamic S/R &amp; ATR Guard)
+                  [Recommended]
                 </option>
                 <option value="MAX_LOSS_ROI" className="text-black">
-                  Max Margin Loss ROI % (Wallet Protection — Divided by Leverage)
+                  Max Margin Loss ROI % (Wallet Protection — Divided by
+                  Leverage)
                 </option>
                 <option value="FIXED_PCT" className="text-black">
                   Fixed Price Drop % (Chart Candlestick Movement)
@@ -2331,18 +2459,29 @@ export default function CredentialConfig({
               {/* Penjelasan Komparasi Detail Mode SL */}
               {slMode === "SIGNAL_SL" && (
                 <div className="p-2 rounded bg-muted/40 border text-[10px] text-muted-foreground leading-relaxed">
-                  🧠 <strong>AI Structural Guard:</strong> Stop Loss is dynamically placed at the key structural level calculated by CryptoSpike (below swing low for LONG / above swing high for SHORT with ATR wick buffer).
+                  🧠 <strong>AI Structural Guard:</strong> Stop Loss is
+                  dynamically placed at the key structural level calculated by
+                  CryptoSpike (below swing low for LONG / above swing high for
+                  SHORT with ATR wick buffer).
                 </div>
               )}
 
               {slMode === "MAX_LOSS_ROI" && (
                 <div className="space-y-1.5 p-2 rounded bg-destructive/10 border border-destructive/20">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="custom-sl-roi" className="text-[10px] font-semibold text-destructive dark:text-red-300">
+                    <Label
+                      htmlFor="custom-sl-roi"
+                      className="text-[10px] font-semibold text-destructive dark:text-red-300"
+                    >
                       Maximum Loss Tolerance (% of Margin)
                     </Label>
                     <span className="text-[10px] font-mono font-bold text-destructive dark:text-red-300">
-                      ~{((Number(customSlValue) || 15) / (isTokoForm ? 1 : leverage)).toFixed(2)}% Price Drop on Chart
+                      ~
+                      {(
+                        (Number(customSlValue) || 15) /
+                        (isTokoForm ? 1 : leverage)
+                      ).toFixed(2)}
+                      % Price Drop on Chart
                     </span>
                   </div>
                   <Input
@@ -2358,10 +2497,23 @@ export default function CredentialConfig({
                   />
                   <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
                     <p>
-                      💰 <strong>Wallet-Centric Protection:</strong> Limits maximum loss to <strong>-{customSlValue}%</strong> of your allocated trade margin.
+                      💰 <strong>Wallet-Centric Protection:</strong> Limits
+                      maximum loss to <strong>-{customSlValue}%</strong> of your
+                      allocated trade margin.
                     </p>
                     <p className="text-foreground font-medium">
-                      * Calculation: On {leverage}x leverage, the Stop Loss order is automatically placed at <strong>~{((Number(customSlValue) || 15) / (isTokoForm ? 1 : leverage)).toFixed(2)}%</strong> price movement ({customSlValue}% ÷ {leverage}x), capping your wallet loss budget.
+                      * Calculation: On {leverage}x leverage, the Stop Loss
+                      order is automatically placed at{" "}
+                      <strong>
+                        ~
+                        {(
+                          (Number(customSlValue) || 15) /
+                          (isTokoForm ? 1 : leverage)
+                        ).toFixed(2)}
+                        %
+                      </strong>{" "}
+                      price movement ({customSlValue}% ÷ {leverage}x), capping
+                      your wallet loss budget.
                     </p>
                   </div>
                 </div>
@@ -2370,11 +2522,18 @@ export default function CredentialConfig({
               {slMode === "FIXED_PCT" && (
                 <div className="space-y-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="custom-sl-pct" className="text-[10px] font-semibold text-amber-900 dark:text-amber-200">
+                    <Label
+                      htmlFor="custom-sl-pct"
+                      className="text-[10px] font-semibold text-amber-900 dark:text-amber-200"
+                    >
                       Chart Price Drop Tolerance (%)
                     </Label>
                     <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
-                      -{(Number(customSlValue) * (isTokoForm ? 1 : leverage)).toFixed(1)}% ROI Impact on Margin
+                      -
+                      {(
+                        Number(customSlValue) * (isTokoForm ? 1 : leverage)
+                      ).toFixed(1)}
+                      % ROI Impact on Margin
                     </span>
                   </div>
                   <Input
@@ -2390,15 +2549,100 @@ export default function CredentialConfig({
                   />
                   <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
                     <p>
-                      📊 <strong>Chart-Centric Protection:</strong> Stop Loss is placed exactly <strong>-{customSlValue}%</strong> away from your entry price on the candlestick chart.
+                      📊 <strong>Chart-Centric Protection:</strong> Stop Loss is
+                      placed exactly <strong>-{customSlValue}%</strong> away
+                      from your entry price on the candlestick chart.
                     </p>
                     <p className="text-foreground font-medium">
-                      * Calculation: On {leverage}x leverage, a -{customSlValue}% price drop will result in a <strong>-{(Number(customSlValue) * (isTokoForm ? 1 : leverage)).toFixed(1)}% ROI</strong> loss on your margin ({customSlValue}% × {leverage}x).
+                      * Calculation: On {leverage}x leverage, a -{customSlValue}
+                      % price drop will result in a{" "}
+                      <strong>
+                        -
+                        {(
+                          Number(customSlValue) * (isTokoForm ? 1 : leverage)
+                        ).toFixed(1)}
+                        % ROI
+                      </strong>{" "}
+                      loss on your margin ({customSlValue}% × {leverage}x).
                     </p>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* ⏱️ Stagnation Cutoff Guard (Time-Exit) */}
+            {!isTokoForm && (
+              <div className="space-y-2 pt-3 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label
+                      htmlFor="stagnation-toggle"
+                      className="text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <Clock className="size-3.5 text-amber-500" />
+                      Stagnation Cutoff Guard (Time-Exit)
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Tutup posisi otomatis jika pergerakan macet/stagnan
+                      sebelum menyentuh TP1
+                    </p>
+                  </div>
+                  <Switch
+                    id="stagnation-toggle"
+                    checked={stagnationStopEnabled}
+                    onCheckedChange={setStagnationStopEnabled}
+                  />
+                </div>
+
+                {stagnationStopEnabled && (
+                  <div className="space-y-2 p-2.5 rounded bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="stagnation-hours"
+                        className="text-[10px] font-semibold text-amber-900 dark:text-amber-200"
+                      >
+                        Max Holding Duration Before TP1 (Hours)
+                      </Label>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300 border-amber-500/30"
+                      >
+                        {stagnationHours} Jam ({Math.round(stagnationHours / 4)}{" "}
+                        x 4H Candle)
+                      </Badge>
+                    </div>
+                    <Input
+                      id="stagnation-hours"
+                      type="number"
+                      min="4"
+                      max="168"
+                      step="4"
+                      value={stagnationHours}
+                      onChange={(e) =>
+                        setStagnationHours(Math.max(1, Number(e.target.value)))
+                      }
+                      className="h-7 text-xs font-mono"
+                      placeholder="e.g. 32"
+                    />
+                    <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
+                      <p>
+                        💡 <strong>Proteksi Modal:</strong> Jika posisi sudah
+                        berjalan <strong>&ge; {stagnationHours} jam</strong> dan{" "}
+                        <strong>belum pernah mencapai TP1</strong>, bot akan
+                        menutup posisi di harga pasar untuk mencegah floating
+                        loss memburuk dan membebaskan kuota portofolio.
+                      </p>
+                      <p className="text-foreground font-medium">
+                        🛡️ <strong>Aman untuk Runner:</strong> Jika posisi sudah
+                        pernah menyentuh TP1 (Auto-BEP aktif), posisi{" "}
+                        <strong>tidak akan ditutup</strong> oleh timer ini dan
+                        dibiarkan trailing mengejar TP2 & TP3.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

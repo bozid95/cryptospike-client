@@ -7,9 +7,10 @@ import { connectToNestJS } from "../services/socket.service";
 import { restartBinanceWsService } from "../services/binance-ws.service";
 import { getTpConfig, saveTpConfig, TpMode, SlMode } from "../lib/tp-config";
 
-
 /** Mode alokasi risiko Binance yang didukung; nilai lain jatuh ke PERCENTAGE. */
-function normalizeRiskMode(mode: string): "PERCENTAGE" | "FIXED_USD" | "RISK_AT_SL" {
+function normalizeRiskMode(
+  mode: string,
+): "PERCENTAGE" | "FIXED_USD" | "RISK_AT_SL" {
   return mode === "FIXED_USD" || mode === "RISK_AT_SL" ? mode : "PERCENTAGE";
 }
 
@@ -55,6 +56,15 @@ configRouter.get("/", requireAuth, async (req: Request, res: Response) => {
       liveCustomSlValue: tpConfig.liveCustomSlValue,
       tokocryptoSlMode: tpConfig.tokocryptoSlMode,
       tokocryptoCustomSlValue: tpConfig.tokocryptoCustomSlValue,
+      // ⏱️ Stagnation Timeout Exit
+      testnetStagnationStopEnabled: Boolean(
+        tpConfig.testnetStagnationStopEnabled ?? true,
+      ),
+      testnetStagnationHours: Number(tpConfig.testnetStagnationHours || 32),
+      liveStagnationStopEnabled: Boolean(
+        tpConfig.liveStagnationStopEnabled ?? true,
+      ),
+      liveStagnationHours: Number(tpConfig.liveStagnationHours || 32),
 
       // 🧪 Binance Testnet Dedicated Fields
       testnetApiKey: binanceConfig?.testnetApiKey || "",
@@ -303,8 +313,7 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     }
     if (testnetRiskMode !== undefined) {
       const mode = String(testnetRiskMode).trim().toUpperCase();
-      binanceUpdate.testnetRiskMode =
-        normalizeRiskMode(mode);
+      binanceUpdate.testnetRiskMode = normalizeRiskMode(mode);
     }
     if (testnetRiskAmountUsd !== undefined) {
       binanceUpdate.testnetRiskAmountUsd = Math.max(
@@ -360,8 +369,7 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
     }
     if (liveRiskMode !== undefined) {
       const mode = String(liveRiskMode).trim().toUpperCase();
-      binanceUpdate.liveRiskMode =
-        normalizeRiskMode(mode);
+      binanceUpdate.liveRiskMode = normalizeRiskMode(mode);
     }
     if (liveRiskAmountUsd !== undefined) {
       binanceUpdate.liveRiskAmountUsd = Math.max(
@@ -402,12 +410,10 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
 
     if (binanceRiskMode !== undefined) {
       const mode = String(binanceRiskMode).trim().toUpperCase();
-      binanceUpdate.riskMode =
-        normalizeRiskMode(mode);
+      binanceUpdate.riskMode = normalizeRiskMode(mode);
     } else if (riskMode !== undefined) {
       const mode = String(riskMode).trim().toUpperCase();
-      binanceUpdate.riskMode =
-        normalizeRiskMode(mode);
+      binanceUpdate.riskMode = normalizeRiskMode(mode);
     }
 
     if (binanceRiskAmountUsd !== undefined) {
@@ -583,43 +589,105 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
 
     // Simpan Preferensi Take Profit Execution Mode
     const tpUpdates: any = {};
-    if (testnetTpMode !== undefined) tpUpdates.testnetTpMode = testnetTpMode as TpMode;
-    if (testnetCustomTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(testnetCustomTpRoiPct);
-    if (testnetCustomTpSplitRatio !== undefined) tpUpdates.testnetCustomTpSplitRatio = Number(testnetCustomTpSplitRatio);
+    if (testnetTpMode !== undefined)
+      tpUpdates.testnetTpMode = testnetTpMode as TpMode;
+    if (testnetCustomTpRoiPct !== undefined)
+      tpUpdates.testnetCustomTpRoiPct = Number(testnetCustomTpRoiPct);
+    if (testnetCustomTpSplitRatio !== undefined)
+      tpUpdates.testnetCustomTpSplitRatio = Number(testnetCustomTpSplitRatio);
     if (liveTpMode !== undefined) tpUpdates.liveTpMode = liveTpMode as TpMode;
-    if (liveCustomTpRoiPct !== undefined) tpUpdates.liveCustomTpRoiPct = Number(liveCustomTpRoiPct);
-    if (liveCustomTpSplitRatio !== undefined) tpUpdates.liveCustomTpSplitRatio = Number(liveCustomTpSplitRatio);
-    if (tokocryptoTpMode !== undefined) tpUpdates.tokocryptoTpMode = tokocryptoTpMode as TpMode;
-    if (tokocryptoCustomTpRoiPct !== undefined) tpUpdates.tokocryptoCustomTpRoiPct = Number(tokocryptoCustomTpRoiPct);
-    if (tokocryptoCustomTpSplitRatio !== undefined) tpUpdates.tokocryptoCustomTpSplitRatio = Number(tokocryptoCustomTpSplitRatio);
+    if (liveCustomTpRoiPct !== undefined)
+      tpUpdates.liveCustomTpRoiPct = Number(liveCustomTpRoiPct);
+    if (liveCustomTpSplitRatio !== undefined)
+      tpUpdates.liveCustomTpSplitRatio = Number(liveCustomTpSplitRatio);
+    if (tokocryptoTpMode !== undefined)
+      tpUpdates.tokocryptoTpMode = tokocryptoTpMode as TpMode;
+    if (tokocryptoCustomTpRoiPct !== undefined)
+      tpUpdates.tokocryptoCustomTpRoiPct = Number(tokocryptoCustomTpRoiPct);
+    if (tokocryptoCustomTpSplitRatio !== undefined)
+      tpUpdates.tokocryptoCustomTpSplitRatio = Number(
+        tokocryptoCustomTpSplitRatio,
+      );
 
     // 🛡️ Stop Loss Updates
-    if (testnetSlMode !== undefined) tpUpdates.testnetSlMode = testnetSlMode as SlMode;
-    if (testnetCustomSlValue !== undefined) tpUpdates.testnetCustomSlValue = Number(testnetCustomSlValue);
+    if (testnetSlMode !== undefined)
+      tpUpdates.testnetSlMode = testnetSlMode as SlMode;
+    if (testnetCustomSlValue !== undefined)
+      tpUpdates.testnetCustomSlValue = Number(testnetCustomSlValue);
     if (liveSlMode !== undefined) tpUpdates.liveSlMode = liveSlMode as SlMode;
-    if (liveCustomSlValue !== undefined) tpUpdates.liveCustomSlValue = Number(liveCustomSlValue);
-    if (tokocryptoSlMode !== undefined) tpUpdates.tokocryptoSlMode = tokocryptoSlMode as SlMode;
-    if (tokocryptoCustomSlValue !== undefined) tpUpdates.tokocryptoCustomSlValue = Number(tokocryptoCustomSlValue);
+    if (liveCustomSlValue !== undefined)
+      tpUpdates.liveCustomSlValue = Number(liveCustomSlValue);
+    if (tokocryptoSlMode !== undefined)
+      tpUpdates.tokocryptoSlMode = tokocryptoSlMode as SlMode;
+    if (tokocryptoCustomSlValue !== undefined)
+      tpUpdates.tokocryptoCustomSlValue = Number(tokocryptoCustomSlValue);
+
+    // ⏱️ Stagnation Timeout Updates
+    const {
+      testnetStagnationStopEnabled,
+      testnetStagnationHours,
+      liveStagnationStopEnabled,
+      liveStagnationHours,
+      stagnationStopEnabled,
+      stagnationHours,
+    } = req.body;
+    if (testnetStagnationStopEnabled !== undefined) {
+      tpUpdates.testnetStagnationStopEnabled = Boolean(
+        testnetStagnationStopEnabled,
+      );
+    }
+    if (testnetStagnationHours !== undefined) {
+      tpUpdates.testnetStagnationHours = Math.max(
+        1,
+        Number(testnetStagnationHours),
+      );
+    }
+    if (liveStagnationStopEnabled !== undefined) {
+      tpUpdates.liveStagnationStopEnabled = Boolean(liveStagnationStopEnabled);
+    }
+    if (liveStagnationHours !== undefined) {
+      tpUpdates.liveStagnationHours = Math.max(1, Number(liveStagnationHours));
+    }
+    if (stagnationStopEnabled !== undefined) {
+      if (environment === "LIVE") {
+        tpUpdates.liveStagnationStopEnabled = Boolean(stagnationStopEnabled);
+      } else {
+        tpUpdates.testnetStagnationStopEnabled = Boolean(stagnationStopEnabled);
+      }
+    }
+    if (stagnationHours !== undefined) {
+      if (environment === "LIVE") {
+        tpUpdates.liveStagnationHours = Math.max(1, Number(stagnationHours));
+      } else {
+        tpUpdates.testnetStagnationHours = Math.max(1, Number(stagnationHours));
+      }
+    }
 
     // Fallback sync jika dikirim via generic tpMode
     if (tpMode !== undefined) {
       if (environment === "LIVE") {
         tpUpdates.liveTpMode = tpMode as TpMode;
-        if (customTpRoiPct !== undefined) tpUpdates.liveCustomTpRoiPct = Number(customTpRoiPct);
-        if (customTpSplitRatio !== undefined) tpUpdates.liveCustomTpSplitRatio = Number(customTpSplitRatio);
+        if (customTpRoiPct !== undefined)
+          tpUpdates.liveCustomTpRoiPct = Number(customTpRoiPct);
+        if (customTpSplitRatio !== undefined)
+          tpUpdates.liveCustomTpSplitRatio = Number(customTpSplitRatio);
       } else {
         tpUpdates.testnetTpMode = tpMode as TpMode;
-        if (customTpRoiPct !== undefined) tpUpdates.testnetCustomTpRoiPct = Number(customTpRoiPct);
-        if (customTpSplitRatio !== undefined) tpUpdates.testnetCustomTpSplitRatio = Number(customTpSplitRatio);
+        if (customTpRoiPct !== undefined)
+          tpUpdates.testnetCustomTpRoiPct = Number(customTpRoiPct);
+        if (customTpSplitRatio !== undefined)
+          tpUpdates.testnetCustomTpSplitRatio = Number(customTpSplitRatio);
       }
     }
     if (slMode !== undefined) {
       if (environment === "LIVE") {
         tpUpdates.liveSlMode = slMode as SlMode;
-        if (customSlValue !== undefined) tpUpdates.liveCustomSlValue = Number(customSlValue);
+        if (customSlValue !== undefined)
+          tpUpdates.liveCustomSlValue = Number(customSlValue);
       } else {
         tpUpdates.testnetSlMode = slMode as SlMode;
-        if (customSlValue !== undefined) tpUpdates.testnetCustomSlValue = Number(customSlValue);
+        if (customSlValue !== undefined)
+          tpUpdates.testnetCustomSlValue = Number(customSlValue);
       }
     }
     const savedTp = saveTpConfig(tpUpdates);
@@ -652,6 +720,11 @@ configRouter.post("/", requireAuth, async (req: Request, res: Response) => {
       liveCustomSlValue: savedTp.liveCustomSlValue,
       tokocryptoSlMode: savedTp.tokocryptoSlMode,
       tokocryptoCustomSlValue: savedTp.tokocryptoCustomSlValue,
+      // ⏱️ Stagnation Timeout Exit
+      testnetStagnationStopEnabled: savedTp.testnetStagnationStopEnabled,
+      testnetStagnationHours: savedTp.testnetStagnationHours,
+      liveStagnationStopEnabled: savedTp.liveStagnationStopEnabled,
+      liveStagnationHours: savedTp.liveStagnationHours,
       // 🧪 Testnet
       testnetApiKey: savedBinance.testnetApiKey || "",
       testnetApiSecret: savedBinance.testnetApiSecret || "",
