@@ -4,6 +4,7 @@ import { executeSignalOrder } from "../lib/binance";
 import { executeTokocryptoSignalOrder } from "../lib/tokocrypto";
 import { addAppLog } from "../lib/logger";
 import { getTpConfig } from "../lib/tp-config";
+import { signalIdOf } from "../exchanges/binance/signal-execution-guard";
 
 const SERVER_URL = process.env.SERVER_URL || "https://signal.forlearning.my.id";
 
@@ -149,7 +150,48 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
       "SignalClient",
       `⚡ Broadcast signal received: ${data?.symbol} (${data?.side}) [${data?.strategy}] Score: ${data?.score}`,
     );
+    sendSignalAck({ signalId: signalIdOf(data), stage: "RECEIVED" });
     await handleIncomingSignal(data);
+  });
+}
+
+type AckOutcome = {
+  status: "EXECUTED" | "SKIPPED" | "FAILED" | "DISABLED";
+  reason?: string;
+};
+
+/**
+ * Konfirmasi ke Signal Server (status pengiriman per client). Hanya status & alasan — tanpa saldo/ukuran posisi.
+ * Matikan dengan SIGNAL_ACK_ENABLED=false. Saat terputus, socket.io-client menahan emit sampai tersambung lagi.
+ */
+export function sendSignalAck(payload: {
+  signalId: string | null;
+  stage: "RECEIVED" | "RESULT";
+  environment?: "TESTNET" | "LIVE";
+  status?: AckOutcome["status"];
+  reason?: string;
+}): boolean {
+  if (process.env.SIGNAL_ACK_ENABLED === "false") return false;
+  if (!socket || !payload.signalId) return false;
+  const { reason, ...rest } = payload;
+  socket.emit("signal_ack", {
+    ...rest,
+    ...(reason ? { reason: reason.slice(0, 300) } : {}),
+  });
+  return true;
+}
+
+function sendSignalResultAck(
+  data: any,
+  environment: "TESTNET" | "LIVE",
+  outcome: AckOutcome,
+): void {
+  sendSignalAck({
+    signalId: signalIdOf(data),
+    stage: "RESULT",
+    environment,
+    status: outcome.status,
+    ...(outcome.reason ? { reason: outcome.reason } : {}),
   });
 }
 
@@ -273,9 +315,13 @@ export async function handleIncomingSignal(data: any): Promise<void> {
         (binanceConfig.environment === "TESTNET" && binanceConfig.autoExecute),
       );
 
+      let testnetOutcome: AckOutcome = {
+        status: "DISABLED",
+        reason: "Testnet auto-execute off or API key missing",
+      };
       if (testnetKey && testnetSecret && isTestnetAuto) {
         try {
-          await executeSignalOrder(data, {
+          testnetOutcome = await executeSignalOrder(data, {
             autoExecute: true,
             binanceApiKey: testnetKey,
             binanceApiSecret: testnetSecret,
@@ -327,6 +373,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
             customSlValue: getTpConfig().testnetCustomSlValue,
           });
         } catch (testnetErr: any) {
+          testnetOutcome = { status: "FAILED", reason: testnetErr.message };
           addAppLog(
             "ERROR",
             "BinanceTestnet",
@@ -335,6 +382,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           );
         }
       }
+      sendSignalResultAck(data, "TESTNET", testnetOutcome);
 
       // 🚀 Jalur B: Binance Futures Live (Riil)
       const liveKey =
@@ -348,9 +396,13 @@ export async function handleIncomingSignal(data: any): Promise<void> {
         (binanceConfig.environment === "LIVE" && binanceConfig.autoExecute),
       );
 
+      let liveOutcome: AckOutcome = {
+        status: "DISABLED",
+        reason: "Live auto-execute off or API key missing",
+      };
       if (liveKey && liveSecret && isLiveAuto) {
         try {
-          await executeSignalOrder(data, {
+          liveOutcome = await executeSignalOrder(data, {
             autoExecute: true,
             binanceApiKey: liveKey,
             binanceApiSecret: liveSecret,
@@ -399,6 +451,7 @@ export async function handleIncomingSignal(data: any): Promise<void> {
             customSlValue: getTpConfig().liveCustomSlValue,
           });
         } catch (liveErr: any) {
+          liveOutcome = { status: "FAILED", reason: liveErr.message };
           addAppLog(
             "ERROR",
             "BinanceLive",
@@ -407,6 +460,14 @@ export async function handleIncomingSignal(data: any): Promise<void> {
           );
         }
       }
+      sendSignalResultAck(data, "LIVE", liveOutcome);
+    } else {
+      const off: AckOutcome = {
+        status: "DISABLED",
+        reason: "Binance Futures is not a target exchange",
+      };
+      sendSignalResultAck(data, "TESTNET", off);
+      sendSignalResultAck(data, "LIVE", off);
     }
   } catch (err: any) {
     addAppLog(

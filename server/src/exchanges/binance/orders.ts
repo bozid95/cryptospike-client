@@ -17,7 +17,8 @@ import { getAccountAndPositions, testBinanceConnection } from "./account";
 import { BinanceExecutionConfig, PlaceOrderParams } from "./types";
 import { SignalPayload } from "../types";
 import { evaluateCoinFilter } from "../../lib/coin-filter";
-import { addAppLog } from "../../lib/logger";
+import { addAppLog, captureAppLogs } from "../../lib/logger";
+import { deriveExecutionOutcome, ExecutionOutcome } from "./execution-outcome";
 import { binanceFetch } from "./rate-guard";
 import { createSignalExecutionGuard } from "./signal-execution-guard";
 import path from "path";
@@ -291,14 +292,17 @@ function getSignalExecutionGuard() {
 /**
  * Eksekutor Sinyal dengan pengaman eksekusi ganda: ID sinyal yang sama hanya dieksekusi sekali per
  * environment, dan eksekusi per simbol berurutan (cek posisi → order tidak bisa balapan).
+ * Return hasil eksekusi (EXECUTED / SKIPPED / FAILED + alasan) untuk ACK ke Signal Server.
  */
 export async function executeSignalOrder(
   signal: SignalPayload,
   config: BinanceExecutionConfig,
-) {
+): Promise<ExecutionOutcome> {
   const env = (config.environment || "TESTNET").toUpperCase();
-  const res = await getSignalExecutionGuard().run(env, signal, () =>
-    executeSignalOrderUnguarded(signal, config),
+  const { value: res, logs } = await captureAppLogs(() =>
+    getSignalExecutionGuard().run(env, signal, () =>
+      executeSignalOrderUnguarded(signal, config),
+    ),
   );
   if (!res.ran) {
     addAppLog(
@@ -306,9 +310,9 @@ export async function executeSignalOrder(
       "Executor",
       `Signal ${signal?.symbol} ${signal?.side} skipped: ${res.reason}.`,
     );
-    return undefined;
+    return { status: "SKIPPED", reason: res.reason };
   }
-  return res.value;
+  return deriveExecutionOutcome(logs);
 }
 
 /**

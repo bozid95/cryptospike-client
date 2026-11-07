@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { AsyncLocalStorage } from "async_hooks";
 
 export type LogLevel = "INFO" | "SUCCESS" | "WARN" | "ERROR";
 
@@ -10,6 +11,18 @@ export interface AppLogItem {
   source: string;
   message: string;
   data?: any;
+}
+
+// Log yang terbit di dalam captureAppLogs (per alur async, aman untuk eksekusi paralel)
+const logCapture = new AsyncLocalStorage<AppLogItem[]>();
+
+/** Jalankan fn dan kumpulkan log yang terbit di alur async-nya (urut kronologis). */
+export async function captureAppLogs<T>(
+  fn: () => Promise<T>,
+): Promise<{ value: T; logs: AppLogItem[] }> {
+  const logs: AppLogItem[] = [];
+  const value = await logCapture.run(logs, fn);
+  return { value, logs };
 }
 
 const MAX_LOGS = 1000;
@@ -105,6 +118,7 @@ export function addAppLog(
   if (logBuffer.length > MAX_LOGS) {
     logBuffer.pop();
   }
+  logCapture.getStore()?.push(item);
 
   // Tulis ke file persisten
   persistLogItem(item);
