@@ -19,6 +19,8 @@ import { SignalPayload } from "../types";
 import { evaluateCoinFilter } from "../../lib/coin-filter";
 import { addAppLog } from "../../lib/logger";
 import { binanceFetch } from "./rate-guard";
+import { createSignalExecutionGuard } from "./signal-execution-guard";
+import path from "path";
 
 /**
  * Atur Leverage di Binance Futures
@@ -274,10 +276,45 @@ export async function closePositionDirect(
   );
 }
 
+let signalExecutionGuard: ReturnType<typeof createSignalExecutionGuard> | null =
+  null;
+function getSignalExecutionGuard() {
+  // Dibuat saat dipakai pertama kali (env SIGNAL_DEDUPE_FILE sudah terbaca)
+  signalExecutionGuard ??= createSignalExecutionGuard({
+    storePath:
+      process.env.SIGNAL_DEDUPE_FILE ||
+      path.join(process.cwd(), "data", "processed_signals.json"),
+  });
+  return signalExecutionGuard;
+}
+
+/**
+ * Eksekutor Sinyal dengan pengaman eksekusi ganda: ID sinyal yang sama hanya dieksekusi sekali per
+ * environment, dan eksekusi per simbol berurutan (cek posisi → order tidak bisa balapan).
+ */
+export async function executeSignalOrder(
+  signal: SignalPayload,
+  config: BinanceExecutionConfig,
+) {
+  const env = (config.environment || "TESTNET").toUpperCase();
+  const res = await getSignalExecutionGuard().run(env, signal, () =>
+    executeSignalOrderUnguarded(signal, config),
+  );
+  if (!res.ran) {
+    addAppLog(
+      "WARN",
+      "Executor",
+      `Signal ${signal?.symbol} ${signal?.side} skipped: ${res.reason}.`,
+    );
+    return undefined;
+  }
+  return res.value;
+}
+
 /**
  * Eksekutor Sinyal Lengkap (Entry Market + TP Parsial + Catastrophe Hard SL)
  */
-export async function executeSignalOrder(
+async function executeSignalOrderUnguarded(
   signal: SignalPayload,
   config: BinanceExecutionConfig,
 ) {

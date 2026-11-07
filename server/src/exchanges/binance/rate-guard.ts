@@ -6,24 +6,47 @@ import { addAppLog } from "../../lib/logger";
  *
  * - 429 / 418 → semua request ke host tsb ditahan lokal sampai Retry-After / "banned until".
  *   Mengirim request selama 429/418 hanya memperpanjang ban.
- * - Weight >= SOFT_WEIGHT_LIMIT → request 'normal' (polling posisi/akun latar belakang) ditahan
+ * - Weight >= 75% limit host → request 'normal' (polling posisi/akun latar belakang) ditahan
  *   sampai menit berikutnya. Request 'critical' (alur order) tetap jalan sampai benar-benar 429.
+ * - Limit berbeda per host (mainnet 2400, testnet 6000/menit) dan diperbarui dari exchangeInfo.rateLimits.
  */
 export type BinanceRequestPriority = "critical" | "normal";
 
 const MINUTE_MS = 60 * 1000;
 
 export class BinanceRateGuard {
-  static readonly WEIGHT_LIMIT = 2400;
-  static readonly SOFT_WEIGHT_LIMIT = 1800;
+  static readonly DEFAULT_WEIGHT_LIMIT = 2400;
+  /** REQUEST_WEIGHT per menit yang diketahui (exchangeInfo.rateLimits). */
+  static readonly KNOWN_WEIGHT_LIMITS: Readonly<Record<string, number>> = {
+    "fapi.binance.com": 2400,
+    "testnet.binancefuture.com": 6000,
+  };
+  static readonly SOFT_RATIO = 0.75;
   static readonly DEFAULT_429_MS = 60 * 1000;
   static readonly DEFAULT_418_MS = 2 * 60 * 1000;
 
   private blocked = new Map<string, { until: number; reason: string }>();
   private weight = new Map<string, { minute: number; used: number }>();
   private peaks = new Map<string, number>();
+  private limits = new Map<string, number>();
 
   constructor(private readonly now: () => number = Date.now) {}
+
+  weightLimit(host: string): number {
+    return (
+      this.limits.get(host) ??
+      BinanceRateGuard.KNOWN_WEIGHT_LIMITS[host] ??
+      BinanceRateGuard.DEFAULT_WEIGHT_LIMIT
+    );
+  }
+
+  softLimit(host: string): number {
+    return Math.floor(this.weightLimit(host) * BinanceRateGuard.SOFT_RATIO);
+  }
+
+  setWeightLimit(host: string, limit: number): void {
+    if (Number.isFinite(limit) && limit > 0) this.limits.set(host, limit);
+  }
 
   /** Alasan + waktu jika request harus ditahan lokal, null jika boleh dikirim. */
   check(
@@ -37,14 +60,10 @@ export class BinanceRateGuard {
     if (priority === "normal") {
       const w = this.weight.get(host);
       const minute = Math.floor(now / MINUTE_MS);
-      if (
-        w &&
-        w.minute === minute &&
-        w.used >= BinanceRateGuard.SOFT_WEIGHT_LIMIT
-      ) {
+      if (w && w.minute === minute && w.used >= this.softLimit(host)) {
         return {
           until: (minute + 1) * MINUTE_MS,
-          reason: `soft brake (used weight ${w.used}/${BinanceRateGuard.WEIGHT_LIMIT})`,
+          reason: `soft brake (used weight ${w.used}/${this.weightLimit(host)})`,
         };
       }
     }
@@ -66,7 +85,7 @@ export class BinanceRateGuard {
     this.weight.set(host, { minute, used: Math.max(prevUsed, used) });
     this.peaks.set(host, Math.max(this.peaks.get(host) ?? 0, used));
 
-    const soft = BinanceRateGuard.SOFT_WEIGHT_LIMIT;
+    const soft = this.softLimit(host);
     return prevUsed < soft && used >= soft;
   }
 
@@ -153,7 +172,7 @@ export async function binanceFetch(
     addAppLog(
       "WARN",
       LOG_TAG,
-      `${host} used weight >= ${BinanceRateGuard.SOFT_WEIGHT_LIMIT}/${BinanceRateGuard.WEIGHT_LIMIT}. Pausing non-critical requests until next minute.`,
+      `${host} used weight >= ${binanceRateGuard.softLimit(host)}/${binanceRateGuard.weightLimit(host)}. Pausing non-critical requests until next minute.`,
     );
   }
 
@@ -181,6 +200,22 @@ export async function binanceFetch(
   return res;
 }
 
+/** Ambil limit REQUEST_WEIGHT per 1 menit dari exchangeInfo.rateLimits untuk host URL tsb. */
+export function recordExchangeInfoRateLimits(
+  url: string,
+  rateLimits: unknown,
+  guard: BinanceRateGuard = binanceRateGuard,
+): void {
+  if (!Array.isArray(rateLimits)) return;
+  const rl = rateLimits.find(
+    (r: any) =>
+      r?.rateLimitType === "REQUEST_WEIGHT" &&
+      r?.interval === "MINUTE" &&
+      Number(r?.intervalNum ?? 1) === 1,
+  );
+  if (rl) guard.setWeightLimit(new URL(url).host, Number(rl.limit));
+}
+
 /** True jika REST ke base URL Binance tsb sedang ditahan (ban atau soft brake). */
 export function isBinanceRestPaused(baseUrl: string): boolean {
   return binanceRateGuard.isPaused(new URL(baseUrl).host);
@@ -193,7 +228,7 @@ setInterval(
       addAppLog(
         "INFO",
         LOG_TAG,
-        `${host} peak weight 5m: ${peak}/${BinanceRateGuard.WEIGHT_LIMIT}`,
+        `${host} peak weight 5m: ${peak}/${binanceRateGuard.weightLimit(host)}`,
       );
     }
   },

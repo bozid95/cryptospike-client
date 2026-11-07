@@ -1,5 +1,5 @@
 import { getBaseUrl } from "./client";
-import { binanceFetch } from "./rate-guard";
+import { binanceFetch, recordExchangeInfoRateLimits } from "./rate-guard";
 import { SymbolFilters } from "./types";
 import { addAppLog } from "../../lib/logger";
 
@@ -50,6 +50,7 @@ export async function getSymbolFilters(
     const res = await binanceFetch(`${baseUrl}/fapi/v1/exchangeInfo`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as any;
+    recordExchangeInfoRateLimits(baseUrl, data.rateLimits);
     const symInfo = data.symbols?.find((s: any) => s.symbol === symbol);
 
     if (!symInfo) {

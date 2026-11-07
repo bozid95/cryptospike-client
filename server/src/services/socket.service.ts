@@ -7,7 +7,18 @@ import { getTpConfig } from "../lib/tp-config";
 
 const SERVER_URL = process.env.SERVER_URL || "https://signal.forlearning.my.id";
 
-let socket: ReturnType<typeof Client> | null = null;
+type SignalSocket = ReturnType<typeof Client>;
+type SocketFactory = (url: string, opts: Parameters<typeof Client>[1]) => SignalSocket;
+
+let createSocket: SocketFactory = (url, opts) => Client(url, opts);
+let socket: SignalSocket | null = null;
+let socketToken: string | null = null;
+let connectSeq = 0;
+
+/** Hanya untuk tes: ganti pembuat socket (default socket.io-client). */
+export function setSocketFactoryForTests(factory: SocketFactory | null): void {
+  createSocket = factory ?? ((url, opts) => Client(url, opts));
+}
 let heartbeatTimer: NodeJS.Timeout | null = null;
 
 function startHeartbeat(): void {
@@ -36,13 +47,18 @@ export function getSocketServerUrl(): string {
 
 export function disconnectSocket(): void {
   stopHeartbeat();
+  connectSeq++; // batalkan connect yang masih menunggu DB
   if (socket) {
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
   }
+  socketToken = null;
 }
 
 export async function connectToNestJS(tokenOverride?: string): Promise<void> {
+  // Panggilan terbaru menang: panggilan lama yang masih menunggu DB tidak boleh membuat socket kedua
+  const seq = ++connectSeq;
   let activeToken = tokenOverride;
 
   if (!activeToken) {
@@ -53,6 +69,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     } catch (err) {
       console.error("[Bot] Failed to read token from database:", err);
     }
+    if (seq !== connectSeq) return;
   }
 
   if (!activeToken) {
@@ -64,12 +81,20 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     return;
   }
 
+  // Token sama & socket masih aktif (tersambung / sedang auto-reconnect) → pertahankan sesi.
+  // Socket baru memutus koneksi; sinyal yang di-broadcast di sela itu tidak ikut dipulihkan server.
+  if (socket && socket.active && socketToken === activeToken) {
+    return;
+  }
+
   if (socket) {
     addAppLog(
       "INFO",
       "SignalClient",
       "Updating WebSocket session with new token...",
     );
+    // Lepas handler dulu agar socket lama tidak pernah memproses sinyal lagi (cegah eksekusi dobel)
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
   }
@@ -80,24 +105,28 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     `Connecting to Signal Server (${SERVER_URL})...`,
   );
 
-  socket = Client(SERVER_URL, {
+  const s = createSocket(SERVER_URL, {
     transports: ["websocket", "polling"],
     auth: { token: activeToken },
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 3000,
   });
+  socket = s;
+  socketToken = activeToken;
 
-  socket.on("connect", () => {
+  s.on("connect", () => {
     startHeartbeat();
     addAppLog(
       "SUCCESS",
       "SignalClient",
-      `Connected to Signal Server (${SERVER_URL})!`,
+      s.recovered
+        ? `Reconnected to Signal Server (${SERVER_URL}); session recovered, missed signals replayed.`
+        : `Connected to Signal Server (${SERVER_URL})!`,
     );
   });
 
-  socket.on("disconnect", (reason) => {
+  s.on("disconnect", (reason) => {
     stopHeartbeat();
     addAppLog(
       "WARN",
@@ -106,7 +135,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     );
   });
 
-  socket.on("connect_error", (err) => {
+  s.on("connect_error", (err) => {
     addAppLog(
       "WARN",
       "SignalClient",
@@ -114,7 +143,7 @@ export async function connectToNestJS(tokenOverride?: string): Promise<void> {
     );
   });
 
-  socket.on("new_signal", async (data) => {
+  s.on("new_signal", async (data) => {
     addAppLog(
       "INFO",
       "SignalClient",
