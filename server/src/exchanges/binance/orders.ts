@@ -21,6 +21,7 @@ import { addAppLog, captureAppLogs } from "../../lib/logger";
 import { deriveExecutionOutcome, ExecutionOutcome } from "./execution-outcome";
 import { binanceFetch } from "./rate-guard";
 import { createSignalExecutionGuard } from "./signal-execution-guard";
+import { markOwnedPosition } from "../../lib/owned-positions";
 import path from "path";
 
 /**
@@ -658,6 +659,17 @@ async function executeSignalOrderUnguarded(
       "Executor",
       `Entry Order Succeeded! ID: ${entryOrder.orderId} | ${symbol} ${side} ${quantity}`,
     );
+
+    // Tandai posisi ini milik Client: Auto-BEP/stagnation/cleanup hanya menyentuh posisi yang dibuka Client,
+    // bukan posisi manual pengguna di akun yang sama.
+    markOwnedPosition({
+      env: isTestnet ? "TESTNET" : "LIVE",
+      symbol,
+      side: tradeSide,
+      entryPrice: Number(entryOrder.avgPrice) > 0 ? Number(entryOrder.avgPrice) : pricingRef,
+      quantity,
+      openedAt: Date.now(),
+    });
 
     const exitSide = side === "LONG" ? "SELL" : "BUY";
 

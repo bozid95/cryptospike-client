@@ -13,6 +13,13 @@ import {
 import { isBinanceWsHealthy } from "./binance-ws.service";
 import { shouldRunMonitorCycle } from "./binance-stream-health";
 import { getTpConfig } from "../lib/tp-config";
+import { resolveBinanceCredentials } from "../lib/binance-credentials";
+import {
+  BinanceEnv,
+  getOwnedPosition,
+  listOwnedPositions,
+  releaseOwnedPosition,
+} from "../lib/owned-positions";
 
 interface MonitoredPosition {
   symbol: string;
@@ -26,9 +33,9 @@ interface MonitoredPosition {
 
 let monitorInterval: NodeJS.Timeout | null = null;
 let isChecking = false;
-let lastCycleRunAt = 0;
+const lastCycleRunAt: Record<BinanceEnv, number> = { TESTNET: 0, LIVE: 0 };
 
-// Menyimpan state posisi yang sedang dipantau di memori
+// State posisi milik Client yang sedang dipantau di memori, kunci `${env}:${symbol}`
 const monitoredPositions = new Map<string, MonitoredPosition>();
 const throttledLogMap = new Map<string, number>();
 
@@ -57,39 +64,67 @@ export async function checkBinancePositionsCycle(): Promise<void> {
   isChecking = true;
 
   try {
+    // Kredensial dibaca ulang setiap siklus dengan aturan yang sama seperti eksekusi sinyal & WebSocket
+    // (liveApiKey/testnetApiKey), jadi key yang diganti/dihapus di konfigurasi langsung berhenti dipakai.
     const config = await prisma.binanceConfig.findUnique({
       where: { id: 1 },
     });
-
-    if (!config?.autoExecute || !config?.apiKey || !config?.apiSecret) {
-      isChecking = false;
-      return;
+    for (const env of ["TESTNET", "LIVE"] as const) {
+      const creds = resolveBinanceCredentials(config, env);
+      if (!creds) {
+        // Key dihapus: lupakan state pantauan environment ini (tidak ada aksi dengan key lama)
+        for (const k of Array.from(monitoredPositions.keys())) {
+          if (k.startsWith(`${env}:`)) monitoredPositions.delete(k);
+        }
+        continue;
+      }
+      // Hanya bila Client punya posisi terbuka di environment ini; posisi manual tidak pernah disentuh
+      if (listOwnedPositions(env).length === 0) {
+        for (const k of Array.from(monitoredPositions.keys())) {
+          if (k.startsWith(`${env}:`)) monitoredPositions.delete(k);
+        }
+        continue;
+      }
+      await checkEnvironment(env, creds.apiKey, creds.apiSecret);
     }
+  } catch (err: any) {
+    const isBan = /banned until/i.test(err.message);
+    logThrottled(
+      "binance-monitor-err",
+      "WARN",
+      "BinanceMonitor",
+      `Error in Binance position monitor cycle: ${err.message}`,
+      isBan ? 300_000 : 30_000,
+    );
+  } finally {
+    isChecking = false;
+  }
+}
 
-    const apiKey = config.apiKey.trim();
-    const apiSecret = config.apiSecret.trim();
-    const environment = config.environment || "TESTNET";
-    const isTestnet = environment === "TESTNET";
-
+async function checkEnvironment(
+  environment: BinanceEnv,
+  apiKey: string,
+  apiSecret: string,
+): Promise<void> {
+  const isTestnet = environment === "TESTNET";
+  try {
     // WebSocket environment AKUN INI sehat (tersambung & benar-benar menerima data) → event stream menangani
     // Auto-BEP/cleanup; monitor REST tetap jalan tiap 60 detik sebagai jaring pengaman.
     // Tidak sehat (mis. URL tanpa jalur yang diam) → monitor REST tiap siklus.
     const now = Date.now();
     if (
       !shouldRunMonitorCycle(
-        isBinanceWsHealthy(isTestnet ? "TESTNET" : "LIVE"),
-        lastCycleRunAt,
+        isBinanceWsHealthy(environment),
+        lastCycleRunAt[environment],
         now,
       )
     ) {
-      isChecking = false;
       return;
     }
-    lastCycleRunAt = now;
+    lastCycleRunAt[environment] = now;
 
     // Saat 429/418 (atau rem weight) aktif, jangan polling: hanya memperpanjang ban
     if (isBinanceRestPaused(getBaseUrl(isTestnet))) {
-      isChecking = false;
       return;
     }
 
@@ -138,18 +173,24 @@ export async function checkBinancePositionsCycle(): Promise<void> {
 
       activeSymbols.add(symbol);
 
-      let tracked = monitoredPositions.get(symbol);
+      // Posisi manual pengguna (tidak dibuka Client) tidak disentuh sama sekali
+      const owned = getOwnedPosition(environment, symbol);
+      if (!owned) continue;
+
+      const key = `${environment}:${symbol}`;
+      let tracked = monitoredPositions.get(key);
       if (!tracked) {
         tracked = {
           symbol,
           side: pos.side,
           entryPrice: pos.entryPrice,
-          initialQty: currentAmt,
+          initialQty: Math.max(currentAmt, owned.quantity),
           bepMoved: false,
-          openedAt: Date.now(),
+          // Waktu entry dari daftar persisten: stagnation tetap benar setelah Client restart
+          openedAt: owned.openedAt,
           lastCheckedAt: Date.now(),
         };
-        monitoredPositions.set(symbol, tracked);
+        monitoredPositions.set(key, tracked);
       } else {
         // Update initialQty jika posisi baru saja ditambah
         if (currentAmt > tracked.initialQty) {
@@ -171,7 +212,8 @@ export async function checkBinancePositionsCycle(): Promise<void> {
           try {
             await closePositionDirect(apiKey, apiSecret, symbol, isTestnet);
             await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
-            monitoredPositions.delete(symbol);
+            monitoredPositions.delete(key);
+            releaseOwnedPosition(environment, symbol);
             continue;
           } catch (err: any) {
             addAppLog(
@@ -242,32 +284,30 @@ export async function checkBinancePositionsCycle(): Promise<void> {
       }
     }
 
-    // Evaluasi Clean-up: Periksa simbol yang sebelumnya dipantau tapi sekarang sudah tidak ada posisinya
-    for (const [symbol, tracked] of monitoredPositions.entries()) {
-      if (!activeSymbols.has(symbol)) {
-        // Posisi sudah 0 (CLOSED)
-        addAppLog(
-          "INFO",
-          "BinanceMonitor",
-          `[Clean-up] Position ${symbol} is now CLOSED. Cancelling all leftover open orders...`,
-        );
+    // Evaluasi Clean-up: posisi MILIK CLIENT yang sudah tidak ada (CLOSED) → batalkan sisa order-nya
+    for (const owned of listOwnedPositions(environment)) {
+      const symbol = owned.symbol;
+      if (activeSymbols.has(symbol)) continue;
+      addAppLog(
+        "INFO",
+        "BinanceMonitor",
+        `[Clean-up] Position ${symbol} is now CLOSED. Cancelling all leftover open orders...`,
+      );
 
-        await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
-        monitoredPositions.delete(symbol);
-        clearBreakEvenState(isTestnet ? "TESTNET" : "LIVE", symbol);
-      }
+      await cancelAllOpenOrders(apiKey, apiSecret, symbol, isTestnet);
+      monitoredPositions.delete(`${environment}:${symbol}`);
+      releaseOwnedPosition(environment, symbol);
+      clearBreakEvenState(environment, symbol);
     }
   } catch (err: any) {
     const isBan = /banned until/i.test(err.message);
     logThrottled(
-      "binance-monitor-err",
+      `binance-monitor-err-${environment}`,
       "WARN",
       "BinanceMonitor",
-      `Error in Binance position monitor cycle: ${err.message}`,
+      `Error in Binance position monitor cycle (${environment}): ${err.message}`,
       isBan ? 300_000 : 30_000,
     );
-  } finally {
-    isChecking = false;
   }
 }
 

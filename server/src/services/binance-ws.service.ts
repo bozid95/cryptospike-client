@@ -1,5 +1,4 @@
 import WebSocket from "ws";
-import { prisma } from "../lib/db";
 import { addAppLog } from "../lib/logger";
 import { binanceFetch } from "../exchanges/binance/rate-guard";
 import {
@@ -10,6 +9,12 @@ import {
   clearBreakEvenState,
 } from "../lib/binance";
 import { PositionRiskItem } from "../exchanges/binance/types";
+import { loadBinanceCredentials } from "../lib/binance-credentials";
+import {
+  getOwnedPosition,
+  isOwnedPosition,
+  releaseOwnedPosition,
+} from "../lib/owned-positions";
 import { AccountOverview } from "../exchanges/types";
 import {
   getMarketWsUrl,
@@ -108,7 +113,7 @@ async function closeListenKey(
 /**
  * Kelas pengelola stream Binance Futures per environment (Testnet vs Live)
  */
-class BinanceEnvironmentStream {
+export class BinanceEnvironmentStream {
   public readonly environment: "TESTNET" | "LIVE";
   public readonly isTestnet: boolean;
   private readonly logTag: string;
@@ -121,6 +126,10 @@ class BinanceEnvironmentStream {
   private marketReconnectTimer: NodeJS.Timeout | null = null;
   private resyncTimer: NodeJS.Timeout | null = null;
   private isReconnecting = false;
+  /** Naik setiap connect/restart/stop; handler dengan generasi lama tidak melakukan apa pun. */
+  private generation = 0;
+  /** API key yang dipakai koneksi user data stream saat ini (null = tidak tersambung). */
+  private connectedApiKey: string | null = null;
   private bannedUntilTimestamp = 0;
   private isWsConnected = false;
   private marketConnectedAt = 0;
@@ -328,6 +337,9 @@ class BinanceEnvironmentStream {
   public async connect(): Promise<void> {
     if (this.isReconnecting) return;
     this.isReconnecting = true;
+    // Generasi koneksi: event/close/timer dari koneksi lama diabaikan, sehingga tidak ada socket "yatim"
+    // yang terus bertindak memakai API key lama setelah konfigurasi disimpan.
+    const gen = ++this.generation;
 
     try {
       const now = Date.now();
@@ -355,36 +367,23 @@ class BinanceEnvironmentStream {
         return;
       }
 
-      const config = await prisma.binanceConfig.findUnique({
-        where: { id: 1 },
-      });
+      // Kredensial dibaca ulang dari database setiap kali tersambung (aturan sama dengan eksekusi sinyal)
+      const creds = await loadBinanceCredentials(this.environment);
+      if (gen !== this.generation) return;
 
-      // Tentukan kredensial berdasarkan environment
-      const apiKey = this.isTestnet
-        ? config?.testnetApiKey ||
-          (config?.environment === "TESTNET" ? config?.apiKey : null)
-        : config?.liveApiKey ||
-          (config?.environment === "LIVE" ? config?.apiKey : null);
-
-      const apiSecret = this.isTestnet
-        ? config?.testnetApiSecret ||
-          (config?.environment === "TESTNET" ? config?.apiSecret : null)
-        : config?.liveApiSecret ||
-          (config?.environment === "LIVE" ? config?.apiSecret : null);
-
-      if (!apiKey || !apiSecret) {
-        this.isReconnecting = false;
-        // Buka market stream agar data harga tetap tersedia meski belum ada kredensial user
+      if (!creds) {
+        // Key dihapus/dikosongkan: putuskan stream akun lama, market stream tetap untuk data harga
+        this.detachUserSocket();
         this.connectMarketWs();
         return;
       }
 
-      const trimmedKey = apiKey.trim();
-      const trimmedSecret = apiSecret.trim();
+      const trimmedKey = creds.apiKey;
+      const trimmedSecret = creds.apiSecret;
 
       // Minta listenKey baru
       const listenKey = await createListenKey(trimmedKey, this.isTestnet);
-      this.currentListenKey = listenKey;
+      if (gen !== this.generation) return;
 
       // Inisialisasi snapshot akun via REST
       try {
@@ -393,6 +392,7 @@ class BinanceEnvironmentStream {
           trimmedSecret,
           this.environment,
         );
+        if (gen !== this.generation) return;
         this.liveAccount = snapshot.account;
         this.livePositions.clear();
         for (const p of snapshot.positions) {
@@ -400,12 +400,20 @@ class BinanceEnvironmentStream {
         }
         this.lastCacheUpdate = Date.now();
       } catch {}
+      if (gen !== this.generation) return;
+
+      // Pastikan tidak ada socket lama yang tertinggal sebelum membuka yang baru
+      this.detachUserSocket();
+      this.currentListenKey = listenKey;
+      this.connectedApiKey = trimmedKey;
 
       // Buka koneksi WebSocket Stream
       const wsUrl = getUserDataWsUrl(this.isTestnet, listenKey);
-      this.wsClient = new WebSocket(wsUrl);
+      const ws = new WebSocket(wsUrl);
+      this.wsClient = ws;
 
-      this.wsClient.on("open", () => {
+      ws.on("open", () => {
+        if (gen !== this.generation) return;
         this.isWsConnected = true;
         addAppLog(
           "SUCCESS",
@@ -416,7 +424,7 @@ class BinanceEnvironmentStream {
         if (this.keepAliveTimer) clearInterval(this.keepAliveTimer);
         this.keepAliveTimer = setInterval(
           () => {
-            if (this.currentListenKey) {
+            if (gen === this.generation && this.currentListenKey) {
               keepAliveListenKey(
                 trimmedKey,
                 this.isTestnet,
@@ -433,6 +441,7 @@ class BinanceEnvironmentStream {
         // Background reconciliation setiap 60 detik (update real-time sudah via User Data Stream)
         if (this.resyncTimer) clearInterval(this.resyncTimer);
         this.resyncTimer = setInterval(async () => {
+          if (gen !== this.generation) return;
           try {
             const snapshot = await getAccountAndPositions(
               trimmedKey,
@@ -456,12 +465,14 @@ class BinanceEnvironmentStream {
         }, 60000);
       });
 
-      this.wsClient.on("message", (data: WebSocket.RawData) => {
+      ws.on("message", (data: WebSocket.RawData) => {
+        if (gen !== this.generation) return;
         const dataStr = data.toString();
         this.handleWsMessage(dataStr, trimmedKey, trimmedSecret);
       });
 
-      this.wsClient.on("error", (err: Error) => {
+      ws.on("error", (err: Error) => {
+        if (gen !== this.generation) return;
         this.isWsConnected = false;
         addAppLog(
           "WARN",
@@ -470,7 +481,9 @@ class BinanceEnvironmentStream {
         );
       });
 
-      this.wsClient.on("close", () => {
+      ws.on("close", () => {
+        // Socket generasi lama (sudah diganti/di-restart) tidak boleh menjadwalkan reconnect
+        if (gen !== this.generation) return;
         this.isWsConnected = false;
         addAppLog(
           "WARN",
@@ -496,6 +509,7 @@ class BinanceEnvironmentStream {
         }
       });
     } catch (err: any) {
+      if (gen !== this.generation) return;
       this.isWsConnected = false;
       const msg = err.message || "";
       const banMatch = msg.match(/banned until (\d+)/i);
@@ -537,8 +551,71 @@ class BinanceEnvironmentStream {
         }
       }
     } finally {
-      this.isReconnecting = false;
+      if (gen === this.generation) this.isReconnecting = false;
     }
+  }
+
+  /** Lepas & matikan socket user data stream saat ini beserta timer-nya (tanpa memicu reconnect). */
+  private detachUserSocket(): void {
+    const ws = this.wsClient;
+    this.wsClient = null;
+    this.isWsConnected = false;
+    this.connectedApiKey = null;
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+    if (this.resyncTimer) {
+      clearInterval(this.resyncTimer);
+      this.resyncTimer = null;
+    }
+    if (ws) {
+      ws.removeAllListeners();
+      // Socket tanpa listener tetap butuh handler error agar tidak melempar exception tak tertangani
+      ws.on("error", () => {});
+      try {
+        ws.terminate();
+      } catch {}
+    }
+  }
+
+  /**
+   * Kredensial TERBARU untuk aksi otomatis. Null (aksi dibatalkan) bila key sudah dihapus atau berbeda dari key
+   * yang dipakai koneksi ini — perubahan konfigurasi langsung menghentikan aksi dengan key lama.
+   */
+  private async currentCredentialsFor(
+    connectionKey: string,
+  ): Promise<{ apiKey: string; apiSecret: string } | null> {
+    try {
+      const creds = await loadBinanceCredentials(this.environment);
+      if (creds && creds.apiKey === connectionKey) return creds;
+    } catch {}
+    addAppLog(
+      "WARN",
+      this.logTag,
+      "API key changed or removed in configuration. Ignoring event from the old connection and reconnecting...",
+    );
+    this.restart();
+    return null;
+  }
+
+  /** Posisi milik Client dari daftar persisten → objek pantauan (dipakai saat posisi muncul / TP terisi). */
+  private trackOwned(symbol: string): MonitoredWsPosition | null {
+    const owned = getOwnedPosition(this.environment, symbol);
+    if (!owned) return null;
+    let tracked = this.monitoredWsPositions.get(symbol);
+    if (!tracked) {
+      tracked = {
+        symbol,
+        side: owned.side,
+        entryPrice: owned.entryPrice,
+        initialQty: owned.quantity,
+        bepMoved: false,
+        openedAt: owned.openedAt,
+      };
+      this.monitoredWsPositions.set(symbol, tracked);
+    }
+    return tracked;
   }
 
   /**
@@ -605,16 +682,8 @@ class BinanceEnvironmentStream {
                 ).toUpperCase(),
               });
 
-              if (!this.monitoredWsPositions.has(symbol)) {
-                this.monitoredWsPositions.set(symbol, {
-                  symbol,
-                  side,
-                  entryPrice,
-                  initialQty: absAmt,
-                  bepMoved: false,
-                  openedAt: Date.now(),
-                });
-              }
+              // Hanya posisi yang dibuka Client yang dipantau (Auto-BEP/cleanup). Posisi manual pengguna diabaikan.
+              this.trackOwned(symbol);
             } else {
               // Posisi CLOSED (hanya hapus jika sisi yang 0 sesuai dengan sisi posisi yang aktif di memori)
               const existing = this.livePositions.get(symbol);
@@ -624,26 +693,30 @@ class BinanceEnvironmentStream {
                 this.livePositions.delete(symbol);
 
                 const tracked = this.monitoredWsPositions.get(symbol);
-                if (tracked) {
-                  addAppLog(
-                    "INFO",
-                    this.logTag,
-                    `[Realtime Cleanup] Position ${symbol} is now CLOSED. Cancelling leftover orders...`,
-                  );
+                if (tracked || isOwnedPosition(this.environment, symbol)) {
                   this.monitoredWsPositions.delete(symbol);
                   clearBreakEvenState(this.environment, symbol);
+                  releaseOwnedPosition(this.environment, symbol);
 
-                  cancelAllOpenOrders(
-                    apiKey,
-                    apiSecret,
-                    symbol,
-                    this.isTestnet,
-                  ).catch((err) => {
+                  void this.currentCredentialsFor(apiKey).then((creds) => {
+                    if (!creds) return;
                     addAppLog(
-                      "WARN",
+                      "INFO",
                       this.logTag,
-                      `Cleanup failed for ${symbol}: ${err.message}`,
+                      `[Realtime Cleanup] Position ${symbol} is now CLOSED. Cancelling leftover orders...`,
                     );
+                    return cancelAllOpenOrders(
+                      creds.apiKey,
+                      creds.apiSecret,
+                      symbol,
+                      this.isTestnet,
+                    ).catch((err) => {
+                      addAppLog(
+                        "WARN",
+                        this.logTag,
+                        `Cleanup failed for ${symbol}: ${err.message}`,
+                      );
+                    });
                   });
                 }
               }
@@ -664,7 +737,9 @@ class BinanceEnvironmentStream {
           isReduceOnly || o.ot === "TAKE_PROFIT_MARKET" || o.ot === "LIMIT";
 
         if (orderStatus === "FILLED" && isExitOrder) {
-          const tracked = this.monitoredWsPositions.get(symbol);
+          // Hanya posisi milik Client; order manual di posisi manual tidak memicu Auto-BEP
+          const tracked =
+            this.monitoredWsPositions.get(symbol) || this.trackOwned(symbol);
           const autoBepEnabled = process.env.BINANCE_AUTO_BEP !== "false";
           const bepBufferPct = parseFloat(
             process.env.BINANCE_BEP_BUFFER_PCT || "0.2",
@@ -676,12 +751,17 @@ class BinanceEnvironmentStream {
             !tracked.bepInProgress &&
             autoBepEnabled
           ) {
-            addAppLog(
-              "INFO",
-              this.logTag,
-              `[Realtime Auto-BEP] Exit order filled for ${symbol}. Moving SL to Break-Even immediately...`,
-            );
-            this.runAutoBep(tracked, apiKey, apiSecret, bepBufferPct);
+            tracked.bepInProgress = true;
+            void this.currentCredentialsFor(apiKey).then((creds) => {
+              tracked.bepInProgress = false;
+              if (!creds) return;
+              addAppLog(
+                "INFO",
+                this.logTag,
+                `[Realtime Auto-BEP] Exit order filled for ${symbol}. Moving SL to Break-Even immediately...`,
+              );
+              this.runAutoBep(tracked, creds.apiKey, creds.apiSecret, bepBufferPct);
+            });
           }
         }
       }
@@ -763,12 +843,10 @@ class BinanceEnvironmentStream {
   }
 
   public restart(): void {
-    if (this.wsClient) {
-      try {
-        this.wsClient.close();
-      } catch {}
-      this.wsClient = null;
-    }
+    // Batalkan connect yang sedang berjalan & matikan socket lama: tidak boleh ada yang tetap memakai key lama
+    this.generation++;
+    this.detachUserSocket();
+    this.isReconnecting = false;
     if (this.marketWsClient) {
       try {
         this.marketWsClient.close();
@@ -789,6 +867,8 @@ class BinanceEnvironmentStream {
   }
 
   public async stop(): Promise<void> {
+    this.generation++;
+    this.isReconnecting = false;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -797,44 +877,21 @@ class BinanceEnvironmentStream {
       clearTimeout(this.marketReconnectTimer);
       this.marketReconnectTimer = null;
     }
-    if (this.keepAliveTimer) {
-      clearInterval(this.keepAliveTimer);
-      this.keepAliveTimer = null;
-    }
-    if (this.resyncTimer) {
-      clearInterval(this.resyncTimer);
-      this.resyncTimer = null;
-    }
-
-    if (this.wsClient) {
-      try {
-        this.wsClient.close();
-      } catch {}
-      this.wsClient = null;
-    }
+    this.detachUserSocket();
     if (this.marketWsClient) {
       try {
         this.marketWsClient.close();
       } catch {}
       this.marketWsClient = null;
     }
-    this.isWsConnected = false;
     this.stopMarketWatchdog();
 
     if (this.currentListenKey) {
       try {
-        const config = await prisma.binanceConfig.findUnique({
-          where: { id: 1 },
-        });
-        const apiKey = this.isTestnet
-          ? config?.testnetApiKey ||
-            (config?.environment === "TESTNET" ? config?.apiKey : null)
-          : config?.liveApiKey ||
-            (config?.environment === "LIVE" ? config?.apiKey : null);
-
-        if (apiKey) {
+        const creds = await loadBinanceCredentials(this.environment);
+        if (creds) {
           await closeListenKey(
-            apiKey.trim(),
+            creds.apiKey,
             this.isTestnet,
             this.currentListenKey,
           );
