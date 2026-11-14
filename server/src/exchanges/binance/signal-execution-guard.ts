@@ -4,8 +4,9 @@ import path from "path";
 /**
  * Pengaman eksekusi ganda per environment (TESTNET / LIVE):
  *  - ID sinyal yang sama hanya diproses sekali (dicatat sebelum eksekusi, disimpan ke disk agar tahan restart).
- *  - Eksekusi untuk simbol yang sama dijalankan berurutan, sehingga cek "posisi sudah terbuka?" → order
- *    tidak bisa balapan (race condition) antar sinyal yang datang bersamaan.
+ *  - SEMUA eksekusi dalam satu environment dijalankan berurutan (bukan hanya per simbol), sehingga cek
+ *    "batas posisi / posisi sudah terbuka?" → order tidak bisa balapan. Dulu kunci per simbol: dua sinyal
+ *    koin berbeda di candle 4H yang sama sama-sama melihat 0 posisi dan keduanya terbuka walau maks 1.
  */
 export interface SignalExecutionGuardOptions {
   /** File JSON penyimpanan ID sinyal; null = hanya di memori. */
@@ -108,8 +109,8 @@ export function createSignalExecutionGuard(
         processed.set(key, now());
         persist();
       }
-      const symbol = String(signal?.symbol ?? "").toUpperCase();
-      const value = await withLock(`${env}:${symbol}`, fn);
+      // Kunci per environment: sinyal berikutnya baru mengecek batas posisi setelah order sebelumnya selesai
+      const value = await withLock(env, fn);
       return { ran: true, value };
     },
     hasProcessed(environment: string, signalId: string): boolean {

@@ -9,7 +9,7 @@ import {
 } from "../src/exchanges/binance/signal-execution-guard";
 
 /**
- * Pengaman eksekusi ganda: ID sinyal sekali per environment + kunci per simbol (anti race condition).
+ * Pengaman eksekusi ganda: ID sinyal sekali per environment + kunci per environment (anti race condition).
  * Jalankan: npx tsx --test tests/signal-execution-guard.test.ts
  */
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -161,7 +161,7 @@ describe("kunci per simbol (cek posisi → order tidak balapan)", () => {
     assert.deepEqual(order, ["a1", "a2", "a3"]);
   });
 
-  test("simbol berbeda tetap paralel", async () => {
+  test("simbol berbeda di environment sama juga berurutan (batas posisi tidak bisa terlewati)", async () => {
     const g = createSignalExecutionGuard();
     let active = 0;
     let maxActive = 0;
@@ -175,7 +175,31 @@ describe("kunci per simbol (cek posisi → order tidak balapan)", () => {
       g.run("TESTNET", sig("b1", "SOLUSDT"), exec),
       g.run("TESTNET", sig("b2", "XRPUSDT"), exec),
     ]);
-    assert.equal(maxActive, 2);
+    assert.equal(maxActive, 1);
+  });
+
+  test("maks 1 posisi: 2 sinyal koin berbeda datang bersamaan → hanya 1 terbuka", async () => {
+    const g = createSignalExecutionGuard();
+    const maxOpen = 1;
+    const open: string[] = [];
+    // Tiruan eksekutor: cek jumlah posisi (REST) → kirim order (butuh waktu) → posisi muncul
+    const exec = (symbol: string) => async () => {
+      await sleep(5); // ambil posisi dari bursa
+      if (open.length >= maxOpen) return "SKIPPED";
+      await sleep(30); // set leverage + market order
+      open.push(symbol);
+      return "EXECUTED";
+    };
+    const res = await Promise.all([
+      g.run("LIVE", sig("m1", "WLDUSDT"), exec("WLDUSDT")),
+      g.run("LIVE", sig("m2", "ENAUSDT"), exec("ENAUSDT")),
+      g.run("LIVE", sig("m3", "UNIUSDT"), exec("UNIUSDT")),
+    ]);
+    assert.deepEqual(open, ["WLDUSDT"]);
+    assert.deepEqual(
+      res.map((r) => (r.ran ? r.value : "NOT_RUN")),
+      ["EXECUTED", "SKIPPED", "SKIPPED"],
+    );
   });
 
   test("simbol sama di TESTNET dan LIVE tidak saling menunggu", async () => {
