@@ -21,7 +21,10 @@ import { addAppLog, captureAppLogs } from "../../lib/logger";
 import { deriveExecutionOutcome, ExecutionOutcome } from "./execution-outcome";
 import { binanceFetch } from "./rate-guard";
 import { createSignalExecutionGuard } from "./signal-execution-guard";
-import { markOwnedPosition } from "../../lib/owned-positions";
+import {
+  markOwnedPosition,
+  updateOwnedPosition,
+} from "../../lib/owned-positions";
 import path from "path";
 
 /**
@@ -851,6 +854,8 @@ async function executeSignalOrderUnguarded(
     // Pasang TP1
     if (targetTp1 && qtyTP1 > 0) {
       const p1 = roundTick(targetTp1, filters.tickSize);
+      // Simpan harga TP1 agar monitor hanya menganggap TP1 terisi bila harga benar-benar melewatinya
+      updateOwnedPosition(isTestnet ? "TESTNET" : "LIVE", symbol, { tp1: p1 });
       try {
         await placeOrder(
           apiKey,

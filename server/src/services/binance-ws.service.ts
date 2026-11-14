@@ -733,8 +733,10 @@ export class BinanceEnvironmentStream {
         const symbol = o.s;
         const orderStatus = o.X;
         const isReduceOnly = Boolean(o.R);
+        // Hanya order TP yang dipasang Client (LIMIT reduce-only / TAKE_PROFIT_MARKET) yang menandakan TP1 terisi.
+        // Stop/trailing/market tidak dihitung, agar SL tidak pindah ke BEP sebelum TP1 benar-benar tersentuh.
         const isExitOrder =
-          isReduceOnly || o.ot === "TAKE_PROFIT_MARKET" || o.ot === "LIMIT";
+          (o.ot === "LIMIT" && isReduceOnly) || o.ot === "TAKE_PROFIT_MARKET";
 
         if (orderStatus === "FILLED" && isExitOrder) {
           // Hanya posisi milik Client; order manual di posisi manual tidak memicu Auto-BEP

@@ -25,6 +25,37 @@ import {
 } from "../src/lib/owned-positions";
 import { resolveBinanceCredentials } from "../src/lib/binance-credentials";
 import { BinanceEnvironmentStream } from "../src/services/binance-ws.service";
+import { isTp1Filled } from "../src/lib/tp1-detection";
+
+describe("TP1 detection for Auto-BEP (no BEP before TP1 is touched)", () => {
+  const base = { side: "SHORT" as const, initialQty: 48, currentQty: 48, tp1: 0.1395 };
+
+  test("price only 1% in profit with a single LIMIT order (TP2 merged) is NOT TP1", () => {
+    // Kasus log ENAUSDT: entry 0.1452, mark 0.14392 (~0.9%), TP1 0.1395 belum tersentuh, sisa 48/48
+    assert.equal(isTp1Filled({ ...base, markPrice: 0.14392, openExitLimitPrices: [0.1395] }), false);
+  });
+
+  test("quantity reduced to <= 65% counts as TP1 filled", () => {
+    assert.equal(isTp1Filled({ ...base, currentQty: 24, markPrice: 0.145, openExitLimitPrices: [] }), true);
+  });
+
+  test("price beyond TP1 but the TP1 order is still open is NOT filled yet", () => {
+    assert.equal(isTp1Filled({ ...base, markPrice: 0.139, openExitLimitPrices: [0.1395] }), false);
+  });
+
+  test("price beyond TP1 and the TP1 order is gone counts as filled", () => {
+    assert.equal(isTp1Filled({ ...base, markPrice: 0.139, openExitLimitPrices: [] }), true);
+  });
+
+  test("unknown TP1 price (older positions) relies on quantity only", () => {
+    assert.equal(isTp1Filled({ ...base, tp1: null, markPrice: 0.12, openExitLimitPrices: [] }), false);
+  });
+
+  test("LONG mirror", () => {
+    assert.equal(isTp1Filled({ side: "LONG", initialQty: 10, currentQty: 10, tp1: 110, markPrice: 101, openExitLimitPrices: [110] }), false);
+    assert.equal(isTp1Filled({ side: "LONG", initialQty: 10, currentQty: 10, tp1: 110, markPrice: 111, openExitLimitPrices: [] }), true);
+  });
+});
 
 const reset = () => {
   if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
@@ -85,6 +116,17 @@ describe("WebSocket stream only manages Client-opened positions", () => {
     s.handleWsMessage(accountUpdate("MAGMAUSDT", "-22"), "k", "s");
     assert.equal(s.getPositions().length, 1);
     assert.equal((s as any).monitoredWsPositions.has("MAGMAUSDT"), false);
+  });
+
+  test("a stop/market fill on a Client position does not count as TP1", () => {
+    markOwnedPosition({ env: "LIVE", symbol: "ENAUSDT", side: "SHORT", entryPrice: 0.1452, quantity: 48, openedAt: 1, tp1: 0.1395 });
+    const s = new BinanceEnvironmentStream("LIVE");
+    s.handleWsMessage(accountUpdate("ENAUSDT", "-48"), "k", "s");
+    s.handleWsMessage(JSON.stringify({ e: "ORDER_TRADE_UPDATE", o: { s: "ENAUSDT", X: "FILLED", R: true, ot: "STOP_MARKET" } }), "k", "s");
+    s.handleWsMessage(JSON.stringify({ e: "ORDER_TRADE_UPDATE", o: { s: "ENAUSDT", X: "FILLED", R: false, ot: "LIMIT" } }), "k", "s");
+    const tracked = (s as any).monitoredWsPositions.get("ENAUSDT");
+    assert.equal(tracked.bepInProgress, undefined);
+    assert.equal(tracked.bepMoved, false);
   });
 
   test("a manual exit fill does not trigger Auto-BEP", () => {

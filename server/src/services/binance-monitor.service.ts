@@ -14,6 +14,7 @@ import { isBinanceWsHealthy } from "./binance-ws.service";
 import { shouldRunMonitorCycle } from "./binance-stream-health";
 import { getTpConfig } from "../lib/tp-config";
 import { resolveBinanceCredentials } from "../lib/binance-credentials";
+import { isQtyReduced, isTp1Filled } from "../lib/tp1-detection";
 import {
   BinanceEnv,
   getOwnedPosition,
@@ -227,13 +228,19 @@ async function checkEnvironment(
 
       // Evaluasi Auto-BEP: jika belum dipindah ke BEP
       if (autoBepEnabled && !tracked.bepMoved) {
-        // Indikator 1: Kuantitas posisi berkurang signifikan (misal <= 60% dari awal, artinya TP1 50% sudah terisi)
-        const qtyReducedSignificantly = currentAmt <= tracked.initialQty * 0.65;
-
-        // Indikator 2: Cek open orders apakah order TP1 masih ada atau sudah terisi
-        let tp1Filled = qtyReducedSignificantly;
-
-        if (!tp1Filled) {
+        // TP1 terisi hanya bila posisi benar-benar berkurang, ATAU harga mark sudah melewati harga TP1 dan
+        // order TP1 sudah tidak ada. (Aturan lama "harga +1% & LIMIT <= 1" memindah SL sebelum TP1 tersentuh
+        // ketika sejak awal hanya ada 1 order LIMIT.)
+        const tp1 = owned.tp1 ?? null;
+        const side = pos.side as "LONG" | "SHORT";
+        const crossed =
+          tp1 && pos.markPrice > 0
+            ? side === "SHORT"
+              ? pos.markPrice <= tp1
+              : pos.markPrice >= tp1
+            : false;
+        let openExitLimitPrices: number[] | null = [];
+        if (!isQtyReduced(tracked.initialQty, currentAmt) && crossed) {
           try {
             const openOrders = await getOpenOrders(
               apiKey,
@@ -241,24 +248,25 @@ async function checkEnvironment(
               symbol,
               isTestnet,
             );
-            // Hitung order limit penutup yang masih terbuka
-            const limitExitOrders = openOrders.filter(
-              (o) =>
-                o.type === "LIMIT" &&
-                (pos.side === "LONG" ? o.side === "SELL" : o.side === "BUY"),
-            );
-            // Awalnya ada 2 limit order (TP1 & TP2) atau 3 limit order
-            // Jika limit order penutup berkurang atau tidak ada sama sekali saat harga sudah mendekati TP1
-            const priceDistancePct =
-              pos.side === "LONG"
-                ? ((pos.markPrice - pos.entryPrice) / pos.entryPrice) * 100
-                : ((pos.entryPrice - pos.markPrice) / pos.entryPrice) * 100;
-
-            if (priceDistancePct >= 1.0 && limitExitOrders.length <= 1) {
-              tp1Filled = true;
-            }
-          } catch {}
+            openExitLimitPrices = openOrders
+              .filter(
+                (o) =>
+                  o.type === "LIMIT" &&
+                  (side === "LONG" ? o.side === "SELL" : o.side === "BUY"),
+              )
+              .map((o) => Number(o.price));
+          } catch {
+            openExitLimitPrices = null;
+          }
         }
+        const tp1Filled = isTp1Filled({
+          side,
+          initialQty: tracked.initialQty,
+          currentQty: currentAmt,
+          markPrice: pos.markPrice,
+          tp1,
+          openExitLimitPrices,
+        });
 
         if (tp1Filled) {
           addAppLog(

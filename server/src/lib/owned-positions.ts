@@ -18,6 +18,8 @@ export interface OwnedPosition {
   quantity: number;
   /** Waktu entry (ms) — dipakai stagnation cutoff, tetap benar setelah Client restart. */
   openedAt: number;
+  /** Harga TP1 yang dipasang Client (untuk deteksi TP1 terisi). */
+  tp1?: number | null;
 }
 
 const DEFAULT_PATH = path.resolve(process.cwd(), "data/owned_positions.json");
@@ -57,6 +59,19 @@ function persist(): void {
 export function markOwnedPosition(pos: OwnedPosition): void {
   const all = load();
   all[keyOf(pos.env, pos.symbol)] = pos;
+  persist();
+}
+
+/** Perbarui sebagian field posisi milik Client (mis. harga TP1 setelah order TP dipasang). */
+export function updateOwnedPosition(
+  env: BinanceEnv,
+  symbol: string,
+  patch: Partial<Omit<OwnedPosition, "env" | "symbol">>,
+): void {
+  const all = load();
+  const k = keyOf(env, symbol);
+  if (!all[k]) return;
+  all[k] = { ...all[k], ...patch };
   persist();
 }
 
