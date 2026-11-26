@@ -146,7 +146,7 @@ export function AppSidebar({
                       setReleaseNotesOpen(true);
                     }}
                     title="Klik untuk melihat catatan rilis & patch updates"
-                    className="text-[10px] px-1 py-0 h-4 border-emerald-500/40 text-emerald-600 bg-emerald-500/5 font-mono font-medium hover:bg-emerald-500/20 hover:border-emerald-500/60 cursor-pointer transition-colors"
+                    className="text-[11px] px-1 py-0 h-4 border-emerald-500/40 text-emerald-600 bg-emerald-500/5 font-mono font-medium hover:bg-emerald-500/20 hover:border-emerald-500/60 cursor-pointer transition-colors"
                   >
                     v{appVersion}
                   </Badge>
@@ -187,7 +187,7 @@ export function AppSidebar({
                         {item.badge && (
                           <Badge
                             variant="secondary"
-                            className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 font-semibold"
+                            className="ml-auto text-[11px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 font-semibold"
                           >
                             {item.badge}
                           </Badge>
@@ -213,7 +213,7 @@ export function AppSidebar({
               </Avatar>
               <div className="grid flex-1 text-left text-xs leading-tight">
                 <span className="truncate font-semibold">{user.username}</span>
-                <span className="truncate text-[10px] text-muted-foreground">
+                <span className="truncate text-[11px] text-muted-foreground">
                   {user.role}
                 </span>
               </div>
@@ -227,7 +227,7 @@ export function AppSidebar({
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="px-2 pt-1 pb-0 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+        <div className="px-2 pt-1 pb-0 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
           <span>CryptoSpike Client</span>
           <button
             onClick={() => setReleaseNotesOpen(true)}

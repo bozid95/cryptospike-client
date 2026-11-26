@@ -1,4 +1,9 @@
-import { LogOutIcon, ServerIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  BotIcon,
+  LogOutIcon,
+  ServerIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +24,8 @@ interface SiteHeaderProps {
   user: { username: string; role: string };
   onLogout: () => void;
   activeTabTitle: string;
+  /** Judul pendek untuk layar sempit. */
+  mobileTitle?: string;
 }
 
 export function SiteHeader({
@@ -27,37 +34,39 @@ export function SiteHeader({
   user,
   onLogout,
   activeTabTitle,
+  mobileTitle,
 }: SiteHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 backdrop-blur px-4 transition-all">
-      <div className="flex items-center gap-2 min-w-0">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-1.5 h-4" />
+    <header className="sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-card/80 dark:bg-background/80 backdrop-blur-xl px-3 sm:px-4 transition-all">
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        {/* Mobile: tanpa hamburger — semua menu ada di bottom nav */}
+        <SidebarTrigger className="-ml-1 hidden sm:inline-flex" />
+        <div className="sm:hidden flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <BotIcon className="size-4" />
+        </div>
+        <Separator
+          orientation="vertical"
+          className="mr-1.5 h-4 hidden sm:block"
+        />
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-xs sm:text-sm truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
+          <span className="font-semibold text-base sm:hidden truncate">
+            {mobileTitle || activeTabTitle}
+          </span>
+          <span className="font-semibold text-sm hidden sm:block truncate">
             {activeTabTitle}
           </span>
+          {/* Compact Mobile Bot Indicator (titik status di samping judul) */}
+          <span
+            className={`md:hidden inline-block size-2 shrink-0 rounded-full ${
+              botConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+            }`}
+            title={botConnected ? "Signal server online" : "Signal server offline"}
+            aria-label={botConnected ? "Online" : "Offline"}
+          />
         </div>
       </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        {/* Compact Mobile Bot Indicator */}
-        <div className="flex md:hidden items-center gap-1.5 px-2 py-0.5 rounded-full border border-border text-[10px] bg-muted/40 shrink-0">
-          <span
-            className={`inline-block size-1.5 rounded-full ${
-              botConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
-            }`}
-          />
-          <span
-            className={
-              botConnected
-                ? "text-emerald-500 font-medium"
-                : "text-red-500 font-medium"
-            }
-          >
-            {botConnected ? "Online" : "Offline"}
-          </span>
-        </div>
 
         {/* Desktop Status Indikator Bot */}
         <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full border border-border text-xs bg-muted/40">
@@ -84,7 +93,8 @@ export function SiteHeader({
         {/* Theme Toggle Mode */}
         <ThemeToggle />
 
-        {/* User Dropdown */}
+        {/* User Dropdown (mobile: sudah ada tab Profile di bottom nav) */}
+        <div className="hidden sm:block">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -124,6 +134,7 @@ export function SiteHeader({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   );

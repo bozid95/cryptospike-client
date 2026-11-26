@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/api";
 
 interface LoginViewProps {
   onLoginSuccess: (
@@ -45,7 +46,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
   const checkAuthStatus = async () => {
     try {
       setIsCheckingStatus(true);
-      const res = await fetch("/api/auth/status");
+      const res = await apiFetch("/api/auth/status");
       if (res.ok) {
         const data = await res.json();
         setIsInitialized(Boolean(data.initialized));
@@ -94,7 +95,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
         password: password.trim(),
       };
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -150,7 +151,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
             </CardTitle>
             <Badge
               variant="outline"
-              className={`font-mono text-[9px] px-1.5 py-0 h-4 font-semibold ${
+              className={`font-mono text-[11px] px-1.5 py-0 h-4 font-semibold ${
                 isSetupMode
                   ? "border-amber-500/40 text-amber-500 bg-amber-500/10"
                   : "border-emerald-500/40 text-emerald-600 bg-emerald-500/5"
@@ -219,7 +220,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                 required
               />
               {isSetupMode && (
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   Minimum 6 characters.
                 </p>
               )}

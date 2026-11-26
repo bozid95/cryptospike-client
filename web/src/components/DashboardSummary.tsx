@@ -21,15 +21,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 interface DashboardSummaryProps {
   onNavigate: (tab: string) => void;
   botConnected: boolean;
+  username?: string;
 }
 
 export function DashboardSummary({
   onNavigate,
   botConnected,
+  username = "Trader",
 }: DashboardSummaryProps) {
   const [config, setConfig] = useState<any>(null);
   const [binanceLiveData, setBinanceLiveData] = useState<{
@@ -209,10 +212,431 @@ export function DashboardSummary({
     }
   };
 
+  const money = (n: number, prefix = "$") =>
+    `${prefix}${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const signedMoney = (n: number, prefix = "$") =>
+    `${n >= 0 ? "+" : "-"}${money(Math.abs(n), prefix)}`;
+  const tokoPrefix = tokocryptoData.account?.quoteAsset === "BIDR" ? "Rp " : "$";
+
+  const mobileAccounts = [
+    {
+      key: "live",
+      label: "Binance Live",
+      short: "Live",
+      sub: `${livePositionsCount}/${liveMaxPos} pos`,
+      icon: <Globe className="size-4 text-red-500" />,
+      tint: "bg-red-500/10",
+      balance: binanceLiveData.account
+        ? money(binanceLiveData.account.totalWalletBalance)
+        : "—",
+      pnl: binanceLivePnl,
+      prefix: "$",
+      auto: liveAuto,
+      tab: "binance-positions",
+    },
+    {
+      key: "testnet",
+      label: "Binance Testnet",
+      short: "Testnet",
+      sub: `${testnetPositionsCount} pos`,
+      icon: <FlaskConical className="size-4 text-amber-500" />,
+      tint: "bg-amber-500/10",
+      balance: binanceTestnetData.account
+        ? money(binanceTestnetData.account.totalWalletBalance)
+        : "—",
+      pnl: binanceTestnetPnl,
+      prefix: "$",
+      auto: testnetAuto,
+      tab: "binance-positions",
+    },
+    {
+      key: "toko",
+      label: "Tokocrypto Spot",
+      short: "Tokocrypto",
+      sub: `${tokoPositionsCount}/${tokoMaxPos} coins${tokoDryRun ? " · sim" : ""}`,
+      icon: <Coins className="size-4 text-orange-500" />,
+      tint: "bg-orange-500/10",
+      balance: tokocryptoData.account
+        ? money(tokocryptoData.account.totalWalletBalance, tokoPrefix)
+        : "—",
+      pnl: tokocryptoPnl,
+      prefix: tokoPrefix,
+      auto: tokoAuto,
+      tab: "tokocrypto-positions",
+    },
+  ];
+
+  // Status eksekusi per akun untuk kartu utama ber-tab
+  type AccountState = "active" | "off" | "not-target" | "no-key" | "error";
+  const accountState = (key: string): AccountState => {
+    const hasKey =
+      key === "live"
+        ? Boolean(config?.liveApiKey)
+        : key === "testnet"
+          ? Boolean(config?.testnetApiKey)
+          : Boolean(config?.tokocryptoApiKey) || tokoDryRun;
+    const connected =
+      key === "live"
+        ? Boolean(binanceLiveData.account)
+        : key === "testnet"
+          ? Boolean(binanceTestnetData.account)
+          : Boolean(tokocryptoData.account);
+    const targeted =
+      key === "toko" ? isTokocrypto || isDual : !isTokocrypto || isDual;
+    const auto =
+      key === "live" ? liveAuto : key === "testnet" ? testnetAuto : tokoAuto;
+    if (!config) return "off";
+    if (!hasKey) return "no-key";
+    if (!connected) return "error";
+    if (!targeted) return "not-target";
+    return auto ? "active" : "off";
+  };
+  const stateLabel: Record<AccountState, string> = {
+    active: "Active · executing signals",
+    off: "Auto-trade off",
+    "not-target": "Not an execution target",
+    "no-key": "No API key yet",
+    error: "Not connected",
+  };
+  const [heroKey, setHeroKey] = useState<string | null>(() =>
+    localStorage.getItem("cryptospike_home_account"),
+  );
+  const selectedKey = heroKey ?? (config?.liveApiKey ? "live" : "testnet");
+  const heroAccount =
+    mobileAccounts.find((a) => a.key === selectedKey) || mobileAccounts[0];
+  const heroState = accountState(heroAccount.key);
+  const selectHero = (key: string) => {
+    setHeroKey(key);
+    localStorage.setItem("cryptospike_home_account", key);
+  };
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 11
+      ? "Good morning"
+      : hour < 15
+        ? "Good afternoon"
+        : hour < 19
+          ? "Good evening"
+          : "Good night";
+
+  const levelDot = (level?: string) =>
+    level === "ERROR"
+      ? "bg-red-500"
+      : level === "SUCCESS"
+        ? "bg-emerald-500"
+        : level === "WARN"
+          ? "bg-amber-500"
+          : "bg-sky-500";
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full">
+      {/* ===== MOBILE (< sm): home dashboard ===== */}
+      <div className="sm:hidden space-y-5">
+        {/* Sapaan */}
+        <div className="flex items-end justify-between px-0.5">
+          <div>
+            <p className="text-xs text-muted-foreground">{greeting}</p>
+            <p className="text-base font-semibold leading-tight">{username}</p>
+          </div>
+          <span
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+              botConnected
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "bg-red-500/10 text-red-500"
+            }`}
+          >
+            <span
+              className={`size-1.5 rounded-full ${botConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`}
+            />
+            {botConnected ? "Signal online" : "Signal offline"}
+          </span>
+        </div>
+
+        {/* Kartu utama ber-tab: Live / Testnet / Tokocrypto + status eksekusi */}
+        <section
+          className={`rounded-3xl p-4 shadow-lg transition-colors ${
+            heroState === "active"
+              ? "card-hero shadow-emerald-900/15"
+              : heroState === "error"
+                ? "card-hero-warn shadow-orange-900/15"
+                : "card-hero-muted shadow-slate-900/15"
+          }`}
+        >
+          {/* Tab akun */}
+          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-black/15 p-1">
+            {mobileAccounts.map((acc) => {
+              const st = accountState(acc.key);
+              const on = acc.key === heroAccount.key;
+              return (
+                <button
+                  key={acc.key}
+                  type="button"
+                  onClick={() => selectHero(acc.key)}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                    on ? "bg-white text-slate-900 shadow-sm" : "text-white/80"
+                  }`}
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      st === "active"
+                        ? "bg-emerald-400"
+                        : st === "error"
+                          ? "bg-orange-400"
+                          : on
+                            ? "bg-slate-300"
+                            : "bg-white/40"
+                    }`}
+                  />
+                  {acc.short}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Status + refresh */}
+          <div className="mt-4 flex items-center justify-between px-1">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-white/85">
+              <span
+                className={`size-2 rounded-full ${
+                  heroState === "active"
+                    ? "bg-white animate-pulse"
+                    : heroState === "error"
+                      ? "bg-white"
+                      : "bg-white/50"
+                }`}
+              />
+              {stateLabel[heroState]}
+            </span>
+            <button
+              type="button"
+              onClick={fetchAllSummary}
+              aria-label="Refresh"
+              className="flex size-8 items-center justify-center rounded-full bg-white/15 active:bg-white/25 cursor-pointer"
+            >
+              <RefreshCw
+                className={`size-3.5 ${isLoading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
+
+          {heroState === "no-key" || heroState === "error" ? (
+            <div className="px-1 pb-1 pt-2">
+              <p className="text-sm text-white/85">
+                {heroState === "no-key"
+                  ? `Add your ${heroAccount.label} API key to start.`
+                  : "The exchange rejected the API key. Check the key, IP whitelist and Futures permission."}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  onNavigate(
+                    heroAccount.key === "toko"
+                      ? "tokocrypto-config"
+                      : "binance-config",
+                  )
+                }
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 cursor-pointer"
+              >
+                Open settings
+                <ArrowRight className="size-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onNavigate(heroAccount.tab)}
+              className="block w-full px-1 text-left cursor-pointer"
+            >
+              <p className="mt-2 text-xs text-white/70">Wallet balance</p>
+              <p className="text-2xl font-bold font-mono tracking-tight leading-tight truncate">
+                {heroAccount.balance}
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-mono font-semibold ${
+                    heroAccount.pnl >= 0 ? "bg-white/20" : "bg-red-500/90"
+                  }`}
+                >
+                  {heroAccount.pnl >= 0 ? "▲" : "▼"}{" "}
+                  {signedMoney(heroAccount.pnl, heroAccount.prefix)}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-white/80">
+                  {heroAccount.sub}
+                  <ArrowRight className="size-3.5" />
+                </span>
+              </div>
+            </button>
+          )}
+        </section>
+
+        {/* Target eksekusi (saklar per bursa) */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Execute signals on
+            </span>
+          </div>
+          {/* Ceklis per bursa: keduanya aktif = BOTH; minimal satu harus aktif */}
+          <div className="rounded-2xl border bg-card card-tint shadow-sm divide-y divide-border/60">
+            {(
+              [
+                {
+                  key: "BINANCE",
+                  label: "Binance Futures",
+                  icon: <Layers className="size-4 text-primary" />,
+                  tint: "bg-primary/10",
+                  on: targetExchange === "BINANCE" || isDual,
+                },
+                {
+                  key: "TOKOCRYPTO",
+                  label: "Tokocrypto Spot",
+                  icon: <Coins className="size-4 text-orange-500" />,
+                  tint: "bg-orange-500/10",
+                  on: targetExchange === "TOKOCRYPTO" || isDual,
+                },
+              ] as const
+            ).map((ex, _i, all) => {
+              const other = all.find((o) => o.key !== ex.key)!;
+              const isLastOn = ex.on && !other.on;
+              const toggle = (checked: boolean) => {
+                if (!checked && isLastOn) return;
+                const binanceOn = ex.key === "BINANCE" ? checked : other.on;
+                const tokoOn = ex.key === "TOKOCRYPTO" ? checked : other.on;
+                handleUpdateTargetExchange(
+                  binanceOn && tokoOn
+                    ? "BOTH"
+                    : binanceOn
+                      ? "BINANCE"
+                      : "TOKOCRYPTO",
+                );
+              };
+              return (
+                <label
+                  key={ex.key}
+                  className="flex items-center gap-3 px-3.5 py-3 cursor-pointer"
+                >
+                  <div
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${ex.tint}`}
+                  >
+                    {ex.icon}
+                  </div>
+                  <span className="flex-1 text-sm font-medium">{ex.label}</span>
+                  <Switch
+                    checked={ex.on}
+                    onCheckedChange={toggle}
+                    disabled={isUpdatingMode || !config || isLastOn}
+                    aria-label={`Execute signals on ${ex.label}`}
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Posisi terbuka (gabungan, maks 4) */}
+        {(activeFuturesPositions.length > 0 ||
+          tokocryptoData.positions.length > 0) && (
+          <section className="space-y-2">
+            <span className="px-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Open positions
+            </span>
+            <div className="rounded-2xl border bg-card card-tint shadow-sm divide-y divide-border/60">
+              {[
+                ...activeFuturesPositions.map((p) => ({
+                  ...p,
+                  _tab: "binance-positions",
+                  _tag: `${p.side} ${p.leverage}x`,
+                })),
+                ...tokocryptoData.positions.map((p) => ({
+                  ...p,
+                  _tab: "tokocrypto-positions",
+                  _tag: "SPOT",
+                })),
+              ]
+                .slice(0, 4)
+                .map((p) => {
+                  const up = (p.unRealizedProfit || 0) >= 0;
+                  return (
+                    <button
+                      key={`${p._tab}-${p.id || p.symbol}`}
+                      type="button"
+                      onClick={() => onNavigate(p._tab)}
+                      className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer active:bg-muted/40"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {p.symbol}
+                        </div>
+                        <div
+                          className={`text-[11px] ${p.side === "SHORT" ? "text-red-500" : "text-emerald-500"}`}
+                        >
+                          {p._tag}
+                        </div>
+                      </div>
+                      <div className="text-right font-mono tabular-nums">
+                        <div
+                          className={`text-sm font-semibold ${up ? "text-emerald-500" : "text-red-500"}`}
+                        >
+                          {up ? "+" : ""}
+                          {(p.unRealizedProfit || 0).toFixed(2)}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {(p.roiPct || 0).toFixed(1)}%
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </section>
+        )}
+
+        {/* Aktivitas terbaru */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Recent activity
+            </span>
+            <button
+              type="button"
+              onClick={() => onNavigate("logs")}
+              className="text-[11px] font-semibold text-primary cursor-pointer"
+            >
+              See all
+            </button>
+          </div>
+          <div className="rounded-2xl border bg-card card-tint shadow-sm divide-y divide-border/60">
+            {recentLogs.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">
+                No activity yet.
+              </p>
+            ) : (
+              recentLogs.map((log, idx) => (
+                <div key={idx} className="flex gap-2.5 px-3.5 py-2.5">
+                  <span
+                    className={`mt-1.5 size-1.5 shrink-0 rounded-full ${levelDot(log.level)}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs leading-snug break-words line-clamp-2">
+                      {log.message}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {log.time ||
+                        (log.timestamp
+                          ? new Date(log.timestamp).toLocaleTimeString()
+                          : "")}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* ===== DESKTOP / TABLET (>= sm) ===== */}
       {/* 1. HEADER & SYSTEM STATUS */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+      <div className="hidden sm:flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Dashboard Summary
@@ -239,7 +663,7 @@ export function DashboardSummary({
       </div>
 
       {/* 2. ACTIVE EXCHANGE MODE CONTROLLER (1-CLICK) */}
-      <Card className="border-primary/20 bg-primary/5 shadow-sm">
+      <Card className="hidden sm:block border-primary/20 bg-primary/5 shadow-sm">
         <CardContent className="p-3 sm:p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="p-2 sm:p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -252,7 +676,7 @@ export function DashboardSummary({
                 </span>
                 <Badge
                   variant="outline"
-                  className={`text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 ${
+                  className={`text-[11px] font-bold px-1.5 sm:px-2 py-0.5 ${
                     isDual
                       ? "border-primary/40 bg-primary/15 text-primary"
                       : isTokocrypto
@@ -310,7 +734,7 @@ export function DashboardSummary({
             >
               <span className="flex items-center gap-0.5">
                 <Layers className="size-2.5 sm:size-3" />
-                <span className="text-[9px] sm:text-[10px] text-muted-foreground">
+                <span className="text-[11px] text-muted-foreground">
                   &
                 </span>
                 <Coins className="size-2.5 sm:size-3 text-amber-500" />
@@ -322,7 +746,7 @@ export function DashboardSummary({
       </Card>
 
       {/* 2.5 COMPACT & INFORMATIVE ENGINE STATUS BAR (ACTIVE VS OFF) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
         {/* Box 1: Binance Live Production */}
         <div className="p-2.5 sm:p-3 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between gap-1.5">
@@ -332,7 +756,7 @@ export function DashboardSummary({
             </span>
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
+              className={`text-[11px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
                 liveAuto
                   ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
                   : "border-muted-foreground/30 text-muted-foreground bg-muted/20"
@@ -371,7 +795,7 @@ export function DashboardSummary({
                 {liveBtcGuard ? "ON" : "OFF"}
               </strong>
             </span>
-            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[11px]">
               <span>Position Limit:</span>
               <strong
                 className={
@@ -396,7 +820,7 @@ export function DashboardSummary({
             </span>
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
+              className={`text-[11px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
                 testnetAuto
                   ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
                   : "border-muted-foreground/30 text-muted-foreground bg-muted/20"
@@ -430,7 +854,7 @@ export function DashboardSummary({
                 {testnetBtcGuard ? "ON" : "OFF"}
               </strong>
             </span>
-            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[11px]">
               <span>Active Contracts:</span>
               <strong className="text-amber-500 font-mono">
                 {testnetPositionsCount} Open Pos
@@ -448,7 +872,7 @@ export function DashboardSummary({
             </span>
             <Badge
               variant="outline"
-              className={`text-[10px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
+              className={`text-[11px] px-1.5 py-0 h-4 font-mono font-bold shrink-0 ${
                 tokoAuto
                   ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10"
                   : "border-muted-foreground/30 text-muted-foreground bg-muted/20"
@@ -475,7 +899,7 @@ export function DashboardSummary({
             <span>
               Asset: <strong className="text-foreground">{tokoQuote}</strong>
             </span>
-            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[11px]">
               <span>Coin Holdings:</span>
               <strong className="text-foreground font-mono">
                 {tokoPositionsCount}/{tokoMaxPos} Coins
@@ -493,7 +917,7 @@ export function DashboardSummary({
             </span>
             <Badge
               variant="outline"
-              className="text-[10px] px-1.5 py-0 h-4 font-mono font-bold border-emerald-500/40 text-emerald-600 bg-emerald-500/10 shrink-0"
+              className="text-[11px] px-1.5 py-0 h-4 font-mono font-bold border-emerald-500/40 text-emerald-600 bg-emerald-500/10 shrink-0"
             >
               ACTIVE
             </Badge>
@@ -514,7 +938,7 @@ export function DashboardSummary({
               Data Stream:{" "}
               <strong className="text-emerald-600">Zero-Poll</strong>
             </span>
-            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[10px]">
+            <span className="col-span-2 pt-0.5 flex items-center justify-between text-[11px]">
               <span>Signal Server:</span>
               <strong
                 className={botConnected ? "text-emerald-600" : "text-red-500"}
@@ -527,7 +951,7 @@ export function DashboardSummary({
       </div>
 
       {/* 3. FINANCIAL PORTFOLIO OVERVIEW */}
-      <div className="grid gap-2.5 sm:gap-4 grid-cols-1 md:grid-cols-3">
+      <div className="hidden sm:grid gap-2.5 sm:gap-4 grid-cols-1 md:grid-cols-3">
         {/* Card 1: Binance Live Production Portfolio */}
         <Card className="shadow-sm border-red-500/20 bg-card flex flex-col justify-between p-3 sm:p-4">
           <div>
@@ -538,7 +962,7 @@ export function DashboardSummary({
               </span>
               <Badge
                 variant="outline"
-                className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0 h-4 border-red-500/30 text-red-600 bg-red-500/10 shrink-0 font-bold"
+                className="text-[11px] font-mono px-1.5 py-0 h-4 border-red-500/30 text-red-600 bg-red-500/10 shrink-0 font-bold"
               >
                 {binanceLiveData.positions.length} Live Pos
               </Badge>
@@ -564,7 +988,7 @@ export function DashboardSummary({
               variant="ghost"
               size="sm"
               onClick={() => onNavigate("binance-positions")}
-              className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
+              className="w-full h-6 sm:h-7 text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
             >
               <span>View Live Positions</span>
               <ArrowRight className="size-3" />
@@ -582,7 +1006,7 @@ export function DashboardSummary({
               </span>
               <Badge
                 variant="outline"
-                className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/10 shrink-0 font-bold"
+                className="text-[11px] font-mono px-1.5 py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/10 shrink-0 font-bold"
               >
                 {binanceTestnetData.positions.length} Demo Pos
               </Badge>
@@ -609,7 +1033,7 @@ export function DashboardSummary({
               variant="ghost"
               size="sm"
               onClick={() => onNavigate("binance-positions")}
-              className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
+              className="w-full h-6 sm:h-7 text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
             >
               <span>View Testnet Positions</span>
               <ArrowRight className="size-3" />
@@ -627,7 +1051,7 @@ export function DashboardSummary({
               </span>
               <Badge
                 variant="outline"
-                className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/10 shrink-0 font-bold"
+                className="text-[11px] font-mono px-1.5 py-0 h-4 border-amber-500/30 text-amber-600 bg-amber-500/10 shrink-0 font-bold"
               >
                 {tokocryptoData.positions.length} Coins
               </Badge>
@@ -655,7 +1079,7 @@ export function DashboardSummary({
               variant="ghost"
               size="sm"
               onClick={() => onNavigate("tokocrypto-positions")}
-              className="w-full h-6 sm:h-7 text-[10px] sm:text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
+              className="w-full h-6 sm:h-7 text-[11px] gap-1 cursor-pointer justify-between px-1.5 sm:px-2 text-primary hover:text-primary"
             >
               <span>View Spot Coins</span>
               <ArrowRight className="size-3" />
@@ -665,7 +1089,7 @@ export function DashboardSummary({
       </div>
 
       {/* 4. SNAPSHOT DUA BURSA (SIDE-BY-SIDE SNAPSHOT) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Binance Futures Snapshot */}
         <Card className="shadow-sm flex flex-col justify-between">
           <CardHeader className="pb-3 p-3.5 sm:p-6">
@@ -719,7 +1143,7 @@ export function DashboardSummary({
                           </span>
                           <Badge
                             variant="outline"
-                            className="text-[9px] px-1 py-0 h-3.5"
+                            className="text-[11px] px-1 py-0 h-4"
                           >
                             {pos.side} {pos.leverage}x
                           </Badge>
@@ -731,12 +1155,12 @@ export function DashboardSummary({
                             {isProfit ? "+" : ""}$
                             {(pos.unRealizedProfit || 0).toFixed(2)}
                           </span>
-                          <span className="text-[10px] text-muted-foreground ml-1">
+                          <span className="text-[11px] text-muted-foreground ml-1">
                             ({(pos.roiPct || 0).toFixed(1)}%)
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-1 border-t border-border/30">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono pt-1 border-t border-border/30">
                         <span>Entry: ${pos.entryPrice}</span>
                         <span>Liq: ${pos.liquidationPrice}</span>
                       </div>
@@ -802,14 +1226,14 @@ export function DashboardSummary({
                           </span>
                           <Badge
                             variant="outline"
-                            className="text-[9px] px-1 py-0 h-3.5 border-amber-500/30 text-amber-600"
+                            className="text-[11px] px-1 py-0 h-4 border-amber-500/30 text-amber-600"
                           >
                             SPOT BUY
                           </Badge>
                           {pos.isDryRun && (
                             <Badge
                               variant="outline"
-                              className="text-[9px] px-1 py-0 h-3.5 text-amber-500 border-amber-500/40"
+                              className="text-[11px] px-1 py-0 h-4 text-amber-500 border-amber-500/40"
                             >
                               SIMULATION
                             </Badge>
@@ -822,12 +1246,12 @@ export function DashboardSummary({
                             {isProfit ? "+" : ""}$
                             {(pos.unRealizedProfit || 0).toFixed(2)}
                           </span>
-                          <span className="text-[10px] text-muted-foreground ml-1">
+                          <span className="text-[11px] text-muted-foreground ml-1">
                             ({(pos.roiPct || 0).toFixed(1)}%)
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-border/30">
+                      <div className="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-border/30">
                         <span className="text-emerald-600 dark:text-emerald-400">
                           TP: ${pos.tpPrice}
                         </span>
@@ -848,7 +1272,7 @@ export function DashboardSummary({
       </div>
 
       {/* 4. RECENT ACTIVITY LOGS SNIPPET */}
-      <Card className="shadow-sm">
+      <Card className="hidden sm:block shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -881,12 +1305,12 @@ export function DashboardSummary({
                   key={idx}
                   className="flex items-start gap-2.5 p-2 rounded bg-muted/30 border border-border/40 text-[11px] leading-relaxed"
                 >
-                  <span className="text-muted-foreground shrink-0 text-[10px]">
+                  <span className="text-muted-foreground shrink-0 text-[11px]">
                     [{log.time || new Date().toLocaleTimeString()}]
                   </span>
                   <Badge
                     variant="outline"
-                    className={`text-[9px] px-1 py-0 h-4 shrink-0 ${
+                    className={`text-[11px] px-1 py-0 h-4 shrink-0 ${
                       log.level === "ERROR"
                         ? "text-red-600 border-red-500/30 bg-red-500/10"
                         : log.level === "SUCCESS"

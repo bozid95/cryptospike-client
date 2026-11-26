@@ -8,7 +8,10 @@ import {
   LogOutIcon,
   SaveIcon,
   Loader2,
+  SparklesIcon,
+  ChevronRightIcon,
 } from "lucide-react";
+import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api";
 import {
@@ -30,6 +33,7 @@ interface ProfileViewProps {
   botConnected: boolean;
   serverUrl: string;
   onLogout: () => void;
+  appVersion?: string;
 }
 
 export function ProfileView({
@@ -37,7 +41,9 @@ export function ProfileView({
   botConnected,
   serverUrl,
   onLogout,
+  appVersion = "1.0.1",
 }: ProfileViewProps) {
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -99,8 +105,8 @@ export function ProfileView({
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
+    <div className="space-y-4 sm:space-y-6 max-w-4xl">
+      <div className="hidden sm:block">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
           Profile & System Info
         </h2>
@@ -110,18 +116,24 @@ export function ProfileView({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-sm:!mt-0">
         {/* Kolom Kiri: Profil Singkat */}
-        <Card className="md:col-span-1 shadow-sm">
-          <CardHeader className="text-center pb-4">
-            <Avatar className="size-20 mx-auto mb-2 border-2 border-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold uppercase">
+        <Card className="md:col-span-1 shadow-sm max-sm:rounded-2xl">
+          <CardHeader className="flex-row sm:flex-col items-center gap-3 sm:gap-0 space-y-0 sm:space-y-1.5 text-left sm:text-center p-4 sm:p-6 sm:pb-4">
+            <Avatar className="size-12 sm:size-20 sm:mx-auto sm:mb-2 border-2 border-primary/20 shrink-0">
+              <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-xl font-bold uppercase">
                 {user.username.slice(0, 2)}
               </AvatarFallback>
             </Avatar>
-            <CardTitle className="text-lg">{user.username}</CardTitle>
-            <CardDescription>{user.role}</CardDescription>
-            <div className="pt-2 flex justify-center">
+            <div className="min-w-0 flex-1 sm:flex-none space-y-0.5 sm:space-y-1.5">
+              <CardTitle className="text-base sm:text-lg truncate">
+                {user.username}
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                {user.role}
+              </CardDescription>
+            </div>
+            <div className="sm:pt-2 flex justify-center shrink-0">
               <Badge
                 variant="outline"
                 className={`text-xs px-2 py-0.5 ${
@@ -134,7 +146,7 @@ export function ProfileView({
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 pt-2 text-xs border-t">
+          <CardContent className="hidden sm:block space-y-3 p-6 pt-2 text-xs border-t">
             <div className="flex justify-between py-1">
               <span className="text-muted-foreground">License Type:</span>
               <span className="font-semibold text-emerald-600">
@@ -152,7 +164,7 @@ export function ProfileView({
               </span>
             </div>
           </CardContent>
-          <CardFooter className="pt-2">
+          <CardFooter className="hidden sm:flex pt-2">
             <Button
               variant="destructive"
               className="w-full gap-2 text-xs cursor-pointer"
@@ -165,22 +177,22 @@ export function ProfileView({
         </Card>
 
         {/* Kolom Kanan: Pengaturan Akun & Status */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="md:col-span-2 space-y-4 sm:space-y-6">
           {/* Status Server & Database */}
-          <Card className="shadow-sm">
+          <Card className="shadow-sm max-sm:rounded-2xl">
             <CardHeader className="p-4 sm:p-6 pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                 <ServerIcon className="size-4 text-primary" />
                 Bot Runtime Info
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 space-y-3 text-sm">
-              <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30">
+              <div className="hidden sm:flex items-center justify-between p-2.5 rounded-lg border bg-muted/30">
                 <div className="flex items-center gap-2">
                   <DatabaseIcon className="size-4 text-muted-foreground" />
                   <span className="text-xs font-medium">SQLite Database</span>
                 </div>
-                <Badge variant="secondary" className="font-mono text-[10px]">
+                <Badge variant="secondary" className="font-mono text-[11px] truncate max-w-[45%]">
                   ./data/cryptospike_local.db
                 </Badge>
               </div>
@@ -189,20 +201,38 @@ export function ProfileView({
                 <div className="flex items-center gap-2">
                   <ServerIcon className="size-4 text-muted-foreground" />
                   <span className="text-xs font-medium">
-                    Connected Signal Host
+                    <span className="sm:hidden">Signal host</span>
+                    <span className="hidden sm:inline">Connected Signal Host</span>
                   </span>
                 </div>
                 <span className="text-xs font-mono font-medium truncate max-w-[150px] sm:max-w-none">
                   {serverUrl || "localhost:3030"}
                 </span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setReleaseNotesOpen(true)}
+                className="flex w-full items-center justify-between p-2.5 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <SparklesIcon className="size-4 text-muted-foreground" />
+                  <span className="text-xs font-medium">
+                    Version & release notes
+                  </span>
+                </div>
+                <span className="flex items-center gap-1 text-xs font-mono text-muted-foreground">
+                  v{appVersion}
+                  <ChevronRightIcon className="size-3.5" />
+                </span>
+              </button>
             </CardContent>
           </Card>
 
           {/* Form Ganti Password Operator */}
-          <Card className="shadow-sm">
+          <Card className="shadow-sm max-sm:rounded-2xl">
             <CardHeader className="p-4 sm:p-6 pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                 <KeyIcon className="size-4 text-primary" />
                 Change Dashboard Password
               </CardTitle>
@@ -296,6 +326,22 @@ export function ProfileView({
           </Card>
         </div>
       </div>
+
+      {/* Mobile: Sign out di paling bawah, jauh dari jangkauan tak sengaja */}
+      <Button
+        variant="ghost"
+        className="sm:hidden w-full gap-2 text-sm cursor-pointer bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-500 rounded-xl h-11"
+        onClick={onLogout}
+      >
+        <LogOutIcon className="size-4" />
+        Sign Out
+      </Button>
+
+      <ReleaseNotesDialog
+        open={releaseNotesOpen}
+        onOpenChange={setReleaseNotesOpen}
+        currentAppVersion={appVersion}
+      />
     </div>
   );
 }

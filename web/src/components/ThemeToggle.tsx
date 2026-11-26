@@ -32,7 +32,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       variant="outline"
       size="icon"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className={`size-8 sm:size-9 rounded-lg border border-slate-300 dark:border-zinc-700 hover:border-emerald-500/40 hover:bg-emerald-500/5 cursor-pointer transition-all ${className || ""}`}
+      className={`size-8 sm:size-9 rounded-lg max-sm:border-transparent max-sm:bg-transparent max-sm:shadow-none sm:border sm:border-slate-300 sm:dark:border-zinc-700 hover:border-emerald-500/40 hover:bg-emerald-500/5 cursor-pointer transition-all ${className || ""}`}
       title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
       aria-label="Toggle Theme Mode"
     >

@@ -3,7 +3,6 @@ import {
   KeyIcon,
   FlaskConicalIcon,
   GlobeIcon,
-  CheckIcon,
   Loader2,
   ActivityIcon,
   ShieldAlert,
@@ -14,7 +13,11 @@ import {
   XIcon,
   Coins,
   Layers,
-  Clock,
+  ZapIcon,
+  WalletIcon,
+  TargetIcon,
+  EyeIcon,
+  EyeOffIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api";
@@ -40,6 +43,40 @@ import {
 } from "@/components/ui/dialog";
 
 type RiskMode = "PERCENTAGE" | "FIXED_USD" | "RISK_AT_SL";
+
+/** Satu kelompok pengaturan: judul + deskripsi singkat, isi bertumpuk rapi. */
+function SettingsSection({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="shadow-sm max-sm:rounded-2xl card-tint">
+      <CardHeader className="flex-row items-center gap-3 space-y-0 p-4 sm:p-5 pb-3 sm:pb-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary [&>svg]:size-4">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {description && (
+            <CardDescription className="text-xs mt-0.5">
+              {description}
+            </CardDescription>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-5 pt-0 sm:pt-0 space-y-4 text-sm">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Normalisasi mode alokasi risiko dari API; nilai tak dikenal → PERCENTAGE. */
 function toRiskMode(value: unknown): RiskMode {
@@ -187,10 +224,13 @@ const TOP_100_NO_MEME: string[] = TOP_100_CMC.filter(
 
 interface CredentialConfigProps {
   forcedExchange?: "BINANCE" | "TOKOCRYPTO";
+  /** Environment Binance yang dipilih dari luar (pemilih akun mobile). */
+  forcedBinanceEnv?: "TESTNET" | "LIVE";
 }
 
 export default function CredentialConfig({
   forcedExchange,
+  forcedBinanceEnv,
 }: CredentialConfigProps = {}) {
   const [token, setToken] = useState("");
   const [targetExchange, setTargetExchange] = useState<
@@ -200,8 +240,11 @@ export default function CredentialConfig({
     "BINANCE" | "TOKOCRYPTO"
   >(forcedExchange || "BINANCE");
   const [binanceSubTab, setBinanceSubTab] = useState<"TESTNET" | "LIVE">(
-    "TESTNET",
+    forcedBinanceEnv || "TESTNET",
   );
+  useEffect(() => {
+    if (forcedBinanceEnv) setBinanceSubTab(forcedBinanceEnv);
+  }, [forcedBinanceEnv]);
 
   // Sync with forcedExchange prop when tab changes
   useEffect(() => {
@@ -545,7 +588,9 @@ export default function CredentialConfig({
                 loadedExchange === "TOKOCRYPTO" ? "TOKOCRYPTO" : "BINANCE",
               );
             }
-            if (d.environment === "LIVE") {
+            if (forcedBinanceEnv) {
+              setBinanceSubTab(forcedBinanceEnv);
+            } else if (d.environment === "LIVE") {
               setBinanceSubTab("LIVE");
             } else {
               setBinanceSubTab("TESTNET");
@@ -1185,8 +1230,8 @@ export default function CredentialConfig({
   };
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-3xl mx-auto">
+      <div className="hidden sm:flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             {activeExchangeForm === "TOKOCRYPTO" ? (
@@ -1263,7 +1308,7 @@ export default function CredentialConfig({
 
       {/* Binance Sub-Tab Switcher (Testnet vs Live) */}
       {activeExchangeForm === "BINANCE" && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-xl border bg-muted/30">
+        <div className="hidden sm:flex flex-row items-center justify-between gap-3 p-2.5 rounded-xl border bg-muted/30">
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -1279,7 +1324,7 @@ export default function CredentialConfig({
               <FlaskConicalIcon className="size-3.5 text-amber-500" />
               Binance Testnet (Demo)
               {testnetAutoExecute && (
-                <Badge className="bg-emerald-500 text-white text-[9px] px-1 py-0 h-3.5 ml-1">
+                <Badge className="bg-emerald-500 text-white text-[11px] px-1 py-0 h-4 ml-1">
                   AUTO ON
                 </Badge>
               )}
@@ -1298,13 +1343,13 @@ export default function CredentialConfig({
               <GlobeIcon className="size-3.5 text-emerald-500" />
               Binance Live (Real Funds)
               {liveAutoExecute && (
-                <Badge className="bg-red-500 text-white text-[9px] px-1 py-0 h-3.5 ml-1">
+                <Badge className="bg-red-500 text-white text-[11px] px-1 py-0 h-4 ml-1">
                   AUTO LIVE
                 </Badge>
               )}
             </Button>
           </div>
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <div className="hidden sm:flex text-xs text-muted-foreground items-center gap-1.5">
             <span className="font-medium text-foreground">
               Active Configuration:
             </span>
@@ -1312,8 +1357,8 @@ export default function CredentialConfig({
               variant="outline"
               className={
                 binanceSubTab === "LIVE"
-                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10 font-mono text-[10px]"
-                  : "border-amber-500/40 text-amber-600 bg-amber-500/10 font-mono text-[10px]"
+                  ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/10 font-mono text-[11px]"
+                  : "border-amber-500/40 text-amber-600 bg-amber-500/10 font-mono text-[11px]"
               }
             >
               {binanceSubTab === "LIVE"
@@ -1324,51 +1369,28 @@ export default function CredentialConfig({
         </div>
       )}
 
-      {/* Baris 1: Grid 2 Kolom Seimbang (Kredensial & Manajemen Risiko) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-stretch">
-        {/* Card 1: Kredensial Exchange Aktif */}
-        {activeExchangeForm === "BINANCE" ? (
-          <Card className="shadow-sm flex flex-col justify-between">
-            <CardHeader className="p-3.5 sm:p-6 pb-2 sm:pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <KeyIcon className="size-4 text-primary" />
-                  Binance {binanceSubTab === "LIVE" ? "Live" : "Testnet"}{" "}
-                  Credentials
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] ${
-                    binanceSubTab === "LIVE"
-                      ? "border-emerald-500/30 text-emerald-600 bg-emerald-500/5"
-                      : "border-amber-500/30 text-amber-600 bg-amber-500/5"
-                  }`}
-                >
-                  {binanceSubTab === "LIVE"
-                    ? "Futures Real Funds"
-                    : "Futures Testnet Demo"}
-                </Badge>
-              </div>
-              <CardDescription className="text-xs hidden sm:block">
-                {binanceSubTab === "LIVE"
-                  ? "Binance Futures Live API credentials with futures trading permissions."
-                  : "Binance Futures Testnet API credentials from testnet.binancefuture.com."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 sm:space-y-5 flex-1">
+      {/* Form pengaturan: satu kolom, dikelompokkan per tujuan */}
+      <div className="space-y-4 sm:space-y-5">
+        <SettingsSection
+          icon={<KeyIcon />}
+          title="Connection"
+          description="License token and exchange API keys."
+        >
+          {activeExchangeForm === "BINANCE" ? (
+            <>
               {/* Client Token */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label
                     htmlFor="client-token"
-                    className="text-xs font-semibold"
+                    className="text-sm font-medium"
                   >
-                    Client Token (CryptoSpike License)
+                    Client token
                   </Label>
                   {token && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] text-emerald-600 border-emerald-500/30"
+                      className="text-[11px] text-emerald-600 border-emerald-500/30"
                     >
                       Token Installed
                     </Badge>
@@ -1379,7 +1401,7 @@ export default function CredentialConfig({
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
-                  className="font-mono text-xs"
+                  className="h-10 font-mono text-sm"
                 />
               </div>
 
@@ -1387,76 +1409,76 @@ export default function CredentialConfig({
                 {binanceSubTab === "TESTNET" ? (
                   <>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                        Binance Testnet API Key
+                      <Label className="text-sm font-medium">
+                        API key
                       </Label>
                       <Input
                         value={testnetApiKey}
                         onChange={(e) => setTestnetApiKey(e.target.value)}
-                        placeholder="Enter Binance Testnet API Key..."
-                        className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                        placeholder="Paste API key"
+                        className="h-10 font-mono text-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                          Binance Testnet API Secret
+                        <Label className="text-sm font-medium">
+                          API secret
                         </Label>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label="Toggle secret visibility"
                           onClick={() =>
                             setShowTestnetSecret(!showTestnetSecret)
                           }
                         >
-                          {showTestnetSecret ? "Hide" : "Show"}
+                          {showTestnetSecret ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                         </Button>
                       </div>
                       <Input
                         type={showTestnetSecret ? "text" : "password"}
                         value={testnetApiSecret}
                         onChange={(e) => setTestnetApiSecret(e.target.value)}
-                        placeholder="Enter Binance Testnet API Secret..."
-                        className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                        placeholder="Paste API secret"
+                        className="h-10 font-mono text-sm"
                       />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                        Binance Live API Key
+                      <Label className="text-sm font-medium">
+                        API key
                       </Label>
                       <Input
                         value={liveApiKey}
                         onChange={(e) => setLiveApiKey(e.target.value)}
-                        placeholder="Enter Binance Live API Key..."
-                        className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                        placeholder="Paste API key"
+                        className="h-10 font-mono text-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
-                          Binance Live API Secret
+                        <Label className="text-sm font-medium">
+                          API secret
                         </Label>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-6 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label="Toggle secret visibility"
                           onClick={() => setShowLiveSecret(!showLiveSecret)}
                         >
-                          {showLiveSecret ? "Hide" : "Show"}
+                          {showLiveSecret ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                         </Button>
                       </div>
                       <Input
                         type={showLiveSecret ? "text" : "password"}
                         value={liveApiSecret}
                         onChange={(e) => setLiveApiSecret(e.target.value)}
-                        placeholder="Enter Binance Live API Secret..."
-                        className="font-mono text-xs border-emerald-500/30 focus-visible:ring-emerald-500"
+                        placeholder="Paste API secret"
+                        className="h-10 font-mono text-sm"
                       />
                     </div>
                   </>
@@ -1501,41 +1523,22 @@ export default function CredentialConfig({
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="shadow-sm flex flex-col justify-between">
-            <CardHeader className="p-3.5 sm:p-6 pb-2 sm:pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <KeyIcon className="size-4 text-amber-500" />
-                  Tokocrypto Spot Credentials
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/5"
-                >
-                  Spot Market
-                </Badge>
-              </div>
-              <CardDescription className="text-xs hidden sm:block">
-                Tokocrypto OpenAPI v1 credentials using HMAC-SHA256 signature.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 flex-1">
+            </>
+          ) : (
+            <>
               {/* Client Token */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label
                     htmlFor="client-token"
-                    className="text-xs font-semibold"
+                    className="text-sm font-medium"
                   >
-                    Client Token (CryptoSpike License)
+                    Client token
                   </Label>
                   {token && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] text-emerald-600 border-emerald-500/30"
+                      className="text-[11px] text-emerald-600 border-emerald-500/30"
                     >
                       Token Installed
                     </Badge>
@@ -1546,68 +1549,68 @@ export default function CredentialConfig({
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVC..."
-                  className="font-mono text-xs"
+                  className="h-10 font-mono text-sm"
                 />
               </div>
 
               <div className="border-t pt-3 space-y-3">
                 {/* Tokocrypto API Key */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                    Tokocrypto API Key
+                  <Label className="text-sm font-medium">
+                    API key
                   </Label>
                   <Input
                     value={tokocryptoApiKey}
                     onChange={(e) => setTokocryptoApiKey(e.target.value)}
-                    placeholder="Enter Tokocrypto API Key..."
-                    className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                    placeholder="Paste API key"
+                    className="h-10 font-mono text-sm"
                   />
                 </div>
 
                 {/* Tokocrypto API Secret */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                      Tokocrypto API Secret
+                    <Label className="text-sm font-medium">
+                      API secret
                     </Label>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label="Toggle secret visibility"
                       onClick={() =>
                         setShowTokocryptoSecret(!showTokocryptoSecret)
                       }
                     >
-                      {showTokocryptoSecret ? "Hide" : "Show"}
+                      {showTokocryptoSecret ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                     </Button>
                   </div>
                   <Input
                     type={showTokocryptoSecret ? "text" : "password"}
                     value={tokocryptoApiSecret}
                     onChange={(e) => setTokocryptoApiSecret(e.target.value)}
-                    placeholder="Enter Tokocrypto API Secret..."
-                    className="font-mono text-xs border-amber-500/30 focus-visible:ring-amber-500"
+                    placeholder="Paste API secret"
+                    className="h-10 font-mono text-sm"
                   />
                 </div>
 
                 {/* Quote Asset Selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">
-                    Quote Trading Asset
+                  <Label className="text-sm font-medium">
+                    Quote asset
                   </Label>
                   <select
                     value={tokocryptoQuoteAsset}
                     onChange={(e) =>
                       setTokocryptoQuoteAsset(e.target.value as "USDT" | "BIDR")
                     }
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="USDT" className="text-black">
-                      USDT (Tether USD) — e.g. BTC_USDT, ETH_USDT
+                      USDT
                     </option>
                     <option value="BIDR" className="text-black">
-                      BIDR (Binance Indonesia Rupiah) — e.g. BTC_BIDR
+                      BIDR (Rupiah)
                     </option>
                   </select>
                 </div>
@@ -1639,51 +1642,25 @@ export default function CredentialConfig({
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )}
+            </>
+          )}
+        </SettingsSection>
 
-        {/* Card 2: Pengaturan Risiko & Eksekusi Bot */}
-        <Card className="shadow-sm flex flex-col justify-between">
-          <CardHeader className="p-3.5 sm:p-6 pb-2 sm:pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CheckIcon className="size-4 text-primary" />
-                Risk & Execution Management
-              </CardTitle>
-              {activeExchangeForm === "TOKOCRYPTO" ? (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] text-amber-600 border-amber-500/30"
-                >
-                  Spot Execution
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] text-primary border-primary/30"
-                >
-                  Futures Execution
-                </Badge>
-              )}
-            </div>
-            <CardDescription className="text-xs hidden sm:block">
-              {activeExchangeForm === "TOKOCRYPTO"
-                ? "Spot trading execution parameters with Multi-Stage TP (50/30/20) & Smart Merge."
-                : "Execution parameters when a signal is received on Binance Futures."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-3.5 sm:p-6 pt-0 sm:pt-0 space-y-4 text-xs flex-1">
+        <SettingsSection
+          icon={<ZapIcon />}
+          title="Execution"
+          description="How the bot acts when a signal arrives."
+        >
             {/* Auto Execute Switch */}
-            <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+            <div className="flex items-center justify-between gap-4 rounded-xl border p-3.5">
               <div className="space-y-0.5">
                 <Label
                   htmlFor="auto-exec"
-                  className="text-xs font-semibold cursor-pointer"
+                  className="text-sm font-medium cursor-pointer"
                 >
-                  Auto-Trade
+                  Auto-trade
                 </Label>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="max-sm:hidden text-[11px] text-muted-foreground">
                   {activeExchangeForm === "TOKOCRYPTO"
                     ? "Auto-buy LONG signals & 4s TP/SL monitor (turn OFF to HOLD assets)"
                     : "Automatic execution of Binance Futures signals"}
@@ -1698,23 +1675,23 @@ export default function CredentialConfig({
 
             {/* Dry-Run Simulation Switch (Tokocrypto Spot) */}
             {activeExchangeForm === "TOKOCRYPTO" && (
-              <div className="flex items-center justify-between p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center justify-between gap-4 rounded-xl border p-3.5">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <Label
                       htmlFor="dry-run"
-                      className="text-xs font-semibold cursor-pointer text-amber-600 dark:text-amber-500"
+                      className="text-sm font-medium cursor-pointer"
                     >
-                      Tokocrypto Dry-Run Mode (Simulation)
+                      Dry-run (simulation)
                     </Label>
                     <Badge
                       variant="outline"
-                      className="text-[9px] px-1 py-0 h-3.5 border-amber-500/40 text-amber-600"
+                      className="text-[11px] px-1 py-0 h-4 border-amber-500/40 text-amber-600"
                     >
                       Paper Trading
                     </Badge>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground">
                     Simulate spot buy & TP/SL monitoring locally without real
                     funds.
                   </p>
@@ -1727,12 +1704,11 @@ export default function CredentialConfig({
               </div>
             )}
 
-            {/* Margin Type & Leverage (Only relevant for Binance Futures) */}
-            {activeExchangeForm === "BINANCE" ? (
-              <>
-                <div className="space-y-1.5 mt-2">
-                  <Label htmlFor="margin-type" className="text-xs font-medium">
-                    Margin Type
+          {activeExchangeForm === "BINANCE" && (
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="margin-type" className="text-sm font-medium">
+                    Margin type
                   </Label>
                   <select
                     id="margin-type"
@@ -1740,7 +1716,7 @@ export default function CredentialConfig({
                     onChange={(e) =>
                       setMarginType(e.target.value as "ISOLATED" | "CROSSED")
                     }
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="ISOLATED" className="text-black">
                       ISOLATED
@@ -1751,9 +1727,9 @@ export default function CredentialConfig({
                   </select>
                 </div>
 
-                <div className="space-y-1.5 mt-2">
-                  <Label htmlFor="leverage" className="text-xs font-medium">
-                    Default Leverage (x)
+                <div className="space-y-1.5">
+                  <Label htmlFor="leverage" className="text-sm font-medium">
+                    Leverage (x)
                   </Label>
                   <Input
                     id="leverage"
@@ -1762,20 +1738,31 @@ export default function CredentialConfig({
                     max={125}
                     value={leverage}
                     onChange={(e) => setLeverage(Number(e.target.value))}
-                    className="h-8 text-xs"
+                    className="h-10 text-sm"
                   />
                 </div>
 
-                <div className="space-y-1.5 mt-2">
+            </div>
+          )}
+        </SettingsSection>
+
+        <SettingsSection
+          icon={<FilterIcon />}
+          title="Signal filters"
+          description="Which signals are allowed to open a trade."
+        >
+          {activeExchangeForm === "BINANCE" && (
+            <>
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label
                       htmlFor="trade-direction"
-                      className="text-xs font-medium"
+                      className="text-sm font-medium"
                     >
-                      Allowed Position Side
+                      Position side
                     </Label>
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ${
+                      className={`max-sm:hidden text-[11px] px-1.5 py-0.5 rounded font-mono font-semibold ${
                         tradeDirection === "LONG_ONLY"
                           ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                           : tradeDirection === "SHORT_ONLY"
@@ -1798,10 +1785,10 @@ export default function CredentialConfig({
                         e.target.value as "BOTH" | "LONG_ONLY" | "SHORT_ONLY",
                       )
                     }
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="BOTH" className="text-black">
-                      Both Sides (Long &amp; Short)
+                      Long & short
                     </option>
                     <option value="LONG_ONLY" className="text-black">
                       Long Only
@@ -1810,19 +1797,19 @@ export default function CredentialConfig({
                       Short Only
                     </option>
                   </select>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground">
                     Filter bot execution to Long, Short, or both positions on
                     Binance {binanceSubTab === "LIVE" ? "Live" : "Testnet"}.
                   </p>
                 </div>
 
                 {/* Minimum Signal Score Filter */}
-                <div className="space-y-1.5 mt-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="min-score" className="text-xs font-medium">
-                      Minimum Signal Score
+                    <Label htmlFor="min-score" className="text-sm font-medium">
+                      Minimum score
                     </Label>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
+                    <span className="max-sm:hidden text-[11px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
                       {minScore > 0 ? `>= ${minScore}` : "ALL SIGNALS"}
                     </span>
                   </div>
@@ -1830,39 +1817,39 @@ export default function CredentialConfig({
                     id="min-score"
                     value={minScore}
                     onChange={(e) => setMinScore(Number(e.target.value))}
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value={0} className="text-black">
-                      All Scores (No Minimum Filter - Default)
+                      All signals (default)
                     </option>
                     <option value={80} className="text-black">
-                      Score 80+ (Standard Quality)
+                      80+ standard
                     </option>
                     <option value={90} className="text-black">
-                      Score 90+ (High Quality)
+                      90+ high quality
                     </option>
                     <option value={95} className="text-black">
-                      Score 95+ (Elite Signals)
+                      95+ elite
                     </option>
                     <option value={99} className="text-black">
-                      Score 99 (Perfect Only)
+                      99 perfect only
                     </option>
                   </select>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground">
                     Only execute signals with a quality score meeting or
                     exceeding this threshold.
                   </p>
                 </div>
 
                 {/* Block LONG on BTC Bearish/Choppy */}
-                <div className="space-y-1.5 mt-2 p-2.5 rounded-lg border bg-muted/20">
+                <div className="space-y-1 rounded-xl border p-3.5">
                   <div className="flex items-center justify-between">
                     <Label
                       htmlFor="btc-trend-guard"
-                      className="text-xs font-medium flex items-center gap-1.5"
+                      className="text-sm font-medium flex items-center gap-1.5"
                     >
                       <ShieldCheck className="size-3.5 text-emerald-500" />
-                      Block LONG on BTC Bearish / Choppy
+                      Block LONG when BTC is bearish
                     </Label>
                     <Switch
                       id="btc-trend-guard"
@@ -1870,36 +1857,232 @@ export default function CredentialConfig({
                       onCheckedChange={setBlockLongOnBtcBearish}
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed">
                     Automatically protects against market dumps by rejecting
                     LONG positions when BTC macro trend is Bearish or Choppy.
                     SHORT positions remain active.
                   </p>
                 </div>
-              </>
-            ) : (
-              <div className="p-2.5 rounded-lg border bg-muted/30 text-[11px] text-muted-foreground space-y-1">
-                <span className="font-semibold text-foreground block">
-                  Market: Spot 1x Cash-Only
-                </span>
-                <p>
-                  Tokocrypto Spot operates without leverage or margin
-                  liquidation risks. Each buy position is monitored
-                  automatically with targets of{" "}
-                  <strong>Multi-Stage TP (50/30/20)</strong> with{" "}
-                  <strong>Smart Merge & Stop Loss</strong>.
-                </p>
-              </div>
-            )}
+            </>
+          )}
+          {/* Mode Selector */}
+          <div className="space-y-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <Label htmlFor="filter-mode" className="text-sm font-medium">
+                Coin filter
+              </Label>
+              <select
+                id="filter-mode"
+                value={coinFilterMode}
+                onChange={(e) =>
+                  setCoinFilterMode(
+                    e.target.value as "ALL" | "WHITELIST" | "BLACKLIST",
+                  )
+                }
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="ALL" className="text-black">
+                  All coins
+                </option>
+                <option value="WHITELIST" className="text-black">
+                  Only selected coins
+                </option>
+                <option value="BLACKLIST" className="text-black">
+                  Exclude selected coins
+                </option>
+              </select>
+            </div>
+            <p className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed hidden sm:block">
+              {coinFilterMode === "ALL" &&
+                "Bot will execute signals for any coin received from CryptoSpike."}
+              {coinFilterMode === "WHITELIST" &&
+                "Bot will ONLY execute signals matching your selected coins below."}
+              {coinFilterMode === "BLACKLIST" &&
+                "Bot will execute all signals EXCEPT the coins in your blacklist below."}
+            </p>
+          </div>
 
+          {coinFilterMode !== "ALL" && (
+            <div className="space-y-3.5 pt-3 border-t border-border/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <Label className="text-sm font-medium">
+                  {coinFilterMode === "WHITELIST"
+                    ? "Allowed Coins"
+                    : "Blocked Coins"}{" "}
+                  ({coinList.length})
+                </Label>
+
+                {/* Add coin input */}
+                <div className="flex gap-1.5 w-full sm:w-72">
+                  <Input
+                    placeholder={
+                      activeExchangeForm === "TOKOCRYPTO"
+                        ? `e.g. BTC, ETH, BTC_${tokocryptoQuoteAsset}`
+                        : "e.g. BTC, ETH, ADAUSDT"
+                    }
+                    value={coinInput}
+                    onChange={(e) => setCoinInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCoin(coinInput);
+                      }
+                    }}
+                    className="h-8 text-xs font-mono uppercase"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleAddCoin(coinInput)}
+                    className="h-8 px-2.5 text-xs cursor-pointer shrink-0"
+                  >
+                    <PlusIcon className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Preset quick buttons */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    Quick Presets:
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 text-[11px] px-1 text-muted-foreground hover:text-destructive cursor-pointer"
+                    onClick={() => setTargetCoins("")}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 sm:flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer shrink-0"
+                    onClick={() =>
+                      handleSetPreset([
+                        "BTCUSDT",
+                        "ETHUSDT",
+                        "SOLUSDT",
+                        "BNBUSDT",
+                        "XRPUSDT",
+                      ])
+                    }
+                  >
+                    Bluechips
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer shrink-0"
+                    onClick={() =>
+                      handleSetPreset([
+                        "ADAUSDT",
+                        "AVAXUSDT",
+                        "NEARUSDT",
+                        "SUIUSDT",
+                        "DOTUSDT",
+                      ])
+                    }
+                  >
+                    Top L1
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer border-amber-500/30 hover:bg-amber-500/10 shrink-0"
+                    onClick={() => handleSetPreset(TOP_50_CMC)}
+                  >
+                    Top 50 CMC
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10 shrink-0"
+                    onClick={() => handleSetPreset(TOP_100_CMC)}
+                  >
+                    Top 100 CMC
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer border-emerald-500/30 hover:bg-emerald-500/10 shrink-0"
+                    onClick={() => handleSetPreset(TOP_50_NO_MEME)}
+                  >
+                    Top 50 (No Memes)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10 shrink-0"
+                    onClick={() => handleSetPreset(TOP_100_NO_MEME)}
+                  >
+                    Top 100 (No Memes)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 shrink-0"
+                    onClick={() => handleSetPreset(MEMECOINS)}
+                  >
+                    Memecoins
+                  </Button>
+                </div>
+              </div>
+
+              {/* Badges container */}
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-md border bg-muted/20">
+                {coinList.length === 0 ? (
+                  <span className="text-[11px] text-muted-foreground italic">
+                    No coins specified. Type a symbol above or select a preset.
+                  </span>
+                ) : (
+                  coinList.map((coin) => (
+                    <Badge
+                      key={coin}
+                      variant="secondary"
+                      className="text-[11px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
+                    >
+                      {coin}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCoin(coin)}
+                        className="hover:text-destructive transition-colors cursor-pointer"
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </SettingsSection>
+
+        <SettingsSection
+          icon={<WalletIcon />}
+          title="Position sizing"
+          description="How much capital each trade uses."
+        >
             {/* Risk Allocation Mode (Only relevant for Binance Futures) */}
             {activeExchangeForm !== "TOKOCRYPTO" && (
-              <div className="space-y-1.5 mt-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="risk-mode" className="text-xs font-medium">
-                    Risk Allocation Mode
+                  <Label htmlFor="risk-mode" className="text-sm font-medium">
+                    Sizing mode
                   </Label>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
+                  <span className="max-sm:hidden text-[11px] px-1.5 py-0.5 rounded font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
                     {riskMode === "FIXED_USD"
                       ? "FIXED USD ($)"
                       : riskMode === "RISK_AT_SL"
@@ -1911,19 +2094,19 @@ export default function CredentialConfig({
                   id="risk-mode"
                   value={riskMode}
                   onChange={(e) => setRiskMode(e.target.value as RiskMode)}
-                  className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="PERCENTAGE" className="text-black">
-                    Percentage (% of Wallet Balance)
+                    % of balance
                   </option>
                   <option value="FIXED_USD" className="text-black">
-                    Fixed USD Amount ($ Margin per Trade)
+                    Fixed USD per trade
                   </option>
                   <option value="RISK_AT_SL" className="text-black">
-                    Risk at Stop Loss (% of Wallet Lost if SL Hits)
+                    Risk at stop loss
                   </option>
                 </select>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="max-sm:hidden text-[11px] text-muted-foreground">
                   {riskMode === "FIXED_USD"
                     ? "Allocate a locked dollar margin per trade (ideal for small balances)."
                     : riskMode === "RISK_AT_SL"
@@ -1933,8 +2116,9 @@ export default function CredentialConfig({
               </div>
             )}
 
+          <div className="grid grid-cols-2 gap-3 items-start">
             {/* Risk / Allocation Numeric Input */}
-            <div className="space-y-1.5 mt-2">
+            <div className="space-y-1.5">
               <Label
                 htmlFor={
                   activeExchangeForm !== "TOKOCRYPTO" &&
@@ -1942,15 +2126,15 @@ export default function CredentialConfig({
                     ? "risk-usd"
                     : "risk-pct"
                 }
-                className="text-xs font-medium"
+                className="text-sm font-medium"
               >
                 {activeExchangeForm === "TOKOCRYPTO"
-                  ? `Allocation Per Trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp BIDR" : "$ USDT"} Cash)`
+                  ? `Per trade (${tokocryptoQuoteAsset === "BIDR" ? "Rp" : "$"})`
                   : riskMode === "FIXED_USD"
-                    ? "Fixed Margin Amount ($ USDT)"
+                    ? "Margin per trade ($)"
                     : riskMode === "RISK_AT_SL"
-                      ? "Loss at Stop Loss (% Wallet Balance)"
-                      : "Risk Per Trade (% Wallet Balance)"}
+                      ? "Loss at SL (%)"
+                      : "Risk per trade (%)"}
               </Label>
 
               {activeExchangeForm !== "TOKOCRYPTO" &&
@@ -1964,10 +2148,10 @@ export default function CredentialConfig({
                     max="100000"
                     value={riskAmountUsd}
                     onChange={(e) => setRiskAmountUsd(Number(e.target.value))}
-                    className="h-8 text-xs font-mono"
+                    className="h-10 text-sm font-mono"
                     placeholder="e.g. 10.0"
                   />
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground">
                     * Margin per trade is locked at{" "}
                     <strong>${Number(riskAmountUsd).toFixed(2)} USDT</strong>{" "}
                     regardless of balance changes.
@@ -2000,13 +2184,13 @@ export default function CredentialConfig({
                   }
                   value={riskPerTradePct}
                   onChange={(e) => setRiskPerTradePct(Number(e.target.value))}
-                  className="h-8 text-xs font-mono"
+                  className="h-10 text-sm font-mono"
                   placeholder="e.g. 2.0"
                 />
               )}
 
               {activeExchangeForm === "TOKOCRYPTO" && (
-                <p className="text-[10px] text-muted-foreground">
+                <p className="max-sm:hidden text-[11px] text-muted-foreground">
                   * Minimum Tokocrypto:{" "}
                   {tokocryptoQuoteAsset === "BIDR"
                     ? "Rp 100.000"
@@ -2014,9 +2198,27 @@ export default function CredentialConfig({
                   per order spot.
                 </p>
               )}
+            </div>
+            {/* Max Open Positions */}
+            <div className="space-y-1.5">
+              <Label htmlFor="max-pos" className="text-sm font-medium">
+                Max open positions
+              </Label>
+              <Input
+                id="max-pos"
+                type="number"
+                min={1}
+                max={20}
+                value={maxOpenPositions}
+                onChange={(e) => setMaxOpenPositions(Number(e.target.value))}
+                className="h-10 text-sm"
+              />
+            </div>
+
+          </div>
               {typeof activeTestResult?.balance === "number" ? (
                 activeExchangeForm === "TOKOCRYPTO" ? (
-                  <div className="text-[10px] sm:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 p-2.5 rounded-md mt-2 space-y-1.5">
+                  <div className="text-[11px] sm:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 p-2.5 rounded-md mt-2 space-y-1.5">
                     <div className="flex items-center justify-between font-medium pb-1 border-b border-amber-500/20">
                       <span className="text-muted-foreground">
                         Available Cash:
@@ -2073,7 +2275,7 @@ export default function CredentialConfig({
                       </span>
                     </div>
                     {tokoTotalCapital > activeTestResult.balance && (
-                      <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
+                      <p className="text-[11px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
                         * Warning: Total allocation (
                         {tokocryptoQuoteAsset === "BIDR" ? "Rp " : "$"}
                         {tokoTotalCapital.toLocaleString()}) exceeds current
@@ -2085,7 +2287,7 @@ export default function CredentialConfig({
                   </div>
                 ) : (
                   <div
-                    className={`text-[10px] sm:text-xs ${binanceRiskInfo.color} ${binanceRiskInfo.bg} p-2.5 rounded-md border ${binanceRiskInfo.border} mt-2 space-y-1.5`}
+                    className={`text-[11px] sm:text-xs ${binanceRiskInfo.color} ${binanceRiskInfo.bg} p-2.5 rounded-md border ${binanceRiskInfo.border} mt-2 space-y-1.5`}
                   >
                     <div className="flex items-center justify-between font-medium pb-1 border-b border-current/10">
                       <span className="text-muted-foreground">
@@ -2176,7 +2378,7 @@ export default function CredentialConfig({
                       </span>
                     </div>
                     {binanceTotalRiskPct > 100 && (
-                      <p className="text-[10px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
+                      <p className="text-[11px] text-destructive dark:text-red-400 font-semibold pt-1 border-t border-destructive/20">
                         * Warning: Total margin allocation (
                         {binanceTotalRiskPct.toFixed(1)}
                         %) exceeds 100% of wallet balance. Reduce Risk per Trade
@@ -2186,42 +2388,30 @@ export default function CredentialConfig({
                   </div>
                 )
               ) : (
-                <p className="text-[10px] text-muted-foreground italic mt-1">
+                <p className="max-sm:hidden text-[11px] text-muted-foreground italic mt-1">
                   * Please run 'Test Connection' first to see estimated
                   allocation amount.
                 </p>
               )}
-            </div>
+        </SettingsSection>
 
-            {/* Max Open Positions */}
-            <div className="space-y-1.5">
-              <Label htmlFor="max-pos" className="text-xs font-medium">
-                Max Open Positions
-              </Label>
-              <Input
-                id="max-pos"
-                type="number"
-                min={1}
-                max={20}
-                value={maxOpenPositions}
-                onChange={(e) => setMaxOpenPositions(Number(e.target.value))}
-                className="h-8 text-xs"
-              />
-            </div>
-
+        <SettingsSection
+          icon={<TargetIcon />}
+          title="Exit strategy"
+          description="Take profit, stop loss and time exit."
+        >
             {/* 🎯 Take Profit Execution Mode (Intercept TP) */}
-            <div className="space-y-2 pt-3 border-t border-border/50">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="tp-mode"
-                  className="text-xs font-semibold flex items-center gap-1.5"
+                  className="text-sm font-medium flex items-center gap-1.5"
                 >
-                  <Layers className="size-3.5 text-primary" />
-                  Take Profit Target Mode
+                  Take profit
                 </Label>
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono font-semibold uppercase"
+                  className="max-sm:hidden text-[11px] font-mono font-semibold uppercase"
                 >
                   {tpMode === "TP1_ONLY"
                     ? "100% TP1"
@@ -2253,29 +2443,28 @@ export default function CredentialConfig({
                       | "CUSTOM_SPLIT",
                   )
                 }
-                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="MULTI_TP" className="text-black">
-                  Multi-Stage (50% TP1, 30% TP2, 20% Moonbag/Trailing) [Default]
+                  Multi-stage 50/30/20 (default)
                 </option>
                 <option value="CUSTOM_SPLIT" className="text-black">
-                  Custom Split (e.g. 70% at Target ROI + 30% Moonbag with
-                  Auto-BEP)
+                  Custom split + moonbag
                 </option>
                 <option value="TP1_ONLY" className="text-black">
-                  100% Sell at TP1 Only (Scalper Hit & Run / Fast Profit Lock)
+                  100% at TP1
                 </option>
                 <option value="TP2_ONLY" className="text-black">
-                  50% at TP1 + 50% Full Sell at TP2 (Balanced Target)
+                  50% TP1 + 50% TP2
                 </option>
                 <option value="CUSTOM_ROI" className="text-black">
-                  100% Sell at Custom Target ROI % (Fixed Target Return)
+                  100% at custom ROI
                 </option>
               </select>
 
               {/* TP Mode Information Cards */}
               {tpMode === "TP1_ONLY" && (
-                <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                <div className="max-sm:hidden p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
                   ⚡ <strong>Fast Profit Lock:</strong> 100% of position size is
                   placed as a limit order at <strong>TP1</strong> price. Once
                   TP1 is reached, the entire position is closed immediately and
@@ -2284,7 +2473,7 @@ export default function CredentialConfig({
               )}
 
               {tpMode === "TP2_ONLY" && (
-                <div className="p-2 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary leading-relaxed">
+                <div className="max-sm:hidden p-2 rounded bg-primary/10 border border-primary/20 text-[11px] text-primary leading-relaxed">
                   🎯 <strong>Balanced Target:</strong> 50% of the position is
                   closed at <strong>TP1</strong>, and the remaining 50% is fully
                   closed at <strong>TP2</strong>. Once TP1 is achieved, Stop
@@ -2298,7 +2487,7 @@ export default function CredentialConfig({
                     <div className="space-y-1">
                       <Label
                         htmlFor="custom-split-ratio"
-                        className="text-[10px] font-semibold text-primary"
+                        className="text-[11px] font-semibold text-primary"
                       >
                         First Exit Size (%)
                       </Label>
@@ -2319,7 +2508,7 @@ export default function CredentialConfig({
                     <div className="space-y-1">
                       <Label
                         htmlFor="custom-split-roi"
-                        className="text-[10px] font-semibold text-primary"
+                        className="text-[11px] font-semibold text-primary"
                       >
                         First Target ROI (%)
                       </Label>
@@ -2338,7 +2527,7 @@ export default function CredentialConfig({
                       />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] pt-1 border-t border-primary/20">
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-primary/20">
                     <span className="text-muted-foreground">
                       Price Movement to First Target:
                     </span>
@@ -2351,7 +2540,7 @@ export default function CredentialConfig({
                       %
                     </span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed">
                     ⚡ <strong>Asymmetric Profit Lock:</strong>{" "}
                     <strong>{customTpSplitRatio}%</strong> of your position is
                     automatically closed at{" "}
@@ -2368,11 +2557,11 @@ export default function CredentialConfig({
                   <div className="flex items-center justify-between">
                     <Label
                       htmlFor="custom-tp-roi"
-                      className="text-[10px] font-semibold text-amber-900 dark:text-amber-200"
+                      className="text-[11px] font-semibold text-amber-900 dark:text-amber-200"
                     >
                       Target Return on Equity (ROI %)
                     </Label>
-                    <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                    <span className="text-[11px] font-mono font-bold text-amber-700 dark:text-amber-300">
                       ~
                       {(
                         (Number(customTpRoiPct) || 15) /
@@ -2392,7 +2581,7 @@ export default function CredentialConfig({
                     className="h-7 text-xs font-mono"
                     placeholder="e.g. 15.0"
                   />
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  <p className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed">
                     100% of the position will be closed at the price target
                     yielding <strong>+{customTpRoiPct}% ROI</strong>{" "}
                     (automatically calculated based on {leverage}x leverage).
@@ -2401,7 +2590,7 @@ export default function CredentialConfig({
               )}
 
               {tpMode === "MULTI_TP" && (
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                <p className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed">
                   Standard CryptoSpike allocation: 50% TP1, 30% TP2, and 20%
                   Moonbag Trailing Stop Runner with Auto Break-Even protection.
                 </p>
@@ -2409,18 +2598,17 @@ export default function CredentialConfig({
             </div>
 
             {/* 🛡️ Stop Loss Guard Mode (Custom SL) */}
-            <div className="space-y-2 pt-3 border-t border-border/50">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="sl-mode"
-                  className="text-xs font-semibold flex items-center gap-1.5"
+                  className="text-sm font-medium flex items-center gap-1.5"
                 >
-                  <ShieldAlert className="size-3.5 text-destructive" />
-                  Stop Loss Guard Mode
+                  Stop loss
                 </Label>
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono font-semibold uppercase"
+                  className="max-sm:hidden text-[11px] font-mono font-semibold uppercase"
                 >
                   {slMode === "MAX_LOSS_ROI"
                     ? "Max Loss ROI (-" + customSlValue + "%)"
@@ -2441,24 +2629,22 @@ export default function CredentialConfig({
                       | "MAX_LOSS_ROI",
                   )
                 }
-                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="SIGNAL_SL" className="text-black">
-                  Signal AI Structural SL (Dynamic S/R &amp; ATR Guard)
-                  [Recommended]
+                  Signal SL (recommended)
                 </option>
                 <option value="MAX_LOSS_ROI" className="text-black">
-                  Max Margin Loss ROI % (Wallet Protection — Divided by
-                  Leverage)
+                  Max margin loss (ROI %)
                 </option>
                 <option value="FIXED_PCT" className="text-black">
-                  Fixed Price Drop % (Chart Candlestick Movement)
+                  Fixed price move (%)
                 </option>
               </select>
 
               {/* Penjelasan Komparasi Detail Mode SL */}
               {slMode === "SIGNAL_SL" && (
-                <div className="p-2 rounded bg-muted/40 border text-[10px] text-muted-foreground leading-relaxed">
+                <div className="max-sm:hidden p-2 rounded bg-muted/40 border text-[11px] text-muted-foreground leading-relaxed">
                   🧠 <strong>AI Structural Guard:</strong> Stop Loss is
                   dynamically placed at the key structural level calculated by
                   CryptoSpike (below swing low for LONG / above swing high for
@@ -2471,11 +2657,11 @@ export default function CredentialConfig({
                   <div className="flex items-center justify-between">
                     <Label
                       htmlFor="custom-sl-roi"
-                      className="text-[10px] font-semibold text-destructive dark:text-red-300"
+                      className="text-[11px] font-semibold text-destructive dark:text-red-300"
                     >
                       Maximum Loss Tolerance (% of Margin)
                     </Label>
-                    <span className="text-[10px] font-mono font-bold text-destructive dark:text-red-300">
+                    <span className="text-[11px] font-mono font-bold text-destructive dark:text-red-300">
                       ~
                       {(
                         (Number(customSlValue) || 15) /
@@ -2495,7 +2681,7 @@ export default function CredentialConfig({
                     className="h-7 text-xs font-mono"
                     placeholder="e.g. 15.0"
                   />
-                  <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
+                  <div className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed space-y-1">
                     <p>
                       💰 <strong>Wallet-Centric Protection:</strong> Limits
                       maximum loss to <strong>-{customSlValue}%</strong> of your
@@ -2524,11 +2710,11 @@ export default function CredentialConfig({
                   <div className="flex items-center justify-between">
                     <Label
                       htmlFor="custom-sl-pct"
-                      className="text-[10px] font-semibold text-amber-900 dark:text-amber-200"
+                      className="text-[11px] font-semibold text-amber-900 dark:text-amber-200"
                     >
                       Chart Price Drop Tolerance (%)
                     </Label>
-                    <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                    <span className="text-[11px] font-mono font-bold text-amber-700 dark:text-amber-300">
                       -
                       {(
                         Number(customSlValue) * (isTokoForm ? 1 : leverage)
@@ -2547,7 +2733,7 @@ export default function CredentialConfig({
                     className="h-7 text-xs font-mono"
                     placeholder="e.g. 1.8"
                   />
-                  <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
+                  <div className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed space-y-1">
                     <p>
                       📊 <strong>Chart-Centric Protection:</strong> Stop Loss is
                       placed exactly <strong>-{customSlValue}%</strong> away
@@ -2572,17 +2758,16 @@ export default function CredentialConfig({
 
             {/* ⏱️ Stagnation Cutoff Guard (Time-Exit) */}
             {!isTokoForm && (
-              <div className="space-y-2 pt-3 border-t border-border/50">
+              <div className="space-y-2 rounded-xl border p-3.5">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label
                       htmlFor="stagnation-toggle"
-                      className="text-xs font-semibold flex items-center gap-1.5"
+                      className="text-sm font-medium flex items-center gap-1.5"
                     >
-                      <Clock className="size-3.5 text-amber-500" />
-                      Stagnation Cutoff Guard (Time-Exit)
+                      Time exit
                     </Label>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="max-sm:hidden text-[11px] text-muted-foreground">
                       Tutup posisi otomatis jika pergerakan macet/stagnan
                       sebelum menyentuh TP1
                     </p>
@@ -2595,17 +2780,17 @@ export default function CredentialConfig({
                 </div>
 
                 {stagnationStopEnabled && (
-                  <div className="space-y-2 p-2.5 rounded bg-amber-500/10 border border-amber-500/20">
+                  <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between">
                       <Label
                         htmlFor="stagnation-hours"
-                        className="text-[10px] font-semibold text-amber-900 dark:text-amber-200"
+                        className="text-xs text-muted-foreground"
                       >
-                        Max Holding Duration Before TP1 (Hours)
+                        Close if TP1 is not hit within (hours)
                       </Label>
                       <Badge
                         variant="outline"
-                        className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300 border-amber-500/30"
+                        className="max-sm:hidden text-[11px] font-mono font-bold text-amber-700 dark:text-amber-300 border-amber-500/30"
                       >
                         {stagnationHours} Jam ({Math.round(stagnationHours / 4)}{" "}
                         x 4H Candle)
@@ -2621,10 +2806,10 @@ export default function CredentialConfig({
                       onChange={(e) =>
                         setStagnationHours(Math.max(1, Number(e.target.value)))
                       }
-                      className="h-7 text-xs font-mono"
+                      className="h-10 text-sm font-mono"
                       placeholder="e.g. 32"
                     />
-                    <div className="text-[10px] text-muted-foreground leading-relaxed space-y-1">
+                    <div className="max-sm:hidden text-[11px] text-muted-foreground leading-relaxed space-y-1">
                       <p>
                         💡 <strong>Proteksi Modal:</strong> Jika posisi sudah
                         berjalan <strong>&ge; {stagnationHours} jam</strong> dan{" "}
@@ -2643,252 +2828,29 @@ export default function CredentialConfig({
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SettingsSection>
       </div>
 
-      {/* Baris 2: Kartu Penuh untuk Filter Koin (Trading Scope) */}
-      <Card className="shadow-sm w-full">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FilterIcon className="size-4 text-primary" />
-            Coin Filter (Scope) —{" "}
-            {activeExchangeForm === "TOKOCRYPTO"
-              ? "Tokocrypto Spot"
-              : binanceSubTab === "LIVE"
-                ? "Binance Live (Real)"
-                : "Binance Testnet (Demo)"}
-          </CardTitle>
-          <CardDescription className="text-xs hidden sm:block">
-            Filter which coins your bot is allowed to execute.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-xs">
-          {/* Mode Selector */}
-          <div className="space-y-1.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <Label htmlFor="filter-mode" className="text-xs font-medium">
-                Filter Mode
-              </Label>
-              <select
-                id="filter-mode"
-                value={coinFilterMode}
-                onChange={(e) =>
-                  setCoinFilterMode(
-                    e.target.value as "ALL" | "WHITELIST" | "BLACKLIST",
-                  )
-                }
-                className="flex h-8 w-full sm:w-72 rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="ALL" className="text-black">
-                  All Market (No Filter)
-                </option>
-                <option value="WHITELIST" className="text-black">
-                  Whitelist (Only Selected Coins)
-                </option>
-                <option value="BLACKLIST" className="text-black">
-                  Blacklist (Exclude Selected Coins)
-                </option>
-              </select>
-            </div>
-            <p className="text-[10px] text-muted-foreground leading-relaxed hidden sm:block">
-              {coinFilterMode === "ALL" &&
-                "Bot will execute signals for any coin received from CryptoSpike."}
-              {coinFilterMode === "WHITELIST" &&
-                "Bot will ONLY execute signals matching your selected coins below."}
-              {coinFilterMode === "BLACKLIST" &&
-                "Bot will execute all signals EXCEPT the coins in your blacklist below."}
-            </p>
-          </div>
-
-          {coinFilterMode !== "ALL" && (
-            <div className="space-y-3.5 pt-3 border-t border-border/50">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <Label className="text-xs font-semibold">
-                  {coinFilterMode === "WHITELIST"
-                    ? "Allowed Coins"
-                    : "Blocked Coins"}{" "}
-                  ({coinList.length})
-                </Label>
-
-                {/* Add coin input */}
-                <div className="flex gap-1.5 w-full sm:w-72">
-                  <Input
-                    placeholder={
-                      activeExchangeForm === "TOKOCRYPTO"
-                        ? `e.g. BTC, ETH, BTC_${tokocryptoQuoteAsset}`
-                        : "e.g. BTC, ETH, ADAUSDT"
-                    }
-                    value={coinInput}
-                    onChange={(e) => setCoinInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddCoin(coinInput);
-                      }
-                    }}
-                    className="h-8 text-xs font-mono uppercase"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleAddCoin(coinInput)}
-                    className="h-8 px-2.5 text-xs cursor-pointer shrink-0"
-                  >
-                    <PlusIcon className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Preset quick buttons */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground font-medium">
-                    Quick Presets:
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 text-[10px] px-1 text-muted-foreground hover:text-destructive cursor-pointer"
-                    onClick={() => setTargetCoins("")}
-                  >
-                    Clear All
-                  </Button>
-                </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 sm:flex-wrap">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer shrink-0"
-                    onClick={() =>
-                      handleSetPreset([
-                        "BTCUSDT",
-                        "ETHUSDT",
-                        "SOLUSDT",
-                        "BNBUSDT",
-                        "XRPUSDT",
-                      ])
-                    }
-                  >
-                    Bluechips
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer shrink-0"
-                    onClick={() =>
-                      handleSetPreset([
-                        "ADAUSDT",
-                        "AVAXUSDT",
-                        "NEARUSDT",
-                        "SUIUSDT",
-                        "DOTUSDT",
-                      ])
-                    }
-                  >
-                    Top L1
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-amber-600 dark:text-amber-500 border-amber-500/30 hover:bg-amber-500/10 shrink-0"
-                    onClick={() => handleSetPreset(TOP_50_CMC)}
-                  >
-                    Top 50 CMC
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-primary border-primary/30 hover:bg-primary/10 shrink-0"
-                    onClick={() => handleSetPreset(TOP_100_CMC)}
-                  >
-                    Top 100 CMC
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-emerald-600 dark:text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 shrink-0"
-                    onClick={() => handleSetPreset(TOP_50_NO_MEME)}
-                  >
-                    Top 50 (No Memes)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10 shrink-0"
-                    onClick={() => handleSetPreset(TOP_100_NO_MEME)}
-                  >
-                    Top 100 (No Memes)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] px-2 py-0 cursor-pointer text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 shrink-0"
-                    onClick={() => handleSetPreset(MEMECOINS)}
-                  >
-                    Memecoins
-                  </Button>
-                </div>
-              </div>
-
-              {/* Badges container */}
-              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-md border bg-muted/20">
-                {coinList.length === 0 ? (
-                  <span className="text-[10px] text-muted-foreground italic">
-                    No coins specified. Type a symbol above or select a preset.
-                  </span>
-                ) : (
-                  coinList.map((coin) => (
-                    <Badge
-                      key={coin}
-                      variant="secondary"
-                      className="text-[10px] font-mono font-medium pl-1.5 pr-1 py-0 gap-1 bg-background border hover:bg-muted"
-                    >
-                      {coin}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCoin(coin)}
-                        className="hover:text-destructive transition-colors cursor-pointer"
-                      >
-                        <XIcon className="size-3" />
-                      </button>
-                    </Badge>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 mt-6 border-t border-border/50">
+      <div className="flex flex-row items-center justify-end gap-2 sm:gap-3 pt-3 sm:pt-4 mt-4 sm:mt-6 border-t border-border/50 max-sm:sticky max-sm:bottom-[calc(3.7rem+env(safe-area-inset-bottom))] max-sm:z-30 max-sm:-mx-3 max-sm:px-3 max-sm:pb-3 max-sm:bg-background/90 max-sm:backdrop-blur-xl">
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={handleTestConnection}
           disabled={testingConnection}
-          className="w-full sm:w-auto gap-2 text-xs border-border cursor-pointer hover:border-emerald-500/50"
+          className="flex-1 sm:flex-none h-10 sm:h-8 gap-2 text-xs border-border cursor-pointer hover:border-emerald-500/50"
         >
           {testingConnection ? (
             <>
               <Loader2 className="size-3.5 animate-spin" />
-              Testing Connection...
+              Testing...
             </>
           ) : (
             <>
               <ActivityIcon className="size-3.5 text-primary" />
-              Test Connection
+              <span className="sm:hidden">Test</span>
+              <span className="hidden sm:inline">Test Connection</span>
             </>
           )}
         </Button>
@@ -2897,10 +2859,11 @@ export default function CredentialConfig({
           type="button"
           size="sm"
           onClick={() => setIsConfirmModalOpen(true)}
-          className="w-full sm:w-auto gap-2 text-xs cursor-pointer"
+          className="flex-[2] sm:flex-none h-10 sm:h-8 gap-2 text-xs cursor-pointer"
         >
           <SaveIcon className="size-3.5" />
-          Save Configuration
+          <span className="sm:hidden">Save</span>
+          <span className="hidden sm:inline">Save Configuration</span>
         </Button>
       </div>
 

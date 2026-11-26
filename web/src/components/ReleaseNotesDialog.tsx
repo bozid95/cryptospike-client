@@ -198,12 +198,12 @@ export function ReleaseNotesDialog({
                   >
                     <span>v{rel.version}</span>
                     {rel.isLatest && (
-                      <span className="text-[9px] px-1 py-0 rounded bg-emerald-500 text-white font-sans font-bold uppercase">
+                      <span className="text-[11px] px-1 py-0 rounded bg-emerald-500 text-white font-sans font-bold uppercase">
                         Latest
                       </span>
                     )}
                     {isCurrent && !rel.isLatest && (
-                      <span className="text-[9px] px-1 py-0 rounded bg-blue-500 text-white font-sans font-medium">
+                      <span className="text-[11px] px-1 py-0 rounded bg-blue-500 text-white font-sans font-medium">
                         Active
                       </span>
                     )}
@@ -225,7 +225,7 @@ export function ReleaseNotesDialog({
                     v{activeRelease.version}
                   </span>
                   {activeRelease.isLatest && (
-                    <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px]">
+                    <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px]">
                       Versi Terkini
                     </Badge>
                   )}

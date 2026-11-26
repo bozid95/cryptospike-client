@@ -13,6 +13,8 @@ import CredentialConfig from "./components/CredentialConfig";
 import { ProfileView } from "./components/ProfileView";
 import { AppLogsView } from "./components/AppLogsView";
 import { authFetch } from "./lib/api";
+import { Segmented } from "@/components/ui/segmented";
+import type { MobileExchange } from "./components/MobileBottomNav";
 
 const VALID_TABS = [
   "dashboard",
@@ -54,6 +56,17 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [binancePositionsCount, setBinancePositionsCount] = useState<number>(0);
+  const [envCounts, setEnvCounts] = useState({ testnet: 0, live: 0 });
+  // Environment Binance yang dipilih lewat pemilih akun mobile
+  const [binanceEnv, setBinanceEnv] = useState<"TESTNET" | "LIVE">(() =>
+    localStorage.getItem("cryptospike_binance_env") === "LIVE"
+      ? "LIVE"
+      : "TESTNET",
+  );
+  const selectBinanceEnv = (env: "TESTNET" | "LIVE") => {
+    setBinanceEnv(env);
+    localStorage.setItem("cryptospike_binance_env", env);
+  };
   const [tokocryptoPositionsCount, setTokocryptoPositionsCount] =
     useState<number>(0);
   const [status, setStatus] = useState({
@@ -61,6 +74,24 @@ export default function App() {
     server_url: "",
     version: "1.0.1",
   });
+
+  // Bursa terakhir yang dibuka (dipakai tab Positions/Settings di bottom nav mobile)
+  const [lastExchange, setLastExchange] = useState<MobileExchange>(() =>
+    localStorage.getItem("cryptospike_last_exchange") === "tokocrypto"
+      ? "tokocrypto"
+      : "binance",
+  );
+  useEffect(() => {
+    const ex = activeTab.startsWith("tokocrypto-")
+      ? "tokocrypto"
+      : activeTab.startsWith("binance-")
+        ? "binance"
+        : null;
+    if (ex && ex !== lastExchange) {
+      setLastExchange(ex);
+      localStorage.setItem("cryptospike_last_exchange", ex);
+    }
+  }, [activeTab, lastExchange]);
 
   // Simpan activeTab ke localStorage & sinkronkan ke URL hash
   useEffect(() => {
@@ -111,6 +142,8 @@ export default function App() {
       try {
         // Binance Testnet & Live counts
         let totalBinance = 0;
+        let testnet = 0;
+        let live = 0;
         const [btRes, blRes] = await Promise.allSettled([
           authFetch("/api/positions?exchange=BINANCE_TESTNET"),
           authFetch("/api/positions?exchange=BINANCE_LIVE"),
@@ -119,16 +152,19 @@ export default function App() {
         if (btRes.status === "fulfilled" && btRes.value.ok) {
           const btData = await btRes.value.json();
           if (btData.success && Array.isArray(btData.positions)) {
-            totalBinance += btData.positions.length;
+            testnet = btData.positions.length;
+            totalBinance += testnet;
           }
         }
         if (blRes.status === "fulfilled" && blRes.value.ok) {
           const blData = await blRes.value.json();
           if (blData.success && Array.isArray(blData.positions)) {
-            totalBinance += blData.positions.length;
+            live = blData.positions.length;
+            totalBinance += live;
           }
         }
         setBinancePositionsCount(totalBinance);
+        setEnvCounts({ testnet, live });
 
         // Tokocrypto count
         const tRes = await authFetch("/api/positions?exchange=TOKOCRYPTO");
@@ -191,6 +227,38 @@ export default function App() {
     }
   };
 
+  const getMobileTitle = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return "Home";
+      case "binance-positions":
+      case "tokocrypto-positions":
+      case "positions":
+        return "Positions";
+      case "binance-config":
+      case "tokocrypto-config":
+        return "Settings";
+      case "logs":
+        return "Activity Logs";
+      case "profile":
+        return "Account";
+      case "config":
+        return "Settings";
+      default:
+        return "CryptoSpike";
+    }
+  };
+
+  // Mobile: bottom nav per tugas (Positions / Settings); bursa dipilih lewat switch di atas halaman
+  const exchangeSection: MobileExchange | null = activeTab.startsWith(
+    "binance-",
+  )
+    ? "binance"
+    : activeTab.startsWith("tokocrypto-")
+      ? "tokocrypto"
+      : null;
+  const exchangeView = activeTab.endsWith("-config") ? "config" : "positions";
+
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       {!isAuthenticated ? (
@@ -218,23 +286,74 @@ export default function App() {
                 user={user}
                 onLogout={handleLogout}
                 activeTabTitle={getTabTitle()}
+                mobileTitle={getMobileTitle()}
               />
 
-              <main className="flex-1 p-2.5 sm:p-4 md:p-6 pb-24 sm:pb-8 w-full max-w-7xl mx-auto space-y-4 sm:space-y-6">
+              <main className="flex-1 px-3 pt-3 sm:p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-8 w-full max-w-7xl mx-auto max-sm:space-y-4">
+                {exchangeSection && (
+                  <div className="sm:hidden">
+                    {/* Satu pemilih akun (tanpa tab bertingkat) */}
+                    <Segmented
+                      value={
+                        exchangeSection === "tokocrypto" ? "TOKO" : binanceEnv
+                      }
+                      onChange={(v) => {
+                        if (v === "TOKO") {
+                          setActiveTab(`tokocrypto-${exchangeView}`);
+                        } else {
+                          selectBinanceEnv(v);
+                          setActiveTab(`binance-${exchangeView}`);
+                        }
+                      }}
+                      options={[
+                        {
+                          value: "TESTNET",
+                          label: "Testnet",
+                          badge:
+                            exchangeView === "positions" && envCounts.testnet > 0
+                              ? envCounts.testnet
+                              : undefined,
+                        },
+                        {
+                          value: "LIVE",
+                          label: "Live",
+                          badge:
+                            exchangeView === "positions" && envCounts.live > 0
+                              ? envCounts.live
+                              : undefined,
+                        },
+                        {
+                          value: "TOKO",
+                          label: "Tokocrypto",
+                          badge:
+                            exchangeView === "positions" &&
+                            tokocryptoPositionsCount > 0
+                              ? tokocryptoPositionsCount
+                              : undefined,
+                        },
+                      ]}
+                    />
+                  </div>
+                )}
                 {activeTab === "dashboard" && (
                   <DashboardSummary
                     onNavigate={setActiveTab}
                     botConnected={status.bot_connected}
+                    username={user.username}
                   />
                 )}
                 {activeTab === "binance-positions" && (
                   <ActivePosition
                     forcedExchange="BINANCE"
+                    forcedBinanceEnv={binanceEnv}
                     onPositionsCountChange={setBinancePositionsCount}
                   />
                 )}
                 {activeTab === "binance-config" && (
-                  <CredentialConfig forcedExchange="BINANCE" />
+                  <CredentialConfig
+                    forcedExchange="BINANCE"
+                    forcedBinanceEnv={binanceEnv}
+                  />
                 )}
                 {activeTab === "tokocrypto-positions" && (
                   <ActivePosition
@@ -252,6 +371,7 @@ export default function App() {
                     botConnected={status.bot_connected}
                     serverUrl={status.server_url}
                     onLogout={handleLogout}
+                    appVersion={status.version || "1.0.1"}
                   />
                 )}
 
@@ -268,6 +388,7 @@ export default function App() {
               <MobileBottomNav
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
+                lastExchange={lastExchange}
                 binancePositionsCount={binancePositionsCount}
                 tokocryptoPositionsCount={tokocryptoPositionsCount}
               />

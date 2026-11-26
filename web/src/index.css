@@ -6,39 +6,40 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Light mode: aksen hijau (profit) + latar mint lembut agar kartu putih "naik" */
+    --background: 150 25% 96%;
+    --foreground: 165 30% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 165 30% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 165 30% 10%;
+    --primary: 160 84% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 20% 93%;
+    --secondary-foreground: 165 30% 10%;
+    --muted: 150 18% 93%;
+    --muted-foreground: 160 8% 40%;
+    --accent: 152 70% 94%;
+    --accent-foreground: 161 94% 26%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 150 18% 87%;
+    --input: 150 16% 84%;
+    --ring: 160 84% 32%;
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 160 84% 32%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 346 77% 50%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 165 15% 28%;
+    --sidebar-primary: 160 84% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 152 70% 94%;
+    --sidebar-accent-foreground: 161 94% 26%;
+    --sidebar-border: 150 18% 90%;
+    --sidebar-ring: 160 84% 32%;
   }
 
   .dark {
@@ -105,6 +106,21 @@
 }
 
 @layer utilities {
+  /* Kartu bernuansa hijau lembut (light) / tetap netral (dark) */
+  .card-tint {
+    background-image: linear-gradient(180deg, hsl(0 0% 100%), hsl(150 45% 98%));
+    border-color: hsl(152 35% 86%);
+  }
+  .dark .card-tint {
+    background-image: linear-gradient(180deg, hsl(240 10% 3.9%), hsl(160 30% 5%));
+    border-color: hsl(160 20% 14%);
+  }
+  /* Kartu utama (saldo) bergradasi hijau */
+  .card-hero {
+    background-image: linear-gradient(135deg, hsl(160 84% 30%), hsl(172 70% 26%));
+    color: white;
+    border-color: transparent;
+  }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -131,4 +147,30 @@
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* Mobile: skala tipografi konsisten — 11 (label kecil) · 12 (keterangan) · 14 (isi & input) · 16 (judul) · 24 (angka utama).
+   Auto-zoom iOS saat fokus dicegah lewat viewport maximum-scale, jadi input cukup 14px. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 14px !important;
+    min-height: 2.5rem;
+  }
+  label {
+    font-size: 12px;
+  }
+}
+
+@layer utilities {
+  /* Varian kartu utama: abu (tidak aktif) & oranye (gagal tersambung) */
+  .card-hero-muted {
+    background-image: linear-gradient(135deg, hsl(215 19% 35%), hsl(217 25% 24%));
+    color: white;
+  }
+  .card-hero-warn {
+    background-image: linear-gradient(135deg, hsl(25 90% 48%), hsl(10 75% 45%));
+    color: white;
+  }
 }

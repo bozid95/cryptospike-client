@@ -32,6 +32,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import {
   Dialog,
   DialogContent,
@@ -77,18 +78,21 @@ export type AccountOverview = {
 
 interface ActivePositionProps {
   forcedExchange?: "BINANCE" | "TOKOCRYPTO";
+  /** Environment Binance yang dipilih dari luar (pemilih akun mobile). */
+  forcedBinanceEnv?: "TESTNET" | "LIVE";
   onPositionsCountChange?: (count: number) => void;
 }
 
 export default function ActivePosition({
   forcedExchange,
+  forcedBinanceEnv,
   onPositionsCountChange,
 }: ActivePositionProps = {}) {
   const [activeExchange, setActiveExchange] = useState<
     "BINANCE" | "TOKOCRYPTO"
   >(forcedExchange || "BINANCE");
   const [binanceSubTab, setBinanceSubTab] = useState<"TESTNET" | "LIVE">(
-    "TESTNET",
+    forcedBinanceEnv || "TESTNET",
   );
   const [testnetCount, setTestnetCount] = useState<number>(0);
   const [liveCount, setLiveCount] = useState<number>(0);
@@ -121,6 +125,11 @@ export default function ActivePosition({
     setAccount(null);
     setIsLoadingPositions(true);
   };
+
+  useEffect(() => {
+    if (forcedBinanceEnv) handleSwitchBinanceSubTab(forcedBinanceEnv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcedBinanceEnv]);
 
   // Ambil data posisi & ringkasan akun live dari bursa dan lingkungan aktif
   const fetchPositions = async () => {
@@ -385,49 +394,45 @@ export default function ActivePosition({
   const isLiveNetProfit = liveTotalUnrealizedProfit >= 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 0. EXCHANGE & ENVIRONMENT SUB-TAB SELECTOR */}
       {forcedExchange ? (
         activeExchange === "BINANCE" && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={binanceSubTab === "TESTNET" ? "default" : "outline"}
-                onClick={() => handleSwitchBinanceSubTab("TESTNET")}
-                className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
-                  binanceSubTab === "TESTNET"
-                    ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
-                    : "border-border"
-                }`}
-              >
-                <FlaskConical className="size-3.5 text-amber-500" />
-                Binance Testnet (Demo)
-                <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
-                  {testnetCount} Open
-                </Badge>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={binanceSubTab === "LIVE" ? "default" : "outline"}
-                onClick={() => handleSwitchBinanceSubTab("LIVE")}
-                className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer ${
-                  binanceSubTab === "LIVE"
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
-                    : "border-border"
-                }`}
-              >
-                <Globe className="size-3.5 text-emerald-500" />
-                Binance Live (Real Funds)
-                <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
-                  {liveCount} Open
-                </Badge>
-              </Button>
-            </div>
+          <div className="hidden sm:flex flex-row items-center justify-between gap-3 p-3 rounded-xl border bg-card shadow-sm">
+            <Segmented
+              value={binanceSubTab}
+              onChange={(v) => handleSwitchBinanceSubTab(v)}
+              options={[
+                {
+                  value: "TESTNET",
+                  label: (
+                    <>
+                      <span className="sm:hidden">Testnet</span>
+                      <span className="hidden sm:inline">
+                        Binance Testnet (Demo)
+                      </span>
+                    </>
+                  ),
+                  icon: <FlaskConical className="text-amber-500" />,
+                  badge: testnetCount,
+                },
+                {
+                  value: "LIVE",
+                  label: (
+                    <>
+                      <span className="sm:hidden">Live</span>
+                      <span className="hidden sm:inline">
+                        Binance Live (Real Funds)
+                      </span>
+                    </>
+                  ),
+                  icon: <Globe className="text-emerald-500" />,
+                  badge: liveCount,
+                },
+              ]}
+            />
 
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Badge
                 variant="outline"
                 className={`text-[11px] px-2.5 py-1 gap-1.5 font-mono ${
@@ -474,7 +479,7 @@ export default function ActivePosition({
             >
               <FlaskConical className="size-3.5 text-amber-500" />
               Binance Testnet
-              <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
+              <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[11px] px-1.5 py-0 h-4 ml-1">
                 {testnetCount}
               </Badge>
             </Button>
@@ -499,7 +504,7 @@ export default function ActivePosition({
             >
               <Globe className="size-3.5 text-emerald-500" />
               Binance Live
-              <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 ml-1">
+              <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[11px] px-1.5 py-0 h-4 ml-1">
                 {liveCount}
               </Badge>
             </Button>
@@ -524,8 +529,66 @@ export default function ActivePosition({
         </div>
       )}
 
+      {/* 1a. RINGKASAN AKUN — MOBILE (satu kartu ringkas) */}
+      <div className="sm:hidden rounded-2xl border card-hero p-4 shadow-md shadow-emerald-900/10">
+        <div className="flex items-center justify-between text-xs text-white/75">
+          <span className="flex items-center gap-1.5">
+            <Wallet className="size-3.5" />
+            {activeExchange === "TOKOCRYPTO"
+              ? `Wallet · ${quoteAsset}`
+              : `Wallet · ${binanceSubTab === "LIVE" ? "Live" : "Testnet"}`}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-mono text-xs font-semibold ${
+              isLiveNetProfit
+                ? "bg-white/20 text-white"
+                : "bg-red-500/90 text-white"
+            }`}
+          >
+            {account
+              ? `${liveTotalUnrealizedProfit >= 0 ? "+" : ""}${quoteAsset === "BIDR" ? "Rp " : "$"}${liveTotalUnrealizedProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : "$0.00"}
+          </span>
+        </div>
+        <div className="mt-1 text-2xl font-bold font-mono tracking-tight truncate">
+          {account
+            ? `${quoteAsset === "BIDR" ? "Rp " : "$"}${account.totalWalletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : "$0.00"}
+        </div>
+        <div className="mt-3 grid grid-cols-3 divide-x divide-white/20 border-t border-white/20 pt-3 text-center">
+          {(activeExchange === "TOKOCRYPTO"
+            ? [
+                ["Asset", quoteAsset],
+                ["Coins", String(positions.length)],
+                ["Type", "Spot 1x"],
+              ]
+            : [
+                [
+                  "Available",
+                  `$${(account?.availableBalance || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                ],
+                [
+                  "Margin",
+                  account ? `${liveMarginRatioPct.toFixed(1)}%` : "0%",
+                ],
+                [
+                  "Exposure",
+                  `$${(account?.totalExposureUsd || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                ],
+              ]
+          ).map(([label, value]) => (
+            <div key={label} className="min-w-0 px-1">
+              <div className="text-[11px] text-white/70">{label}</div>
+              <div className="text-sm font-mono font-semibold truncate">
+                {value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* 1. KARTU ANALITIK & METRIK (ADAPTIF UNTUK FUTURES / SPOT) */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="hidden sm:grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Saldo Dompet */}
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -618,7 +681,7 @@ export default function ActivePosition({
                 </span>
                 <Badge
                   variant="outline"
-                  className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 shrink-0"
+                  className="text-[11px] px-1 sm:px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 shrink-0"
                 >
                   NO LIQ
                 </Badge>
@@ -646,7 +709,7 @@ export default function ActivePosition({
                 </span>
                 <Badge
                   variant="outline"
-                  className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 shrink-0"
+                  className="text-[11px] px-1 sm:px-1.5 py-0 h-4 font-mono border-emerald-500/40 text-emerald-500 bg-emerald-500/10 shrink-0"
                 >
                   OK
                 </Badge>
@@ -701,17 +764,21 @@ export default function ActivePosition({
       </div>
 
       {/* 2. TABEL / KARTU POSISI AKTIF */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-3.5 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex flex-col space-y-1">
+      <div className="sm:rounded-xl sm:border sm:bg-card text-card-foreground sm:shadow-sm sm:p-6">
+        <div className="flex flex-row items-center justify-between gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <div className="flex flex-col space-y-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Coins className="size-4 text-primary" />
-              <h3 className="font-semibold text-base sm:text-lg leading-none tracking-tight">
-                Active Positions
+              <Coins className="size-4 text-primary hidden sm:block" />
+              <h3 className="font-semibold text-sm sm:text-lg leading-none tracking-tight">
+                <span className="sm:hidden">Positions</span>
+                <span className="hidden sm:inline">Active Positions</span>
               </h3>
+              <span className="sm:hidden rounded-full bg-muted px-1.5 text-[11px] font-semibold tabular-nums leading-4">
+                {positions.length}
+              </span>
               <Badge
                 variant="outline"
-                className="text-[10px] sm:text-[11px] font-mono"
+                className="hidden sm:inline-flex text-[11px] font-mono"
               >
                 {activeExchange === "TOKOCRYPTO"
                   ? "Tokocrypto Spot"
@@ -730,21 +797,26 @@ export default function ActivePosition({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {positions.length > 0 && (
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={() => setIsCloseAllModalOpen(true)}
                 disabled={isClosingAll}
-                className="h-8 text-xs cursor-pointer w-full sm:w-auto font-semibold"
+                className="h-8 text-xs cursor-pointer font-semibold max-sm:bg-red-500/10 max-sm:text-red-500 max-sm:hover:bg-red-500/20 max-sm:shadow-none"
               >
-                <Trash2Icon className="mr-1.5 size-3.5" />
-                {activeExchange === "TOKOCRYPTO"
-                  ? "Sell All Coins"
-                  : binanceSubTab === "LIVE"
-                    ? "Close All (Live Funds)"
-                    : "Close All (Testnet)"}
+                <Trash2Icon className="sm:mr-1.5 size-3.5" />
+                <span className="sm:hidden ml-1">
+                  {activeExchange === "TOKOCRYPTO" ? "Sell all" : "Close all"}
+                </span>
+                <span className="hidden sm:inline">
+                  {activeExchange === "TOKOCRYPTO"
+                    ? "Sell All Coins"
+                    : binanceSubTab === "LIVE"
+                      ? "Close All (Live Funds)"
+                      : "Close All (Testnet)"}
+                </span>
               </Button>
             )}
             <Button
@@ -752,12 +824,13 @@ export default function ActivePosition({
               size="sm"
               onClick={fetchPositions}
               disabled={isLoadingPositions}
-              className="h-8 text-xs cursor-pointer w-full sm:w-auto"
+              aria-label="Refresh"
+              className="h-8 text-xs cursor-pointer max-sm:w-8 max-sm:px-0"
             >
               <RefreshCw
-                className={`mr-1.5 size-3.5 ${isLoadingPositions ? "animate-spin" : ""}`}
+                className={`sm:mr-1.5 size-3.5 ${isLoadingPositions ? "animate-spin" : ""}`}
               />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
           </div>
         </div>
@@ -790,62 +863,76 @@ export default function ActivePosition({
         ) : (
           <>
             {/* Mobile Cards View (< sm) */}
-            <div className="sm:hidden space-y-3">
+            <div className="sm:hidden space-y-2.5">
               {livePositions.map((pos) => {
                 const isLong = pos.side === "LONG";
                 const isSpot =
                   activeExchange === "TOKOCRYPTO" || pos.marginType === "SPOT";
                 const isProfit = pos.liveUnRealizedProfit >= 0;
                 const isClosing = isClosingSymbol === pos.symbol;
+                const cells: [string, string, string?][] = isSpot
+                  ? [
+                      ["Entry", `$${formatPrice(pos.entryPrice)}`],
+                      ["Mark", `$${formatPrice(pos.liveMarkPrice)}`],
+                      [
+                        "TP",
+                        `$${formatPrice(pos.tpPrice || pos.entryPrice * 1.05)}`,
+                        "text-emerald-500",
+                      ],
+                      [
+                        "SL",
+                        `$${formatPrice(pos.slPrice || pos.entryPrice * 0.975)}`,
+                        "text-red-500",
+                      ],
+                    ]
+                  : [
+                      ["Entry", `$${formatPrice(pos.entryPrice)}`],
+                      ["Mark", `$${formatPrice(pos.liveMarkPrice)}`],
+                      [
+                        "Size",
+                        `${pos.positionAmt.toLocaleString()} · $${pos.notionalValue.toFixed(0)}`,
+                      ],
+                      [
+                        "Liq.",
+                        pos.liquidationPrice > 0
+                          ? `$${formatPrice(pos.liquidationPrice)}`
+                          : "—",
+                        "text-amber-500",
+                      ],
+                    ];
 
                 return (
                   <div
                     key={pos.id || pos.symbol}
-                    className="p-3 sm:p-3.5 rounded-lg border bg-muted/20 space-y-2.5"
+                    className="rounded-2xl border bg-card card-tint p-3.5 shadow-sm"
                   >
                     {/* Header Row: Symbol & PnL */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1 min-w-0">
-                        <span className="font-bold text-sm tracking-tight block truncate">
-                          {pos.symbol}
-                        </span>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge
-                            variant={isLong ? "default" : "destructive"}
-                            className={`text-[9px] sm:text-[10px] px-1.5 py-0 h-4 font-semibold ${
-                              isLong
-                                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
-                                : "bg-red-500/10 text-red-500 border-red-500/30"
-                            }`}
-                          >
-                            {isLong ? (
-                              <TrendingUpIcon className="mr-0.5 h-2.5 w-2.5" />
-                            ) : (
-                              <TrendingDownIcon className="mr-0.5 h-2.5 w-2.5" />
-                            )}
-                            {isSpot
-                              ? "SPOT BUY"
-                              : `${pos.side} ${pos.leverage}x`}
-                          </Badge>
-                          {isSpot ? (
-                            pos.isDryRun && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-amber-500 border-amber-500/40 bg-amber-500/10"
-                              >
-                                SIMULASI
-                              </Badge>
-                            )
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`h-8 w-1 shrink-0 rounded-full ${
+                            isLong ? "bg-emerald-500" : "bg-red-500"
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm tracking-tight truncate">
+                            {pos.symbol}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            <span
+                              className={
+                                isLong ? "text-emerald-500" : "text-red-500"
+                              }
                             >
-                              {pos.marginType === "CROSSED"
-                                ? "CROSS"
-                                : "ISOLATED"}
-                            </Badge>
-                          )}
+                              {isSpot ? "SPOT BUY" : pos.side}
+                            </span>
+                            {!isSpot && ` · ${pos.leverage}x`}
+                            {!isSpot &&
+                              ` · ${pos.marginType === "CROSSED" ? "Cross" : "Isolated"}`}
+                            {isSpot && pos.isDryRun && (
+                              <span className="text-amber-500"> · Simulasi</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -856,85 +943,43 @@ export default function ActivePosition({
                           }`}
                         >
                           {isProfit ? "+" : ""}
-                          {pos.liveUnRealizedProfit.toFixed(2)}{" "}
-                          {activeExchange === "TOKOCRYPTO"
-                            ? quoteAsset
-                            : "USDT"}
+                          {pos.liveUnRealizedProfit.toFixed(2)}
                         </div>
                         <div
-                          className={`text-[10px] sm:text-[11px] font-semibold ${
-                            isProfit ? "text-emerald-600" : "text-red-500"
+                          className={`text-[11px] font-medium ${
+                            isProfit ? "text-emerald-500/80" : "text-red-500/80"
                           }`}
                         >
-                          ({pos.liveRoiPct >= 0 ? "+" : ""}
-                          {pos.liveRoiPct.toFixed(2)}%)
+                          {pos.liveRoiPct >= 0 ? "+" : ""}
+                          {pos.liveRoiPct.toFixed(2)}%
                         </div>
                       </div>
                     </div>
 
-                    {/* 2x2 Grid: Clear values with labels */}
-                    <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-background/50 p-2.5 rounded-lg border border-border/50">
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] text-muted-foreground block font-sans">
-                          Size & Value
-                        </span>
-                        <span className="font-semibold block truncate">
-                          {pos.positionAmt.toLocaleString()}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground block font-sans">
-                          (~${pos.notionalValue.toFixed(2)})
-                        </span>
-                      </div>
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] text-muted-foreground block font-sans">
-                          {isSpot ? "Target TP / SL" : "Liq. Price"}
-                        </span>
-                        {isSpot ? (
-                          <div className="text-[10px] sm:text-[11px] font-mono leading-tight space-y-0.5">
-                            <span className="text-emerald-500 block truncate">
-                              TP: $
-                              {formatPrice(
-                                pos.tpPrice || pos.entryPrice * 1.05,
-                              )}
-                            </span>
-                            <span className="text-red-500 block truncate">
-                              SL: $
-                              {formatPrice(
-                                pos.slPrice || pos.entryPrice * 0.975,
-                              )}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-amber-500 font-semibold block text-xs truncate">
-                            {pos.liquidationPrice > 0
-                              ? `$${formatPrice(pos.liquidationPrice)}`
-                              : "Safe (Cross)"}
+                    {/* Detail ringkas */}
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                      {cells.map(([label, value, tone]) => (
+                        <div
+                          key={label}
+                          className="flex items-center justify-between gap-2 min-w-0"
+                        >
+                          <span className="text-muted-foreground text-[11px]">
+                            {label}
                           </span>
-                        )}
-                      </div>
-                      <div className="space-y-0.5 pt-1 border-t border-border/30">
-                        <span className="text-[10px] text-muted-foreground block font-sans">
-                          Entry Price
-                        </span>
-                        <span className="font-semibold block truncate">
-                          ${formatPrice(pos.entryPrice)}
-                        </span>
-                      </div>
-                      <div className="space-y-0.5 pt-1 border-t border-border/30">
-                        <span className="text-[10px] text-muted-foreground block font-sans">
-                          Mark Price
-                        </span>
-                        <span className="text-muted-foreground block truncate">
-                          ${formatPrice(pos.liveMarkPrice)}
-                        </span>
-                      </div>
+                          <span
+                            className={`font-mono truncate ${tone || "text-foreground"}`}
+                          >
+                            {value}
+                          </span>
+                        </div>
+                      ))}
                     </div>
 
                     <Button
-                      variant="destructive"
+                      variant="ghost"
                       size="sm"
                       disabled={isClosing}
-                      className="w-full h-8 text-xs cursor-pointer font-semibold"
+                      className="mt-3 w-full h-8 text-xs cursor-pointer font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-500"
                       onClick={() => setItemToClose(pos)}
                     >
                       {isClosing ? (
@@ -943,10 +988,7 @@ export default function ActivePosition({
                           Processing...
                         </>
                       ) : (
-                        <>
-                          <Trash2Icon className="h-3.5 w-3.5 mr-1.5" />
-                          {isSpot ? "Sell Now" : "Close Position"}
-                        </>
+                        <>{isSpot ? "Sell now" : "Close position"}</>
                       )}
                     </Button>
                   </div>
@@ -1003,7 +1045,7 @@ export default function ActivePosition({
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge
                                 variant={isLong ? "default" : "destructive"}
-                                className={`w-fit text-[10px] px-1.5 py-0 h-4 font-semibold ${
+                                className={`w-fit text-[11px] px-1.5 py-0 h-4 font-semibold ${
                                   isLong
                                     ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/30"
                                     : "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/30"
@@ -1022,7 +1064,7 @@ export default function ActivePosition({
                                 pos.isDryRun && (
                                   <Badge
                                     variant="outline"
-                                    className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-amber-500 border-amber-500/40 bg-amber-500/10"
+                                    className="text-[11px] px-1.5 py-0 h-4 font-mono font-medium text-amber-500 border-amber-500/40 bg-amber-500/10"
                                   >
                                     SIMULASI
                                   </Badge>
@@ -1030,7 +1072,7 @@ export default function ActivePosition({
                               ) : (
                                 <Badge
                                   variant="outline"
-                                  className="text-[9px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
+                                  className="text-[11px] px-1.5 py-0 h-4 font-mono font-medium text-muted-foreground border-border"
                                 >
                                   {pos.marginType === "CROSSED"
                                     ? "CROSS"
