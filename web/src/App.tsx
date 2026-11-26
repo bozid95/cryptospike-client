@@ -279,7 +279,7 @@ export default function App() {
             />
 
             {/* Main Content Area */}
-            <SidebarInset className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
+            <SidebarInset className="flex flex-1 flex-col min-w-0 overflow-x-clip">
               <SiteHeader
                 botConnected={status.bot_connected}
                 serverUrl={status.server_url}
